@@ -98,6 +98,15 @@
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
+### Constitutional Requirements *(include when the feature affects these concerns)*
+
+- **Ownership/Repositories**: [Describe knowledge ownership and knowledge/source repository boundaries]
+- **AI/Integrations**: [Describe provider neutrality and adapter boundaries]
+- **Context/Audit**: [Describe minimum agent context and required audit records]
+- **Authorization/Secrets**: [Describe explicit approvals and credential handling]
+- **Portability**: [Describe Linux, Windows, and macOS behavior]
+- **CLI/Compatibility**: [Describe command contract, documentation, and migration impact]
+
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]

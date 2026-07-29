@@ -131,6 +131,9 @@ Given that feature description, do this:
     5. Generate Functional Requirements
        Each requirement must be testable
        Use reasonable defaults for unspecified details (document assumptions in Assumptions section)
+       Add applicable constitutional requirements for repository separation, provider neutrality,
+       adapters, minimum agent context, auditability, explicit authorization, secret handling,
+       portability, CLI compatibility, and command documentation
     6. Define Success Criteria
        Create measurable, technology-agnostic outcomes
        Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion)

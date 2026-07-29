@@ -40,18 +40,24 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Traceability**: Every planned change maps to a requirement, user story, acceptance scenario,
-  or constitution rule.
-- **CLI contract**: Affected arguments, input, stdout, stderr, exit status, side effects, and any
-  compatibility or migration impact are documented.
+- **Ownership and separation**: User control of knowledge and the boundary between knowledge and
+  source repositories are preserved.
+- **Neutral core**: AI/provider concerns stay outside the domain and external systems enter through
+  replaceable adapters.
+- **Minimum context and audit**: Agent context is scoped to the task and every automated execution
+  has a redacted, reconstructable audit trail.
+- **Authorization and secrets**: Sensitive operations request explicit authorization and no
+  credential can enter managed repositories, output, or audit records.
+- **Portability**: Path, process, shell, permission, and line-ending behavior is designed for
+  Linux, Windows, and macOS.
+- **Testing**: Domain behavior, regressions, adapters, critical CLI flows, and security refusals
+  have the constitution-required automated checks.
+- **CLI compatibility and documentation**: Commands define stable script-facing contracts,
+  breaking-change impact, migration, help, and command documentation.
 - **Simplicity**: Existing code, the Go standard library, and native platform behavior were
   considered before new dependencies or abstractions.
-- **Verification**: Non-trivial logic and CLI contract changes have the smallest suitable
-  automated checks planned before implementation.
-- **Safety**: Trust-boundary validation, actionable failures, and destructive-action safeguards
-  are defined where applicable.
 
-Any failed gate MUST be resolved or justified in Complexity Tracking before proceeding.
+Any failed gate MUST be resolved before proceeding. Necessary complexity MUST be recorded below.
 
 ## Project Structure
 

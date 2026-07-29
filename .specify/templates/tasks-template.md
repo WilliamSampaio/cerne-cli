@@ -9,9 +9,10 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Include the smallest automated check for branching, parsing, state mutation, security,
-bug-regression risk, and CLI contract changes. Trivial documentation or formatting-only work may
-omit tests when the plan records why no behavioral check applies.
+**Tests**: Domain behavior and regressions require automated tests. Adapters require contract
+tests; critical CLI flows require integration tests; authorization, secrets, and destructive
+operations require negative tests. Releases require applicable checks on Linux, Windows, and
+macOS.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -86,8 +87,8 @@ Examples of foundational tasks (adjust based on your project):
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [US1] Contract test for [adapter] in tests/contract/test_[name].py
+- [ ] T011 [P] [US1] Integration test for [CLI journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 1
 
@@ -96,7 +97,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
 - [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
 - [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T017 [US1] Add redacted audit events when the story automates work
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -110,8 +111,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (REQUIRED when mandated by the constitution) ⚠️
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T018 [P] [US2] Contract test for [adapter] in tests/contract/test_[name].py
+- [ ] T019 [P] [US2] Integration test for [CLI journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 2
 
@@ -132,8 +133,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 (REQUIRED when mandated by the constitution) ⚠️
 
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T024 [P] [US3] Contract test for [adapter] in tests/contract/test_[name].py
+- [ ] T025 [P] [US3] Integration test for [CLI journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 3
 
@@ -158,6 +159,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional required or requested unit tests in tests/unit/
 - [ ] TXXX Security hardening
+- [ ] TXXX Verify Linux, Windows, and macOS behavior in CI
+- [ ] TXXX Update command help, examples, compatibility notes, and migration guidance
 - [ ] TXXX Run quickstart.md validation
 
 ---

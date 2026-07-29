@@ -140,11 +140,11 @@ The tasks.md should be immediately executable - each task must be specific enoug
 
 **CRITICAL**: Tasks MUST be organized by user story to enable independent implementation and testing.
 
-**Tests are proportionate**: Generate the smallest automated check required by the constitution
-for branching, parsing, state mutation, security, bug-regression risk, and CLI contract changes.
-Also generate tests explicitly requested by the feature specification or user. Trivial
-documentation or formatting-only work may omit tests when the plan records why no behavioral
-check applies.
+**Tests follow the constitution**: Generate automated tests for all domain behavior and
+regressions, contract tests for adapters, integration tests for critical CLI flows, and negative
+tests for authorization, secrets, and destructive operations. Add applicable Linux, Windows, and
+macOS validation tasks for release-impacting changes. Also generate tests explicitly requested by
+the feature specification or user.
 
 ### Checklist Format (REQUIRED)
 
@@ -187,12 +187,14 @@ Every task MUST strictly follow this format:
      - Services needed for that story
      - Interfaces/UI needed for that story
      - Constitution-required and explicitly requested tests specific to that story
+     - Audit, authorization, secret-handling, portability, and command-documentation work when
+       the story affects those concerns
    - Mark story dependencies (most stories should be independent)
 
 2. **From Contracts**:
    - Map each interface contract → to the user story it serves
-   - Each changed CLI interface contract → contract test task [P] before implementation in that
-     story's phase; add other interface tests when required by the constitution or specification
+   - Each adapter contract → contract test task [P] before implementation in that story's phase
+   - Each critical CLI contract → integration test task before implementation in that story's phase
 
 3. **From Data Model**:
    - Map each entity to the user story(ies) that need it
