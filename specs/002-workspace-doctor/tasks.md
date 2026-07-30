@@ -36,7 +36,7 @@ implementação correspondente.
 **⚠️ CRITICAL**: Nenhuma história pode produzir diagnóstico confiável antes desta fase.
 
 - [ ] T002 [P] Escrever testes de contrato inicialmente falhos para acesso permitido, negado, inconclusivo e sem mutação em `internal/filecheck/access_test.go`
-- [ ] T003 [P] Escrever testes de contrato inicialmente falhos para raiz própria, repositório ancestral, common dir compartilhado, ambiente `GIT_*` hostil e ausência de mutação em `internal/gitexec/inspect_test.go`
+- [ ] T003 [P] Escrever testes de contrato inicialmente falhos para raiz própria, repositório ancestral, common dir compartilhado, ambiente `GIT_*` hostil, ausência de mutação e executável Git sentinela que aceite somente `rev-parse --show-toplevel` e `rev-parse --git-common-dir` em `internal/gitexec/inspect_test.go`
 - [ ] T004 [P] Implementar resultado comum e sondas efetivas sem criação ou escrita em `internal/filecheck/access.go`, `internal/filecheck/access_unix.go` e `internal/filecheck/access_windows.go`
 - [ ] T005 [P] Implementar descoberta e inspeção local com top-level, common dir, ambiente saneado, locks e prompts desabilitados em `internal/gitexec/inspect.go`
 
@@ -108,7 +108,7 @@ em caminho com espaços/Unicode, comparando saída, status e snapshots antes/dep
 > **NOTE: Escrever e executar estes testes primeiro; eles devem falhar antes da implementação.**
 
 - [ ] T014 [P] [US3] Adicionar testes de domínio para `name` válido divergente da raiz, acesso inconclusivo, resumo com avisos e precedência erro sobre aviso mantendo ordem e total dez em `internal/workspace/doctor_test.go`
-- [ ] T015 [P] [US3] Adicionar testes do binário para aviso de `name`, ajuda, uso inválido, saída exata dos três resumos, status 0/1/2, caminho com espaços/Unicode e snapshot sem criação, alteração, rede, prompt ou segredo em `cmd/cerne/main_test.go`
+- [ ] T015 [P] [US3] Adicionar testes do binário para aviso de `name`, ajuda, uso inválido, saída exata dos três resumos, status 0/1/2, falha anterior ao relatório com stdout vazio, stderr corretivo, ausência de resumo e status 1, caminho com espaços/Unicode e snapshot sem criação, alteração, prompt ou segredo em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 3
 
@@ -124,7 +124,7 @@ em caminho com espaços/Unicode, comparando saída, status e snapshots antes/dep
 
 **Purpose**: Validar todos os cenários, dependências, documentação e gates multiplataforma.
 
-- [ ] T019 Validar os nove cenários de `specs/002-workspace-doctor/quickstart.md`, incluindo divergência de `name`, versão explícita, Git ausente, leitura exclusiva, ajuda e status 0/1/2
+- [ ] T019 Validar os nove cenários de `specs/002-workspace-doctor/quickstart.md`, incluindo divergência de `name`, versão explícita, Git ausente, leitura exclusiva, ajuda, status 0/1/2 e conclusão do workspace saudável mínimo em até 5 segundos
 - [ ] T020 Executar `gofmt`, `go mod tidy`, `go vet ./...`, `go test -count=1 ./...` e `git diff --check`, confirmando a matriz Linux/Windows/macOS em `.github/workflows/test.yml` para `cmd/cerne`, `internal/workspace`, `internal/gitexec` e `internal/filecheck`
 
 ---

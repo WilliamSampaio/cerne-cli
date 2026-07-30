@@ -221,16 +221,16 @@ saudáveis, com avisos e inválidos; comparar os estados, a saída e o código d
 
 ### Measurable Outcomes
 
-- **SC-001**: Em 100% dos workspaces válidos de aceite, o usuário recebe dez resultados individuais,
-  um resumo saudável e status zero.
+- **SC-001**: Em 100% dos workspaces saudáveis de aceite, sem erros ou avisos, o usuário recebe dez
+  resultados individuais, um resumo saudável e status zero.
 - **SC-002**: Em 100% dos defeitos bloqueantes previstos, ao menos uma linha identifica o defeito,
   o resumo informa workspace inválido e o status é `1`.
 - **SC-003**: Em 100% dos casos contendo apenas avisos, o resumo informa workspace com avisos e o
   status permanece zero.
 - **SC-004**: Em 100% das execuções, comparações antes e depois confirmam que nenhum conteúdo ou
   configuração do workspace foi criado, alterado ou removido.
-- **SC-005**: Um usuário consegue localizar a verificação problemática e sua ação corretiva usando
-  somente a saída do comando, sem consultar registros externos.
+- **SC-005**: Em 100% das linhas com erro ou aviso, a saída identifica a verificação problemática e
+  inclui uma ação corretiva, sem depender de registros externos.
 - **SC-006**: Para um workspace local com a estrutura mínima, o diagnóstico completo termina em até
   5 segundos, sem depender de rede.
 - **SC-007**: O mesmo conjunto de cenários produz classificação, resumo e status funcionalmente
