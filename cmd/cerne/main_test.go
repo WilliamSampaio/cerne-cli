@@ -362,13 +362,14 @@ func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
 		if err != nil {
 			return err
 		}
-		item := snapshotEntry{Mode: info.Mode(), Size: info.Size(), ModTime: info.ModTime().UnixNano()}
+		item := snapshotEntry{Mode: info.Mode(), Size: info.Size()}
 		if info.Mode().IsRegular() {
 			data, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
 			item.Hash = sha256.Sum256(data)
+			item.ModTime = info.ModTime().UnixNano()
 		}
 		out[relative] = item
 		return nil
