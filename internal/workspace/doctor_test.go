@@ -172,15 +172,20 @@ func writeManifest(t *testing.T, root, content string) {
 }
 
 func fakeInspect(overrides map[string]RepositoryFacts) GitInspect {
+	canonicalOverrides := map[string]RepositoryFacts{}
+	for path, facts := range overrides {
+		canonicalOverrides[canonical(path)] = facts
+	}
 	return func(path string) (RepositoryFacts, error) {
-		if facts, ok := overrides[filepath.Clean(path)]; ok {
-			facts.RequestedRoot = filepath.Clean(path)
+		path = canonical(path)
+		if facts, ok := canonicalOverrides[path]; ok {
+			facts.RequestedRoot = path
 			return facts, nil
 		}
 		return RepositoryFacts{
-			RequestedRoot: filepath.Clean(path),
-			WorktreeRoot:  filepath.Clean(path),
-			CommonDir:     filepath.Join(filepath.Clean(path), ".git"),
+			RequestedRoot: path,
+			WorktreeRoot:  path,
+			CommonDir:     filepath.Join(path, ".git"),
 		}, nil
 	}
 }

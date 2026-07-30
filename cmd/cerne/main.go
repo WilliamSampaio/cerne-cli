@@ -92,6 +92,8 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
+var currentDirectory = os.Getwd
+
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		return commandUsageError(stderr, "informe um comando")
@@ -124,7 +126,7 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
 		return 1
 	}
-	current, err := os.Getwd()
+	current, err := currentDirectory()
 	if err != nil {
 		fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
 		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
@@ -157,7 +159,7 @@ func runDoctor(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	current, err := os.Getwd()
+	current, err := currentDirectory()
 	if err != nil {
 		fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
 		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
