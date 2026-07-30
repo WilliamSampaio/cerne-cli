@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -280,21 +281,9 @@ func TestCLIDoctorHelpUsagePortablePathAndReadOnly(t *testing.T) {
 }
 
 func TestCLIDoctorPreReportFailure(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("remoção do cwd em uso não é portátil no Windows")
-	}
-	old, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := t.TempDir()
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.RemoveAll(dir); err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = os.Chdir(old) }()
+	original := currentDirectory
+	currentDirectory = func() (string, error) { return "", errors.New("cwd indisponível") }
+	t.Cleanup(func() { currentDirectory = original })
 
 	var stdout, stderr strings.Builder
 	status := runDoctor(nil, &stdout, &stderr)
