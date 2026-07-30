@@ -1,12 +1,16 @@
 package main
 
 import (
+	"crypto/sha256"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 const expectedInitHelp = `Inicializa um workspace Cerne com repositórios Git independentes.
@@ -176,6 +180,144 @@ func TestCLIFailures(t *testing.T) {
 	})
 }
 
+func TestCLIDoctorHealthyWarningAndInvalidReports(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+
+	t.Run("healthy exact stdout", func(t *testing.T) {
+		root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+		start := time.Now()
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "doctor")
+		if time.Since(start) > 5*time.Second {
+			t.Fatal("doctor excedeu 5 segundos")
+		}
+		if status != 0 || stdout != expectedDoctorHealthy || stderr != "" {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("warning name differs", func(t *testing.T) {
+		root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+		if err := os.WriteFile(filepath.Join(root, "knowledge", "cerne.json"),
+			[]byte(`{"name":"other","source":"../source"}`+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "doctor")
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "Workspace com avisos") ||
+			!strings.Contains(stdout, "! Manifesto: name válido difere do nome da raiz; correção:") {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("invalid report includes ten lines and no private content", func(t *testing.T) {
+		root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+		if err := os.RemoveAll(filepath.Join(root, "knowledge", "product")); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "knowledge", "cerne.json"),
+			[]byte(`{"name":"example","source":"../source","secret":"nao-vazar"}`+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "doctor")
+		if status != 1 || stderr != "" || countReportLines(stdout) != 10 ||
+			!strings.Contains(stdout, "Workspace inválido") || !strings.Contains(stdout, "correção:") ||
+			strings.Contains(stdout, "nao-vazar") {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("Git unavailable is diagnostic", func(t *testing.T) {
+		root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+		env := replaceEnvironment(os.Environ(), "PATH", t.TempDir())
+		status, stdout, stderr := executeCLI(t, binary, root, env, "doctor")
+		if status != 1 || stderr != "" || countReportLines(stdout) != 10 ||
+			!strings.Contains(stdout, "✗ Git: indisponível; correção: instale o Git") {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+}
+
+func TestCLIDoctorHelpUsagePortablePathAndReadOnly(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+
+	t.Run("help", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "doctor", "--help")
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne doctor") ||
+			!strings.Contains(stdout, "Status 0") || !strings.Contains(stdout, "Leitura exclusiva") {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("invalid usage", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "doctor", "extra")
+		expected := "erro: argumento inválido\nuso: cerne doctor\n"
+		if status != 2 || stdout != "" || stderr != expected {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("spaces unicode and read only", func(t *testing.T) {
+		parent := filepath.Join(t.TempDir(), "área com espaços")
+		if err := os.Mkdir(parent, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		root := initWorkspaceWithCLI(t, binary, parent, "portable")
+		before := snapshotTree(t, root)
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "doctor")
+		after := snapshotTree(t, root)
+		if status != 0 || stdout != expectedDoctorHealthy || stderr != "" {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+		if !reflect.DeepEqual(before, after) {
+			t.Fatalf("doctor alterou o workspace\nantes=%#v\ndepois=%#v", before, after)
+		}
+	})
+}
+
+func TestCLIDoctorPreReportFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("remoção do cwd em uso não é portátil no Windows")
+	}
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(old) }()
+
+	var stdout, stderr strings.Builder
+	status := runDoctor(nil, &stdout, &stderr)
+	if status != 1 || stdout.String() != "" ||
+		!strings.Contains(stderr.String(), "correção: execute o comando em um diretório acessível") ||
+		strings.Contains(stderr.String(), "Workspace ") {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout.String(), stderr.String())
+	}
+}
+
+const expectedDoctorHealthy = `✓ Manifesto: legível
+✓ Repositório de conhecimento: encontrado
+✓ Repositório de código-fonte: encontrado
+✓ Independência Git: raízes e históricos distintos
+✓ Isolamento de versionamento: nenhum repositório contém o outro
+✓ Caminhos do manifesto: válidos
+✓ Diretórios obrigatórios: product, specs, decisions, policies e runs encontrados
+✓ Git: disponível
+✓ Permissões: leitura e escrita confirmadas
+✓ Versão do manifesto: versão 1 implícita e suportada
+Workspace saudável
+`
+
 func buildCLI(t *testing.T) string {
 	t.Helper()
 	name := "cerne"
@@ -188,6 +330,64 @@ func buildCLI(t *testing.T) string {
 		t.Fatalf("go build: %v: %s", err, output)
 	}
 	return binary
+}
+
+func initWorkspaceWithCLI(t *testing.T, binary, parent, name string) string {
+	t.Helper()
+	status, stdout, stderr := executeCLI(t, binary, parent, nil, "init", name)
+	if status != 0 {
+		t.Fatalf("init status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+	return filepath.Join(parent, name)
+}
+
+func countReportLines(stdout string) int {
+	count := 0
+	for _, line := range strings.Split(strings.TrimSuffix(stdout, "\n"), "\n") {
+		if strings.HasPrefix(line, "✓ ") || strings.HasPrefix(line, "✗ ") || strings.HasPrefix(line, "! ") {
+			count++
+		}
+	}
+	return count
+}
+
+type snapshotEntry struct {
+	Mode    fs.FileMode
+	Size    int64
+	ModTime int64
+	Hash    [32]byte
+}
+
+func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
+	t.Helper()
+	out := map[string]snapshotEntry{}
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		item := snapshotEntry{Mode: info.Mode(), Size: info.Size(), ModTime: info.ModTime().UnixNano()}
+		if info.Mode().IsRegular() {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			item.Hash = sha256.Sum256(data)
+		}
+		out[relative] = item
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
 }
 
 func executeCLI(t *testing.T, binary, directory string, environment []string, args ...string) (int, string, string) {

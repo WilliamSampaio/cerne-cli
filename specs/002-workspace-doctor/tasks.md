@@ -25,7 +25,7 @@ implementação correspondente.
 
 **Purpose**: Adicionar somente a dependência nativa necessária à verificação de acesso efetivo.
 
-- [ ] T001 Adicionar `golang.org/x/sys` compatível com Go 1.24.6 em `go.mod` e `go.sum`
+- [X] T001 Adicionar `golang.org/x/sys` compatível com Go 1.24.6 em `go.mod` e `go.sum`
 
 ---
 
@@ -35,10 +35,10 @@ implementação correspondente.
 
 **⚠️ CRITICAL**: Nenhuma história pode produzir diagnóstico confiável antes desta fase.
 
-- [ ] T002 [P] Escrever testes de contrato inicialmente falhos para acesso permitido, negado, inconclusivo e sem mutação em `internal/filecheck/access_test.go`
-- [ ] T003 [P] Escrever testes de contrato inicialmente falhos para raiz própria, repositório ancestral, common dir compartilhado, ambiente `GIT_*` hostil, ausência de mutação e executável Git sentinela que aceite somente `rev-parse --show-toplevel` e `rev-parse --git-common-dir` em `internal/gitexec/inspect_test.go`
-- [ ] T004 [P] Implementar resultado comum e sondas efetivas sem criação ou escrita em `internal/filecheck/access.go`, `internal/filecheck/access_unix.go` e `internal/filecheck/access_windows.go`
-- [ ] T005 [P] Implementar descoberta e inspeção local com top-level, common dir, ambiente saneado, locks e prompts desabilitados em `internal/gitexec/inspect.go`
+- [X] T002 [P] Escrever testes de contrato inicialmente falhos para acesso permitido, negado, inconclusivo e sem mutação em `internal/filecheck/access_test.go`
+- [X] T003 [P] Escrever testes de contrato inicialmente falhos para raiz própria, repositório ancestral, common dir compartilhado, ambiente `GIT_*` hostil, ausência de mutação e executável Git sentinela que aceite somente `rev-parse --show-toplevel` e `rev-parse --git-common-dir` em `internal/gitexec/inspect_test.go`
+- [X] T004 [P] Implementar resultado comum e sondas efetivas sem criação ou escrita em `internal/filecheck/access.go`, `internal/filecheck/access_unix.go` e `internal/filecheck/access_windows.go`
+- [X] T005 [P] Implementar descoberta e inspeção local com top-level, common dir, ambiente saneado, locks e prompts desabilitados em `internal/gitexec/inspect.go`
 
 **Checkpoint**: Permissões e identidade Git podem ser consultadas localmente sem alterar o
 workspace.
@@ -57,13 +57,13 @@ dez linhas aprovadas, versão 1 implícita, repositórios independentes, resumo 
 
 > **NOTE: Escrever e executar estes testes primeiro; eles devem falhar antes da implementação.**
 
-- [ ] T006 [P] [US1] Escrever testes de domínio para manifesto legado e inteiro JSON `"version": 1`, caminhos canônicos, cinco diretórios, dez checks aprovados e resumo saudável em `internal/workspace/doctor_test.go`
-- [ ] T007 [P] [US1] Escrever teste de integração do binário para workspace saudável, ordem e stdout exatos, stderr vazio e status zero em `cmd/cerne/main_test.go`
+- [X] T006 [P] [US1] Escrever testes de domínio para manifesto legado e inteiro JSON `"version": 1`, caminhos canônicos, cinco diretórios, dez checks aprovados e resumo saudável em `internal/workspace/doctor_test.go`
+- [X] T007 [P] [US1] Escrever teste de integração do binário para workspace saudável, ordem e stdout exatos, stderr vazio e status zero em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implementar manifesto interno com v1 implícita e inteiro JSON `1` explícito, `CheckResult`, `Diagnosis`, coleta saudável e agregação das dez verificações em `internal/workspace/doctor.go`
-- [ ] T009 [US1] Implementar despacho `doctor`, diretório atual, ligação dos adaptadores e relatório saudável em `cmd/cerne/main.go`
+- [X] T008 [US1] Implementar manifesto interno com v1 implícita e inteiro JSON `1` explícito, `CheckResult`, `Diagnosis`, coleta saudável e agregação das dez verificações em `internal/workspace/doctor.go`
+- [X] T009 [US1] Implementar despacho `doctor`, diretório atual, ligação dos adaptadores e relatório saudável em `cmd/cerne/main.go`
 
 **Checkpoint**: US1 diagnostica de forma completa um workspace válido e pode ser demonstrada
 isoladamente.
@@ -82,13 +82,13 @@ permissões em fixtures temporários e confirmar linha de erro, correção, dez 
 
 > **NOTE: Escrever e executar estes testes primeiro; eles devem falhar antes da implementação.**
 
-- [ ] T010 [P] [US2] Adicionar testes table-driven para manifesto ausente/malformado, `name` inválido, versões `"1"`, `1.0`, `null` ou diferente de 1, caminho absoluto/escape/link, diretório ausente/tipo incorreto, Git ancestral/common dir, acesso negado e precedência de erro em `internal/workspace/doctor_test.go`
-- [ ] T011 [P] [US2] Adicionar testes do binário para workspace inválido, Git ausente, correções, dez linhas em stdout, stderr vazio, status um e ausência de conteúdo privado em `cmd/cerne/main_test.go`
+- [X] T010 [P] [US2] Adicionar testes table-driven para manifesto ausente/malformado, `name` inválido, versões `"1"`, `1.0`, `null` ou diferente de 1, caminho absoluto/escape/link, diretório ausente/tipo incorreto, Git ancestral/common dir, acesso negado e precedência de erro em `internal/workspace/doctor_test.go`
+- [X] T011 [P] [US2] Adicionar testes do binário para workspace inválido, Git ausente, correções, dez linhas em stdout, stderr vazio, status um e ausência de conteúdo privado em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Implementar validações bloqueantes, propagação explícita de dependências e correções sanitizadas sem short-circuit em `internal/workspace/doctor.go`
-- [ ] T013 [US2] Implementar renderização e status um para relatórios inválidos sem regressão do `init` em `cmd/cerne/main.go`
+- [X] T012 [US2] Implementar validações bloqueantes, propagação explícita de dependências e correções sanitizadas sem short-circuit em `internal/workspace/doctor.go`
+- [X] T013 [US2] Implementar renderização e status um para relatórios inválidos sem regressão do `init` em `cmd/cerne/main.go`
 
 **Checkpoint**: US2 localiza falhas simultâneas, preserva dez resultados e nunca apresenta
 aprovação para fato não verificado.
@@ -107,14 +107,14 @@ em caminho com espaços/Unicode, comparando saída, status e snapshots antes/dep
 
 > **NOTE: Escrever e executar estes testes primeiro; eles devem falhar antes da implementação.**
 
-- [ ] T014 [P] [US3] Adicionar testes de domínio para `name` válido divergente da raiz, acesso inconclusivo, resumo com avisos e precedência erro sobre aviso mantendo ordem e total dez em `internal/workspace/doctor_test.go`
-- [ ] T015 [P] [US3] Adicionar testes do binário para aviso de `name`, ajuda, uso inválido, saída exata dos três resumos, status 0/1/2, falha anterior ao relatório com stdout vazio, stderr corretivo, ausência de resumo e status 1, caminho com espaços/Unicode e snapshot sem criação, alteração, prompt ou segredo em `cmd/cerne/main_test.go`
+- [X] T014 [P] [US3] Adicionar testes de domínio para `name` válido divergente da raiz, acesso inconclusivo, resumo com avisos e precedência erro sobre aviso mantendo ordem e total dez em `internal/workspace/doctor_test.go`
+- [X] T015 [P] [US3] Adicionar testes do binário para aviso de `name`, ajuda, uso inválido, saída exata dos três resumos, status 0/1/2, falha anterior ao relatório com stdout vazio, stderr corretivo, ausência de resumo e status 1, caminho com espaços/Unicode e snapshot sem criação, alteração, prompt ou segredo em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Implementar aviso não bloqueante para `name` válido divergente, acesso inconclusivo, precedência final e dados estáveis de apresentação em `internal/workspace/doctor.go`
-- [ ] T017 [US3] Implementar `cerne doctor --help`, símbolos, labels, resumos e status 0/1/2 preservando os contratos existentes em `cmd/cerne/main.go`
-- [ ] T018 [P] [US3] Documentar sintaxe, dez checks, divergência de `name`, versão implícita e formato explícito, símbolos, streams, status 0/1/2, leitura exclusiva, limitações e exemplos em `README.md`
+- [X] T016 [US3] Implementar aviso não bloqueante para `name` válido divergente, acesso inconclusivo, precedência final e dados estáveis de apresentação em `internal/workspace/doctor.go`
+- [X] T017 [US3] Implementar `cerne doctor --help`, símbolos, labels, resumos e status 0/1/2 preservando os contratos existentes em `cmd/cerne/main.go`
+- [X] T018 [P] [US3] Documentar sintaxe, dez checks, divergência de `name`, versão implícita e formato explícito, símbolos, streams, status 0/1/2, leitura exclusiva, limitações e exemplos em `README.md`
 
 **Checkpoint**: US3 entrega contrato não interativo, documentado e estável nos três sistemas.
 
@@ -124,8 +124,8 @@ em caminho com espaços/Unicode, comparando saída, status e snapshots antes/dep
 
 **Purpose**: Validar todos os cenários, dependências, documentação e gates multiplataforma.
 
-- [ ] T019 Validar os nove cenários de `specs/002-workspace-doctor/quickstart.md`, incluindo divergência de `name`, versão explícita, Git ausente, leitura exclusiva, ajuda, status 0/1/2 e conclusão do workspace saudável mínimo em até 5 segundos
-- [ ] T020 Executar `gofmt`, `go mod tidy`, `go vet ./...`, `go test -count=1 ./...` e `git diff --check`, confirmando a matriz Linux/Windows/macOS em `.github/workflows/test.yml` para `cmd/cerne`, `internal/workspace`, `internal/gitexec` e `internal/filecheck`
+- [X] T019 Validar os nove cenários de `specs/002-workspace-doctor/quickstart.md`, incluindo divergência de `name`, versão explícita, Git ausente, leitura exclusiva, ajuda, status 0/1/2 e conclusão do workspace saudável mínimo em até 5 segundos
+- [X] T020 Executar `gofmt`, `go mod tidy`, `go vet ./...`, `go test -count=1 ./...` e `git diff --check`, confirmando a matriz Linux/Windows/macOS em `.github/workflows/test.yml` para `cmd/cerne`, `internal/workspace`, `internal/gitexec` e `internal/filecheck`
 
 ---
 

@@ -39,12 +39,9 @@ func cleanEnvironment(environment []string) []string {
 	clean := make([]string, 0, len(environment))
 	for _, entry := range environment {
 		name, _, _ := strings.Cut(entry, "=")
-		remove := false
+		remove := strings.HasPrefix(strings.ToUpper(name), "GIT_")
 		for redirected := range redirectedVariables {
-			if strings.EqualFold(name, redirected) {
-				remove = true
-				break
-			}
+			remove = remove || strings.EqualFold(name, redirected)
 		}
 		if !remove {
 			clean = append(clean, entry)

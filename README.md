@@ -63,6 +63,42 @@ Exemplo:
 cerne init exemplo
 ```
 
+## `cerne doctor`
+
+Analisa o workspace Cerne no diretório atual e imprime um relatório estável, sem modificar
+arquivos, manifesto ou repositórios:
+
+```text
+cerne doctor
+cerne doctor --help
+```
+
+O relatório sempre contém dez verificações, nesta ordem: manifesto, repositório de conhecimento,
+repositório de código-fonte, independência Git, isolamento de versionamento, caminhos do
+manifesto, diretórios obrigatórios, Git, permissões e versão do manifesto.
+
+Cada linha começa com `✓` para aprovado, `✗` para erro bloqueante ou `!` para aviso não
+bloqueante. Erros e avisos incluem `correção:`. Ao final, o resumo é exatamente um destes textos:
+`Workspace saudável`, `Workspace com avisos` ou `Workspace inválido`.
+
+Status e streams: relatórios e ajuda usam stdout; uso inválido usa stderr e status `2`; erro
+bloqueante no diagnóstico usa stdout e status `1`; workspace saudável ou somente com avisos usa
+status `0`. Uma falha antes de iniciar o relatório usa stderr, status `1` e não imprime resumo.
+
+O manifesto atual fica em `knowledge/cerne.json`. A ausência de `version` significa versão 1
+implícita; quando o campo existe, somente o inteiro JSON `1` é aceito. `name` inválido é erro;
+`name` válido diferente do nome da raiz gera aviso.
+
+O comando é somente de leitura: não cria diretórios, não corrige problemas, não altera Git, não
+usa remotos, GitHub, rede, credenciais ou agentes de IA. Quando a plataforma não permite confirmar
+permissões efetivas com segurança, a verificação de permissões emite aviso em vez de aprovação.
+
+Exemplo:
+
+```text
+cerne doctor
+```
+
 Para compilar e testar:
 
 ```text
