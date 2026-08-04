@@ -33,7 +33,7 @@ publica ou realiza deploy.
 ## Requisitos
 
 - Git disponível no `PATH`;
-- Go 1.24.6 ou mais recente para compilar o projeto;
+- Go 1.26.5 ou mais recente para compilar o projeto;
 - Linux, Windows ou macOS.
 
 ## Instalação
@@ -240,6 +240,7 @@ Contribuições são bem-vindas:
 Use assuntos curtos no estilo Conventional Commits, como `feat: add command` ou
 `fix: preserve manifest`. Consulte [AGENTS.md](AGENTS.md) para regras de contribuição e a
 [constituição do projeto](.specify/memory/constitution.md) para governança e compatibilidade.
+O histórico de versões está documentado em [CHANGELOG.md](CHANGELOG.md).
 
 ## Roadmap e escopo
 

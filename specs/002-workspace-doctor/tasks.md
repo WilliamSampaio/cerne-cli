@@ -25,7 +25,7 @@ implementação correspondente.
 
 **Purpose**: Adicionar somente a dependência nativa necessária à verificação de acesso efetivo.
 
-- [X] T001 Adicionar `golang.org/x/sys` compatível com Go 1.24.6 em `go.mod` e `go.sum`
+- [X] T001 Adicionar `golang.org/x/sys` compatível com a versão de Go declarada em `go.mod` e `go.sum`
 
 ---
 

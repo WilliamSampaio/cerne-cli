@@ -14,7 +14,7 @@ operação não copia, move, apaga, altera Git, acessa remotos ou modifica o sou
 
 ## Technical Context
 
-**Language/Version**: Go 1.24.6, conforme `go.mod`
+**Language/Version**: Go 1.26.5, conforme `go.mod`
 
 **Primary Dependencies**: Biblioteca padrão e executável Git local; nenhuma dependência nova
 

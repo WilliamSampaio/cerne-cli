@@ -13,7 +13,7 @@ falhas, removerá em ordem inversa somente os caminhos criados pela execução.
 
 ## Technical Context
 
-**Language/Version**: Go 1.24.6, conforme `go.mod`
+**Language/Version**: Go 1.26.5, conforme `go.mod`
 
 **Primary Dependencies**: Biblioteca padrão do Go e executável Git disponível em `PATH`
 

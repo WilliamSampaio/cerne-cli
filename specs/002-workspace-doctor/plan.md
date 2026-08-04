@@ -15,7 +15,7 @@ JSON `1`, enquanto a ausência do campo representa v1 implícita.
 
 ## Technical Context
 
-**Language/Version**: Go 1.24.6, conforme `go.mod`
+**Language/Version**: Go 1.26.5, conforme `go.mod`
 
 **Primary Dependencies**: Biblioteca padrão, executável Git local e `golang.org/x/sys` para
 consultas nativas de acesso efetivo sem mutação
