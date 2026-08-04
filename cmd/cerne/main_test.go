@@ -408,7 +408,7 @@ func TestCLIStatusFailuresHelpUsageAndReadOnly(t *testing.T) {
 		dir := t.TempDir()
 		status, stdout, stderr := executeCLI(t, binary, dir, nil, "status")
 		if status != 1 || stdout != "" || !strings.Contains(stderr, "workspace Cerne não localizado") ||
-			!strings.Contains(stderr, displayPath(dir)) || !strings.Contains(stderr, "correção:") {
+			!containsPathAlias(stderr, dir) || !strings.Contains(stderr, "correção:") {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
 	})
@@ -421,7 +421,7 @@ func TestCLIStatusFailuresHelpUsageAndReadOnly(t *testing.T) {
 		}
 		status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
 		if status != 1 || stdout != "" || !strings.Contains(stderr, "manifesto Cerne ausente") ||
-			!strings.Contains(stderr, displayPath(manifest)) {
+			!containsPathAlias(stderr, manifest) {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
 	})
@@ -434,7 +434,7 @@ func TestCLIStatusFailuresHelpUsageAndReadOnly(t *testing.T) {
 		}
 		status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
 		if status != 1 || stdout != "" || !strings.Contains(stderr, "repositório Git") ||
-			!strings.Contains(stderr, displayPath(source)) {
+			!containsPathAlias(stderr, source) {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
 	})
@@ -642,6 +642,10 @@ func displayPath(path string) string {
 		path = resolved
 	}
 	return filepath.Clean(path)
+}
+
+func containsPathAlias(text, path string) bool {
+	return strings.Contains(text, filepath.Clean(path)) || strings.Contains(text, displayPath(path))
 }
 
 func readFile(t *testing.T, path string) string {
