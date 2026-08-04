@@ -15,6 +15,26 @@ import (
 	"time"
 )
 
+const expectedGlobalHelp = `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
+
+Uso:
+  cerne <comando> [argumentos]
+  cerne --help
+  cerne --version
+
+Comandos:
+  init      Cria um workspace Cerne
+  doctor    Valida a estrutura e a segurança do workspace
+  status    Exibe o estado local dos repositórios
+  link      Vincula um repositório Git local como source
+
+Opções:
+  --help       Exibe esta ajuda
+  --version    Exibe a versão do Cerne
+
+Use "cerne <comando> --help" para detalhes de um comando.
+`
+
 const expectedInitHelp = `Inicializa um workspace Cerne com repositórios Git independentes.
 
 Uso:
@@ -51,6 +71,24 @@ Erros:
 Exemplo:
   cerne init exemplo
 `
+
+func TestCLIGlobalHelpAndVersion(t *testing.T) {
+	binary := buildCLI(t)
+	for _, test := range []struct {
+		argument string
+		expected string
+	}{
+		{"--help", expectedGlobalHelp},
+		{"--version", "cerne 0.1.0\n"},
+	} {
+		t.Run(test.argument, func(t *testing.T) {
+			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, test.argument)
+			if status != 0 || stdout != test.expected || stderr != "" {
+				t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+			}
+		})
+	}
+}
 
 func TestCLIInitSuccess(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
