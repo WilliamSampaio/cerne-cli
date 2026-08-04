@@ -87,6 +87,10 @@ meu-projeto/
 Os dois repositórios são locais, independentes e começam sem commits ou remotos. A raiz do
 workspace não é um repositório Git.
 
+O Git não versiona diretórios vazios. Adicione conhecimento do projeto antes do primeiro commit de
+knowledge para preservar os diretórios necessários; o Cerne não cria placeholders nem commits
+automáticos de propósito.
+
 ### 2. Valide a estrutura
 
 Execute a partir da raiz do workspace:
