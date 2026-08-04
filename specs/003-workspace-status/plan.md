@@ -15,7 +15,7 @@ branch ou acessa remotos.
 
 ## Technical Context
 
-**Language/Version**: Go 1.24.6, conforme `go.mod`
+**Language/Version**: Go 1.26.5, conforme `go.mod`
 
 **Primary Dependencies**: Biblioteca padrão e executável Git local; nenhuma dependência nova
 
@@ -117,4 +117,3 @@ argumentos, chama o caso de uso e renderiza stdout/stderr.
 ## Complexity Tracking
 
 Nenhuma violação constitucional exige justificativa.
-

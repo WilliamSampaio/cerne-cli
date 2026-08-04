@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Go 1.24.6 ou a versão declarada em `go.mod`.
+- Go 1.26.5 ou a versão declarada em `go.mod`.
 - Git disponível em `PATH`.
 - Um diretório temporário vazio fora do repositório do Cerne.
 
