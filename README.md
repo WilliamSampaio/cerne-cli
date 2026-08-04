@@ -33,7 +33,7 @@ remotes, publish, or deploy anything.
 ## Requirements
 
 - Git available in `PATH`;
-- Go 1.24.6 or newer to build from source;
+- Go 1.26.5 or newer to build from source;
 - Linux, Windows, or macOS.
 
 ## Installation
@@ -238,6 +238,7 @@ Contributions are welcome:
 Use short Conventional Commit-style subjects such as `feat: add command` or `fix: preserve manifest`.
 See [AGENTS.md](AGENTS.md) for repository-specific contributor rules and
 [the project constitution](.specify/memory/constitution.md) for governance and compatibility rules.
+Release history is documented in [CHANGELOG.md](CHANGELOG.md).
 
 ## Roadmap and scope
 
