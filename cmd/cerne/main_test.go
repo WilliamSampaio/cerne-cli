@@ -408,7 +408,7 @@ func TestCLIStatusFailuresHelpUsageAndReadOnly(t *testing.T) {
 		dir := t.TempDir()
 		status, stdout, stderr := executeCLI(t, binary, dir, nil, "status")
 		if status != 1 || stdout != "" || !strings.Contains(stderr, "workspace Cerne não localizado") ||
-			!strings.Contains(stderr, dir) || !strings.Contains(stderr, "correção:") {
+			!strings.Contains(stderr, displayPath(dir)) || !strings.Contains(stderr, "correção:") {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
 	})
@@ -421,7 +421,7 @@ func TestCLIStatusFailuresHelpUsageAndReadOnly(t *testing.T) {
 		}
 		status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
 		if status != 1 || stdout != "" || !strings.Contains(stderr, "manifesto Cerne ausente") ||
-			!strings.Contains(stderr, manifest) {
+			!strings.Contains(stderr, displayPath(manifest)) {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
 	})
@@ -434,7 +434,7 @@ func TestCLIStatusFailuresHelpUsageAndReadOnly(t *testing.T) {
 		}
 		status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
 		if status != 1 || stdout != "" || !strings.Contains(stderr, "repositório Git") ||
-			!strings.Contains(stderr, source) {
+			!strings.Contains(stderr, displayPath(source)) {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
 	})
@@ -493,13 +493,13 @@ type repositoryExpectation struct {
 func expectedStatus(root, project string, repositories ...repositoryExpectation) string {
 	var output strings.Builder
 	output.WriteString("Projeto: " + project + "\n")
-	output.WriteString("Workspace: " + root + "\n\n")
+	output.WriteString("Workspace: " + displayPath(root) + "\n\n")
 	for index, repository := range repositories {
 		if index > 0 {
 			output.WriteString("\n")
 		}
 		output.WriteString(repository.Title + "\n")
-		output.WriteString("  Caminho: " + repository.Path + "\n")
+		output.WriteString("  Caminho: " + displayPath(repository.Path) + "\n")
 		output.WriteString("  Branch: " + repository.Branch + "\n")
 		output.WriteString("  Commit: " + repository.Commit + "\n")
 		output.WriteString("  Estado: " + repository.State + "\n")
@@ -632,6 +632,16 @@ func samePath(left, right string) bool {
 		right = resolved
 	}
 	return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
+}
+
+func displayPath(path string) string {
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	return filepath.Clean(path)
 }
 
 func readFile(t *testing.T, path string) string {
