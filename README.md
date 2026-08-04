@@ -99,6 +99,40 @@ Exemplo:
 cerne doctor
 ```
 
+## `cerne status`
+
+Apresenta o estado local do workspace Cerne a partir do diretório atual:
+
+```text
+cerne status
+cerne status --help
+```
+
+O comando sobe pelos ancestrais até encontrar `knowledge/cerne.json`, carrega o manifesto e consulta
+os repositórios `knowledge` e `source`. Para o projeto, exibe o nome e o caminho absoluto do
+workspace. Para cada repositório, exibe caminho, branch, commit abreviado, estado e contagens de
+arquivos modificados, em stage e não rastreados.
+
+Um repositório sem alterações aparece como `Estado: limpo`. Qualquer modificação fora do stage,
+alteração em stage ou arquivo não rastreado aparece como `Estado: alterações pendentes`; isso não é
+erro e mantém status `0` quando a consulta for concluída. Em estados especiais, `Branch: detached
+HEAD` indica HEAD destacado e `Commit: sem commits` indica repositório ainda sem commit.
+
+Relatório e ajuda usam stdout. Uso inválido usa stderr e status `2`. Falhas operacionais — workspace
+não localizado, manifesto ausente ou inválido, caminho inexistente, diretório sem Git ou falha de
+consulta Git — usam stderr, status `1`, incluem o caminho afetado quando houver e uma orientação de
+correção.
+
+O comando é somente de leitura: não cria, corrige, modifica arquivos, altera stage, troca branch,
+cria commit, executa reset, acessa remotos, usa rede, credenciais ou agentes de IA. Não há JSON,
+watch, comparação com GitHub ou exibição de nomes de arquivos alterados nesta versão.
+
+Exemplo:
+
+```text
+cerne status
+```
+
 Para compilar e testar:
 
 ```text
