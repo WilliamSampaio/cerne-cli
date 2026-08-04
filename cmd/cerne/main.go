@@ -88,6 +88,38 @@ Exemplo:
   cerne doctor
 `
 
+const statusHelp = `Apresenta o estado atual de um workspace Cerne sem modificar arquivos.
+
+Uso:
+  cerne status
+  cerne status --help
+
+Localização:
+  Procura, a partir do diretório atual, o workspace ancestral mais próximo
+  identificado por knowledge/cerne.json.
+
+Relatório:
+  Exibe projeto, caminho absoluto do workspace e, para knowledge e source,
+  caminho, branch, commit, estado e contagens de modificados, stage e não
+  rastreados.
+
+Estados especiais:
+  Branch: detached HEAD quando não há branch simbólica.
+  Commit: sem commits quando o repositório ainda não possui commit.
+  Estado: limpo sem alterações; alterações pendentes com qualquer contagem.
+
+Saídas:
+  Relatório e ajuda usam stdout. Uso inválido e falhas usam stderr.
+  Status 0: consulta obtida ou ajuda; 1: falha operacional; 2: uso inválido.
+
+Efeitos:
+  Leitura exclusiva. Não cria, corrige, altera stage, faz commit, checkout,
+  reset, fetch, pull, acessa remotos, credenciais ou agentes de IA.
+
+Exemplo:
+  cerne status
+`
+
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
@@ -103,6 +135,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runInit(args[1:], stdout, stderr)
 	case "doctor":
 		return runDoctor(args[1:], stdout, stderr)
+	case "status":
+		return runStatus(args[1:], stdout, stderr)
 	default:
 		return commandUsageError(stderr, "comando desconhecido")
 	}
@@ -177,6 +211,51 @@ func runDoctor(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+func runStatus(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "--help" {
+		fmt.Fprint(stdout, statusHelp)
+		return 0
+	}
+	if len(args) != 0 {
+		fmt.Fprintf(stderr, "erro: argumento inválido\n")
+		fmt.Fprintln(stderr, "uso: cerne status")
+		return 2
+	}
+
+	current, err := currentDirectory()
+	if err != nil {
+		fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
+		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+		return 1
+	}
+	collect, err := gitexec.FindStatus()
+	if err != nil {
+		fmt.Fprintf(stderr, "erro: %v\n", err)
+		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+		return 1
+	}
+	report, err := workspace.CurrentStatus(current, adaptStatus(collect))
+	if err != nil {
+		var failure workspace.StatusFailure
+		if errors.As(err, &failure) {
+			if failure.Path != "" {
+				fmt.Fprintf(stderr, "erro: %s: %s\n", failure.Cause, failure.Path)
+			} else {
+				fmt.Fprintf(stderr, "erro: %s\n", failure.Cause)
+			}
+			if failure.Correction != "" {
+				fmt.Fprintf(stderr, "correção: %s\n", failure.Correction)
+			}
+		} else {
+			fmt.Fprintf(stderr, "erro: %v\n", err)
+			fmt.Fprintln(stderr, "correção: verifique o workspace e tente novamente")
+		}
+		return 1
+	}
+	renderStatus(stdout, report)
+	return 0
+}
+
 func adaptGit(inspect func(string) (gitexec.Repository, error)) workspace.GitInspect {
 	if inspect == nil {
 		return nil
@@ -187,6 +266,20 @@ func adaptGit(inspect func(string) (gitexec.Repository, error)) workspace.GitIns
 			RequestedRoot: result.RequestedRoot,
 			WorktreeRoot:  result.WorktreeRoot,
 			CommonDir:     result.CommonDir,
+		}, err
+	}
+}
+
+func adaptStatus(collect func(string) (gitexec.RepositoryStatus, error)) workspace.GitStatus {
+	return func(path string) (workspace.GitRepositoryStatus, error) {
+		result, err := collect(path)
+		return workspace.GitRepositoryStatus{
+			Path:           result.Path,
+			Branch:         result.Branch,
+			Commit:         result.Commit,
+			ModifiedCount:  result.ModifiedCount,
+			StagedCount:    result.StagedCount,
+			UntrackedCount: result.UntrackedCount,
 		}, err
 	}
 }
@@ -219,6 +312,31 @@ func renderDiagnosis(stdout io.Writer, diagnosis workspace.Diagnosis) {
 	}
 }
 
+func renderStatus(stdout io.Writer, report workspace.WorkspaceReport) {
+	fmt.Fprintf(stdout, "Projeto: %s\n", report.ProjectName)
+	fmt.Fprintf(stdout, "Workspace: %s\n\n", report.Root)
+	for index, repository := range report.Repositories {
+		if index > 0 {
+			fmt.Fprintln(stdout)
+		}
+		fmt.Fprintf(stdout, "%s\n", repositoryTitle(repository.Name))
+		fmt.Fprintf(stdout, "  Caminho: %s\n", repository.Path)
+		fmt.Fprintf(stdout, "  Branch: %s\n", repository.Branch)
+		fmt.Fprintf(stdout, "  Commit: %s\n", repository.Commit)
+		fmt.Fprintf(stdout, "  Estado: %s\n", repository.State)
+		fmt.Fprintf(stdout, "  Modificados: %d\n", repository.ModifiedCount)
+		fmt.Fprintf(stdout, "  Em stage: %d\n", repository.StagedCount)
+		fmt.Fprintf(stdout, "  Não rastreados: %d\n", repository.UntrackedCount)
+	}
+}
+
+func repositoryTitle(name string) string {
+	if name == "source" {
+		return "Source"
+	}
+	return "Knowledge"
+}
+
 func symbol(severity workspace.Severity) string {
 	switch severity {
 	case workspace.Error:
@@ -238,6 +356,6 @@ func initUsageError(stderr io.Writer, cause string) int {
 
 func commandUsageError(stderr io.Writer, cause string) int {
 	fmt.Fprintf(stderr, "erro: %s\n", cause)
-	fmt.Fprintln(stderr, "uso: cerne <init|doctor>")
+	fmt.Fprintln(stderr, "uso: cerne <init|doctor|status>")
 	return 2
 }
