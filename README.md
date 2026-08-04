@@ -1,27 +1,77 @@
 # Cerne
 
-Cerne é um CLI open source em Go, sob licença MIT, para administrar workspaces formados por dois
-repositórios Git independentes: conhecimento e código-fonte.
+[![Tests](https://github.com/WilliamSampaio/cerne-cli/actions/workflows/test.yml/badge.svg)](https://github.com/WilliamSampaio/cerne-cli/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## `cerne init`
+**English** · [Português (Brasil)](README.pt-BR.md) · [Español](README.es.md)
 
-Inicializa um workspace local:
+Cerne is an open-source, cross-platform CLI written in Go for managing software workspaces made of
+two independent Git repositories:
 
-```text
-cerne init <project-name>
+- **knowledge** — the project's intent, product information, specifications, decisions, policies,
+  and execution records; normally private;
+- **source** — the application's source code.
+
+The name *Cerne* means “core”. The project starts with safe local workspace management and is
+designed to evolve into a model- and vendor-independent harness for coordinating AI agents across
+documentation, product, implementation, validation, and maintenance.
+
+## Why Cerne?
+
+Cerne is built on a few durable rules:
+
+- your knowledge belongs to you and remains accessible as ordinary files and Git history;
+- private knowledge and application code stay in separate repositories;
+- integrations belong behind adapters instead of leaking into the domain;
+- automated work must be traceable and receive only the context it needs;
+- push, merge, publication, deployment, and destructive operations require explicit approval;
+- secrets and credentials must never be stored in managed repositories.
+
+The current version is intentionally local. It does not call AI agents, access GitHub, clone
+remotes, publish, or deploy anything.
+
+## Requirements
+
+- Git available in `PATH`;
+- Go 1.24.6 or newer to build from source;
+- Linux, Windows, or macOS.
+
+## Installation
+
+Install directly with Go:
+
+```sh
+go install github.com/WilliamSampaio/cerne-cli/cmd/cerne@latest
 cerne init --help
 ```
 
-`<project-name>` deve ter de 1 a 255 caracteres ASCII. O primeiro deve ser uma letra ou número; os
-demais podem ser letras, números, `.`, `_` ou `-`. O nome não pode terminar em ponto nem usar nomes
-reservados do Windows, inclusive antes de uma extensão: `CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`
-ou `LPT1`–`LPT9`.
+Go places the binary in `GOBIN`, or in `GOPATH/bin` when `GOBIN` is unset. Make sure that directory
+is in `PATH`.
 
-O destino é `<diretório-atual>/<project-name>` e precisa estar ausente ou ser um diretório regular
-vazio, nunca um link. Nenhum arquivo existente é substituído ou removido.
+To build a development copy:
+
+```sh
+git clone https://github.com/WilliamSampaio/cerne-cli.git
+cd cerne-cli
+go build -o cerne ./cmd/cerne
+./cerne init --help
+```
+
+On Windows, the generated binary is `cerne.exe`.
+
+## Quick start
+
+### 1. Create a workspace
+
+```sh
+cerne init geo-app
+cd geo-app
+```
+
+Cerne creates:
 
 ```text
-<project-name>/
+geo-app/
 ├── knowledge/
 │   ├── .git/
 │   ├── cerne.json
@@ -34,144 +84,161 @@ vazio, nunca um link. Nenhum arquivo existente é substituído ou removido.
     └── .git/
 ```
 
-Os dois diretórios são repositórios Git locais independentes, sem commit ou remoto. O manifesto
-`knowledge/cerne.json` identifica o projeto e aponta `source` para `../source`. A raiz do workspace
-não é inicializada como repositório.
+Both repositories are local, independent, and initially have no commits or remotes. The workspace
+root itself is not a Git repository.
 
-O comando não usa rede, credenciais ou agentes; não clona, publica, faz push, merge ou deploy. A
-invocação autoriza apenas a criação local acima. Se ocorrer uma falha parcial, o Cerne desfaz
-somente os artefatos criados pela própria tentativa.
+### 2. Validate it
 
-### Saída e status
+Run this from the workspace root:
 
-Em sucesso, o status é `0`, stderr fica vazio e stdout contém:
-
-```text
-Workspace "<project-name>" criado.
-Knowledge: <absolute-knowledge-path>
-Source: <absolute-source-path>
-```
-
-Ajuda também usa stdout e status `0`. Falhas operacionais — destino inseguro, permissão, Git
-indisponível ou erro de criação — usam stderr, status `1` e informam causa e correção. Uso ou nome
-inválido usa stderr, status `2` e inclui `uso: cerne init <project-name>`. Não há prompt, cor ou
-texto decorativo.
-
-Exemplo:
-
-```text
-cerne init exemplo
-```
-
-## `cerne doctor`
-
-Analisa o workspace Cerne no diretório atual e imprime um relatório estável, sem modificar
-arquivos, manifesto ou repositórios:
-
-```text
-cerne doctor
-cerne doctor --help
-```
-
-O relatório sempre contém dez verificações, nesta ordem: manifesto, repositório de conhecimento,
-repositório de código-fonte, independência Git, isolamento de versionamento, caminhos do
-manifesto, diretórios obrigatórios, Git, permissões e versão do manifesto.
-
-Cada linha começa com `✓` para aprovado, `✗` para erro bloqueante ou `!` para aviso não
-bloqueante. Erros e avisos incluem `correção:`. Ao final, o resumo é exatamente um destes textos:
-`Workspace saudável`, `Workspace com avisos` ou `Workspace inválido`.
-
-Status e streams: relatórios e ajuda usam stdout; uso inválido usa stderr e status `2`; erro
-bloqueante no diagnóstico usa stdout e status `1`; workspace saudável ou somente com avisos usa
-status `0`. Uma falha antes de iniciar o relatório usa stderr, status `1` e não imprime resumo.
-
-O manifesto atual fica em `knowledge/cerne.json`. A ausência de `version` significa versão 1
-implícita; quando o campo existe, somente o inteiro JSON `1` é aceito. `name` inválido é erro;
-`name` válido diferente do nome da raiz gera aviso.
-
-O comando é somente de leitura: não cria diretórios, não corrige problemas, não altera Git, não
-usa remotos, GitHub, rede, credenciais ou agentes de IA. Quando a plataforma não permite confirmar
-permissões efetivas com segurança, a verificação de permissões emite aviso em vez de aprovação.
-
-Exemplo:
-
-```text
+```sh
 cerne doctor
 ```
 
-## `cerne status`
+The report marks each check with `✓` (passed), `!` (warning), or `✗` (blocking error).
 
-Apresenta o estado local do workspace Cerne a partir do diretório atual:
+### 3. Inspect local Git state
 
-```text
-cerne status
-cerne status --help
-```
-
-O comando sobe pelos ancestrais até encontrar `knowledge/cerne.json`, carrega o manifesto e consulta
-os repositórios `knowledge` e `source`. Para o projeto, exibe o nome e o caminho absoluto do
-workspace. Para cada repositório, exibe caminho, branch, commit abreviado, estado e contagens de
-arquivos modificados, em stage e não rastreados.
-
-Um repositório sem alterações aparece como `Estado: limpo`. Qualquer modificação fora do stage,
-alteração em stage ou arquivo não rastreado aparece como `Estado: alterações pendentes`; isso não é
-erro e mantém status `0` quando a consulta for concluída. Em estados especiais, `Branch: detached
-HEAD` indica HEAD destacado e `Commit: sem commits` indica repositório ainda sem commit.
-
-Relatório e ajuda usam stdout. Uso inválido usa stderr e status `2`. Falhas operacionais — workspace
-não localizado, manifesto ausente ou inválido, caminho inexistente, diretório sem Git ou falha de
-consulta Git — usam stderr, status `1`, incluem o caminho afetado quando houver e uma orientação de
-correção.
-
-O comando é somente de leitura: não cria, corrige, modifica arquivos, altera stage, troca branch,
-cria commit, executa reset, acessa remotos, usa rede, credenciais ou agentes de IA. Não há JSON,
-watch, comparação com GitHub ou exibição de nomes de arquivos alterados nesta versão.
-
-Exemplo:
-
-```text
+```sh
 cerne status
 ```
 
-## `cerne link`
+The command reports the branch, abbreviated commit, worktree state, staged files, modified files,
+and untracked files for both repositories. Pending changes are information, not an error.
 
-Vincula o workspace atual a um repositório Git local existente como `source`:
+### 4. Link an existing source repository (optional)
 
-```text
-cerne link <caminho>
-cerne link <caminho> --replace
-cerne link --help
+`init` already configures the empty `source` repository. Use `--replace` to point the manifest to
+another local repository:
+
+```sh
+cerne link ../existing-application --replace
 ```
 
-O caminho pode ser relativo ao diretório atual ou absoluto. Ele deve apontar para a raiz de um
-repositório Git local com árvore de trabalho; worktrees válidos são aceitos e repositórios bare são
-recusados. O comando localiza o workspace por ancestral, lê `knowledge/cerne.json`, valida o
-manifesto, normaliza o novo caminho e grava somente o campo `source`. Quando possível, o manifesto
-armazena o caminho relativo ao diretório `knowledge`.
+Only the manifest reference changes. Cerne never copies, moves, cleans, checks out, commits, or
+deletes either source repository.
 
-Se o manifesto já aponta para outro source, a troca falha por padrão. Use `--replace` para autorizar
-explicitamente a substituição da referência:
+## Manifest
 
-```text
-cerne link ../geo-app --replace
+`knowledge/cerne.json` identifies the project and locates its source repository:
+
+```json
+{
+  "name": "geo-app",
+  "source": "../source"
+}
 ```
 
-Mesmo com `--replace`, o Cerne não copia, move, apaga, limpa, faz checkout, reset, add, commit,
-fetch, pull ou push no source anterior ou no novo. Também não acessa remotos, rede, credenciais ou
-agentes de IA. Source e knowledge precisam ser repositórios independentes e não podem estar
-aninhados de forma perigosa.
+The absence of `version` means manifest version 1. When present, the only currently supported value
+is the JSON integer `1`. Cerne stores a normalized relative source path whenever the platforms and
+locations allow it.
 
-Sucesso e ajuda usam stdout e status `0`. Se o source informado já estiver configurado, o comando
-informa `Nenhuma alteração necessária.` e não regrava o manifesto. Uso inválido usa stderr, status
-`2` e inclui `uso: cerne link <caminho> [--replace]`. Falhas operacionais usam stderr, status `1`,
-incluem causa, caminho afetado quando houver e uma orientação de correção. A atualização do
-manifesto é feita por arquivo temporário e substituição final.
+## Command reference
 
-Para compilar e testar:
+### `cerne init <project-name>`
+
+Creates a new workspace below the current directory. The destination must not exist or must be an
+empty regular directory; symbolic links and non-empty destinations are rejected. Existing content
+is never replaced. If creation fails, Cerne rolls back only artifacts created by that attempt.
+
+Project names use 1–255 ASCII characters, start with a letter or number, and may continue with
+letters, numbers, `.`, `_`, or `-`. Windows reserved names and names ending in `.` are rejected.
+
+### `cerne doctor`
+
+Performs ten read-only checks from the workspace root: manifest readability, both repository
+directories, Git independence, versioning isolation, manifest paths, required knowledge
+directories, Git availability, permissions, and manifest version. It never repairs the workspace.
+
+### `cerne status`
+
+Locates the nearest workspace from the current directory and reads both repositories. It recognizes
+clean and pending worktrees, detached HEAD, and repositories without commits. It does not fetch or
+compare with remotes.
+
+### `cerne link <path> [--replace]`
+
+Links a local non-bare Git repository with a worktree as `source`. Relative and absolute paths are
+accepted, including valid Git worktrees. Knowledge and source must be distinct and must not be
+dangerously nested. Replacing a different configured source requires `--replace`; linking the same
+source succeeds without rewriting the manifest. Manifest replacement is atomic.
+
+Use `<command> --help` for the complete contract. CLI output is currently in Portuguese.
+
+## Exit codes and streams
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success, help, a healthy workspace, warnings only, or successfully collected pending status |
+| `1` | Operational failure or a blocking `doctor` finding |
+| `2` | Invalid command usage or invalid project name |
+
+Normal output and help use stdout. Usage and operational failures use stderr. `doctor` reports,
+including blocking findings, use stdout so the full diagnosis remains one stable stream.
+
+## Safety and privacy
+
+- `doctor` and `status` are read-only.
+- `link` updates only `knowledge/cerne.json` after all validations pass.
+- Git inspection disables optional locks and terminal prompts and removes redirecting `GIT_*`
+  variables from child processes.
+- No current command contacts remotes or needs credentials.
+- Do not place tokens, passwords, private keys, or other secrets in either managed repository.
+
+## Technical design
+
+The codebase keeps responsibilities small and explicit:
 
 ```text
+cmd/cerne/          command parsing, terminal output, and exit codes
+internal/workspace/ domain rules and workspace operations
+internal/gitexec/   adapter for the local Git executable
+internal/filecheck/ cross-platform permission checks
+specs/              feature specifications, plans, contracts, and tasks
+```
+
+The implementation prefers the Go standard library. Platform-specific filesystem behavior is
+isolated with build tags. CI runs the test suite on Linux, Windows, and macOS. Domain behavior is
+separate from terminal rendering so it can be reused by future interfaces.
+
+## Development
+
+```sh
 go build -o cerne ./cmd/cerne
 go test ./...
+go test -count=1 ./...
+go vet ./...
+gofmt -w <changed-go-files>
 ```
 
-Git deve estar disponível em `PATH`. O comportamento é suportado em Linux, Windows e macOS.
+Tests use Go's `testing` package, temporary directories, and local Git repositories only. They do
+not require network access or credentials.
+
+## Contributing
+
+Contributions are welcome:
+
+1. Open an issue or discuss the intended behavior before a large change.
+2. Create a focused branch and keep domain rules out of terminal rendering.
+3. Add or update a test that fails without the behavior change.
+4. Run `gofmt`, `go vet ./...`, and `go test -count=1 ./...`.
+5. Open a pull request describing the intent, linked issue or `specs/` artifact, validation
+   commands, and any CLI compatibility impact.
+
+Use short Conventional Commit-style subjects such as `feat: add command` or `fix: preserve manifest`.
+See [AGENTS.md](AGENTS.md) for repository-specific contributor rules and
+[the project constitution](.specify/memory/constitution.md) for governance and compatibility rules.
+
+## Roadmap and scope
+
+The current scope is workspace creation, validation, local status, and linking an existing local
+source repository. Future work may add auditable agent coordination for product, documentation,
+implementation, validation, and maintenance while remaining independent of specific AI models,
+agents, and providers.
+
+Remote repository management, automatic commits, push, pull requests, merge, publication,
+deployment, GUI, JSON output, and AI execution are not part of the current CLI.
+
+## License
+
+Cerne is distributed under the [MIT License](LICENSE).
