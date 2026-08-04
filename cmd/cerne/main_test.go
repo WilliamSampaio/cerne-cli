@@ -469,6 +469,144 @@ func TestCLIStatusPreReportFailure(t *testing.T) {
 	}
 }
 
+func TestCLILinkSuccessReplaceNoopAndReadOnly(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	root := initWorkspaceWithCLI(t, binary, parent, "example")
+	newSource := filepath.Join(parent, "geo app Ω")
+	if err := os.Mkdir(newSource, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitOutput(t, newSource, "init", "--quiet")
+	before := snapshotTree(t, newSource)
+
+	start := time.Now()
+	status, stdout, stderr := executeCLI(t, binary, root, nil, "link", "../geo app Ω", "--replace")
+	if time.Since(start) > 5*time.Second {
+		t.Fatal("link excedeu 5 segundos")
+	}
+	expectedNewSource := filepath.ToSlash(filepath.Join("..", "..", "geo app Ω"))
+	expected := "Projeto: example\nSource anterior: ../source\nNovo source: " + expectedNewSource + "\nManifesto atualizado.\n"
+	if status != 0 || stdout != expected || stderr != "" {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q\nesperado = %q", status, stdout, stderr, expected)
+	}
+	if !strings.Contains(readFile(t, filepath.Join(root, "knowledge", "cerne.json")), `"source": "`+expectedNewSource+`"`) {
+		t.Fatalf("manifesto não atualizado:\n%s", readFile(t, filepath.Join(root, "knowledge", "cerne.json")))
+	}
+	if after := snapshotTree(t, newSource); !reflect.DeepEqual(before, after) {
+		t.Fatalf("link alterou source\nantes=%#v\ndepois=%#v", before, after)
+	}
+
+	status, stdout, stderr = executeCLI(t, binary, root, nil, "link", "../geo app Ω")
+	expected = "Projeto: example\nSource atual: " + expectedNewSource + "\nNenhuma alteração necessária.\n"
+	if status != 0 || stdout != expected || stderr != "" {
+		t.Fatalf("no-op status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+}
+
+func TestCLILinkRefusesReplacementWithoutFlag(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	root := initWorkspaceWithCLI(t, binary, parent, "example")
+	newSource := filepath.Join(parent, "new-source")
+	if err := os.Mkdir(newSource, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitOutput(t, newSource, "init", "--quiet")
+	beforeManifest := readFile(t, filepath.Join(root, "knowledge", "cerne.json"))
+	beforeOld := snapshotTree(t, filepath.Join(root, "source"))
+	beforeNew := snapshotTree(t, newSource)
+
+	status, stdout, stderr := executeCLI(t, binary, root, nil, "link", "../new-source")
+	if status != 1 || stdout != "" || !strings.Contains(stderr, "outro source já está configurado") ||
+		!strings.Contains(stderr, "--replace") || !strings.Contains(stderr, "correção:") {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+	if readFile(t, filepath.Join(root, "knowledge", "cerne.json")) != beforeManifest ||
+		!reflect.DeepEqual(beforeOld, snapshotTree(t, filepath.Join(root, "source"))) ||
+		!reflect.DeepEqual(beforeNew, snapshotTree(t, newSource)) {
+		t.Fatal("recusa sem --replace alterou arquivos")
+	}
+}
+
+func TestCLILinkFailuresHelpUsageAndPreReportFailure(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+
+	t.Run("help", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "link", "--help")
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne link <caminho>") ||
+			!strings.Contains(stdout, "--replace") || !strings.Contains(stdout, "Status 0") {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("invalid usage", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "link", "--replace")
+		expected := "erro: argumento inválido\nuso: cerne link <caminho> [--replace]\n"
+		if status != 2 || stdout != "" || stderr != expected {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("workspace not found", func(t *testing.T) {
+		dir := t.TempDir()
+		status, stdout, stderr := executeCLI(t, binary, dir, nil, "link", dir)
+		if status != 1 || stdout != "" || !strings.Contains(stderr, "workspace Cerne não localizado") ||
+			!containsPathAlias(stderr, dir) || !strings.Contains(stderr, "correção:") {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("invalid git path", func(t *testing.T) {
+		parent := t.TempDir()
+		root := initWorkspaceWithCLI(t, binary, parent, "example")
+		dir := filepath.Join(parent, "plain-dir")
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "link", "../plain-dir", "--replace")
+		if status != 1 || stdout != "" || !strings.Contains(stderr, "repositório Git válido") ||
+			!containsPathAlias(stderr, dir) {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("bare repository", func(t *testing.T) {
+		parent := t.TempDir()
+		root := initWorkspaceWithCLI(t, binary, parent, "example")
+		bare := filepath.Join(parent, "bare.git")
+		if output, err := exec.Command("git", "init", "--bare", "--quiet", bare).CombinedOutput(); err != nil {
+			t.Fatalf("git init --bare: %v: %s", err, output)
+		}
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "link", "../bare.git", "--replace")
+		if status != 1 || stdout != "" || !strings.Contains(stderr, "bare") || !containsPathAlias(stderr, bare) {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+}
+
+func TestCLILinkPreReportFailure(t *testing.T) {
+	original := currentDirectory
+	currentDirectory = func() (string, error) { return "", errors.New("cwd indisponível") }
+	t.Cleanup(func() { currentDirectory = original })
+
+	var stdout, stderr strings.Builder
+	status := runLink([]string{"."}, &stdout, &stderr)
+	if status != 1 || stdout.String() != "" ||
+		!strings.Contains(stderr.String(), "correção: execute o comando em um diretório acessível") {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout.String(), stderr.String())
+	}
+}
+
 const expectedDoctorHealthy = `✓ Manifesto: legível
 ✓ Repositório de conhecimento: encontrado
 ✓ Repositório de código-fonte: encontrado

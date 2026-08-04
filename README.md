@@ -133,6 +133,40 @@ Exemplo:
 cerne status
 ```
 
+## `cerne link`
+
+Vincula o workspace atual a um repositório Git local existente como `source`:
+
+```text
+cerne link <caminho>
+cerne link <caminho> --replace
+cerne link --help
+```
+
+O caminho pode ser relativo ao diretório atual ou absoluto. Ele deve apontar para a raiz de um
+repositório Git local com árvore de trabalho; worktrees válidos são aceitos e repositórios bare são
+recusados. O comando localiza o workspace por ancestral, lê `knowledge/cerne.json`, valida o
+manifesto, normaliza o novo caminho e grava somente o campo `source`. Quando possível, o manifesto
+armazena o caminho relativo ao diretório `knowledge`.
+
+Se o manifesto já aponta para outro source, a troca falha por padrão. Use `--replace` para autorizar
+explicitamente a substituição da referência:
+
+```text
+cerne link ../geo-app --replace
+```
+
+Mesmo com `--replace`, o Cerne não copia, move, apaga, limpa, faz checkout, reset, add, commit,
+fetch, pull ou push no source anterior ou no novo. Também não acessa remotos, rede, credenciais ou
+agentes de IA. Source e knowledge precisam ser repositórios independentes e não podem estar
+aninhados de forma perigosa.
+
+Sucesso e ajuda usam stdout e status `0`. Se o source informado já estiver configurado, o comando
+informa `Nenhuma alteração necessária.` e não regrava o manifesto. Uso inválido usa stderr, status
+`2` e inclui `uso: cerne link <caminho> [--replace]`. Falhas operacionais usam stderr, status `1`,
+incluem causa, caminho afetado quando houver e uma orientação de correção. A atualização do
+manifesto é feita por arquivo temporário e substituição final.
+
 Para compilar e testar:
 
 ```text
