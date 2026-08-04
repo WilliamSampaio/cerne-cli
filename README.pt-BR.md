@@ -64,14 +64,14 @@ No Windows, o binário gerado é `cerne.exe`.
 ### 1. Crie um workspace
 
 ```sh
-cerne init geo-app
-cd geo-app
+cerne init meu-projeto
+cd meu-projeto
 ```
 
 O Cerne cria:
 
 ```text
-geo-app/
+meu-projeto/
 ├── knowledge/
 │   ├── .git/
 │   ├── cerne.json
@@ -124,7 +124,7 @@ O arquivo `knowledge/cerne.json` identifica o projeto e localiza o repositório 
 
 ```json
 {
-  "name": "geo-app",
+  "name": "meu-projeto",
   "source": "../source"
 }
 ```

@@ -64,14 +64,14 @@ On Windows, the generated binary is `cerne.exe`.
 ### 1. Create a workspace
 
 ```sh
-cerne init geo-app
-cd geo-app
+cerne init my-project
+cd my-project
 ```
 
 Cerne creates:
 
 ```text
-geo-app/
+my-project/
 ├── knowledge/
 │   ├── .git/
 │   ├── cerne.json
@@ -124,7 +124,7 @@ deletes either source repository.
 
 ```json
 {
-  "name": "geo-app",
+  "name": "my-project",
   "source": "../source"
 }
 ```
