@@ -94,7 +94,7 @@ zero e ausência de mutação.
 - Há mais de um ancestral com estrutura parecida; o workspace mais próximo do diretório atual é
   usado.
 - O manifesto existe, mas contém JSON inválido, campos obrigatórios ausentes ou `source` inválido.
-- O caminho de `source` é relativo, mas resolve para fora do workspace ou para recurso inexistente.
+- O caminho de `source` aponta para repositório externo válido ou para recurso inexistente.
 - Um dos repositórios não possui commits.
 - Um dos repositórios está em detached HEAD.
 - Arquivos renomeados, removidos ou copiados aparecem nos estados Git e precisam contribuir para
@@ -115,7 +115,7 @@ zero e ausência de mutação.
 - **FR-004**: O sistema MUST resolver o repositório de conhecimento como `knowledge` dentro do
   workspace localizado.
 - **FR-005**: O sistema MUST resolver o repositório de código-fonte pelo caminho registrado no
-  manifesto, mantendo-o dentro dos limites do workspace.
+  manifesto, incluindo sources externos relativos ou absolutos configurados por `cerne link`.
 - **FR-006**: Para cada repositório, o sistema MUST exibir nome público, caminho absoluto, branch
   atual, commit atual, estado geral e as quantidades de arquivos modificados, em stage e não
   rastreados.
@@ -191,8 +191,8 @@ zero e ausência de mutação.
 
 - O manifesto Cerne esperado fica em `knowledge/cerne.json`.
 - A raiz do workspace é o diretório ancestral mais próximo que contém o manifesto esperado.
-- O caminho de `source` registrado no manifesto é relativo ao repositório `knowledge`, como nos
-  workspaces criados por `cerne init`.
+- O caminho de `source` é relativo a `knowledge` quando possível e pode ser absoluto quando uma
+  representação relativa portátil não existir.
 - Contagens são por arquivo afetado em cada categoria visível ao usuário, não por número de hunks
   ou linhas alteradas.
 - O comando textual exibe as contagens mesmo quando forem zero, para manter a saída previsível.

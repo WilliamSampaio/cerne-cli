@@ -505,6 +505,15 @@ func TestCLILinkSuccessReplaceNoopAndReadOnly(t *testing.T) {
 	if status != 0 || stdout != expected || stderr != "" {
 		t.Fatalf("no-op status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 	}
+
+	status, stdout, stderr = executeCLI(t, binary, root, nil, "status")
+	if status != 0 || stderr != "" || !containsPathAlias(stdout, newSource) {
+		t.Fatalf("status após link externo = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+	status, stdout, stderr = executeCLI(t, binary, root, nil, "doctor")
+	if status != 0 || stderr != "" || !strings.HasSuffix(stdout, "Workspace saudável\n") {
+		t.Fatalf("doctor após link externo = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
 }
 
 func TestCLILinkRefusesReplacementWithoutFlag(t *testing.T) {

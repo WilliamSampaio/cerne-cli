@@ -28,17 +28,17 @@ adicionar `version` ao `init`, o que mudaria um contrato público sem necessidad
 desconhecidos, o que impediria extensões compatíveis; tornar divergência de nome bloqueante ou
 ignorá-la, opções mais rígida e menos informativa, respectivamente.
 
-## Decisão 3: Caminhos canônicos, locais e sem links
+## Decisão 3: Caminhos canônicos e sem links
 
 **Decision**: Avaliar o diretório atual como raiz. Inspecionar recursos com semântica que não segue
-links, rejeitar `source` absoluto, resolver seu valor a partir de `knowledge`, canonicalizar os
-caminhos existentes e comprovar que permanecem dentro da raiz canônica do workspace.
+links, resolver `source` relativo a partir de `knowledge`, aceitar caminho absoluto quando
+necessário e canonicalizar os caminhos existentes.
 
-**Rationale**: Comparação somente textual não detecta `..`, volumes diferentes, links intermediários
-ou aliases que podem escapar do workspace ou unir repositórios.
+**Rationale**: `cerne link` permite source externo e pode usar caminho absoluto entre volumes.
+Comparação por identidade do filesystem ainda detecta links, aliases e repositórios compartilhados.
 
 **Alternatives considered**: `filepath.Clean` isolado, insuficiente contra links; busca ascendente
-de workspace, fora do escopo; aceitar repositório externo, incompatível com o contrato atual.
+de workspace, fora do escopo; manter o limite antigo, incompatível com `cerne link`.
 
 ## Decisão 4: Identidade Git usa worktree e common dir
 

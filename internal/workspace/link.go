@@ -230,6 +230,10 @@ func manifestLinkSource(knowledge, source string) string {
 }
 
 func writeManifestAtomically(path string, content []byte) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
 	dir := filepath.Dir(path)
 	temp, err := os.CreateTemp(dir, ".cerne-*.tmp")
 	if err != nil {
@@ -237,6 +241,10 @@ func writeManifestAtomically(path string, content []byte) error {
 	}
 	tempPath := temp.Name()
 	defer os.Remove(tempPath)
+	if err := temp.Chmod(info.Mode().Perm()); err != nil {
+		temp.Close()
+		return err
+	}
 	if _, err := temp.Write(content); err != nil {
 		temp.Close()
 		return err

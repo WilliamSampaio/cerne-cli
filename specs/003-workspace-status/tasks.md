@@ -38,7 +38,7 @@ implementação correspondente.
 estarem definidos.
 
 - [X] T002 [P] Escrever testes de contrato para raiz Git, ambiente `GIT_*` hostil, comandos somente-leitura permitidos e ausência de mutação em `internal/gitexec/status_test.go`
-- [X] T003 [P] Escrever testes de domínio para localização por ancestral mais próximo, manifesto válido e resolução de `knowledge` e `source` dentro do workspace em `internal/workspace/status_test.go`
+- [X] T003 [P] Escrever testes de domínio para localização por ancestral mais próximo, manifesto válido e resolução de `knowledge` e `source` local ou externo em `internal/workspace/status_test.go`
 - [X] T004 Implementar coletor Git local com ambiente saneado, sem shell, prompts, locks opcionais ou remotos em `internal/gitexec/status.go`
 - [X] T005 Implementar localização de workspace, leitura de manifesto e resolução canônica dos dois repositórios em `internal/workspace/status.go`
 
@@ -113,7 +113,7 @@ snapshot sem mutação.
 
 > **NOTE: Escrever e executar estes testes primeiro; eles devem falhar antes da implementação.**
 
-- [X] T016 [P] [US3] Adicionar testes de domínio para workspace não localizado, manifesto ausente/malformado, `source` ausente/escape/link e repositório inválido em `internal/workspace/status_test.go`
+- [X] T016 [P] [US3] Adicionar testes de domínio para workspace não localizado, manifesto ausente/malformado, `source` ausente/inexistente/link e repositório inválido em `internal/workspace/status_test.go`
 - [X] T017 [P] [US3] Adicionar testes de integração para erros em stderr com caminho afetado, stdout vazio, status um, ajuda stdout/status zero e uso inválido status dois em `cmd/cerne/main_test.go`
 - [X] T018 [P] [US3] Adicionar teste de snapshot sem criação, remoção, alteração de arquivos, stage, branch, commit, remoto ou segredo exposto em `cmd/cerne/main_test.go`
 

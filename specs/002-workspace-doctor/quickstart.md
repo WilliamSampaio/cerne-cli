@@ -59,13 +59,13 @@ Expected: `Diretórios obrigatórios` usa `✗`, os demais checks possíveis con
 resumo é `Workspace inválido` e o status é `1`. Restaure o fixture somente após a execução; o
 comando não o corrige.
 
-## Scenario 5: Invalid manifest path
+## Scenario 5: External and invalid manifest paths
 
-Em um fixture descartável, substitua `source` no manifesto por um caminho absoluto ou que escape da
-raiz e execute o diagnóstico.
+Em um fixture descartável, vincule um repositório source externo válido e execute o diagnóstico;
+depois substitua `source` por caminho inexistente ou link.
 
-Expected: manifesto legível, mas `Caminhos do manifesto` e checks dependentes falham; nenhum caminho
-externo é seguido ou alterado.
+Expected: o source externo válido é aprovado sem alterações; caminho inexistente ou link faz
+`Caminhos do manifesto` e checks dependentes falharem.
 
 ## Scenario 6: Repositories are not independent
 
