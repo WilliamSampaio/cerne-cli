@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -294,6 +295,180 @@ func TestCLIDoctorPreReportFailure(t *testing.T) {
 	}
 }
 
+func TestCLIStatusCleanWorkspace(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+	knowledge := filepath.Join(root, "knowledge")
+	source := filepath.Join(root, "source")
+	gitOutput(t, knowledge, "config", "core.autocrlf", "false")
+	gitOutput(t, knowledge, "config", "user.email", "test@example.com")
+	gitOutput(t, knowledge, "config", "user.name", "Test")
+	gitOutput(t, knowledge, "add", ".")
+	gitOutput(t, knowledge, "commit", "-m", "init")
+	gitOutput(t, source, "config", "core.autocrlf", "false")
+	gitOutput(t, source, "config", "user.email", "test@example.com")
+	gitOutput(t, source, "config", "user.name", "Test")
+	gitOutput(t, source, "commit", "--allow-empty", "-m", "init")
+	knowledgeBranch := gitOutput(t, knowledge, "symbolic-ref", "--short", "HEAD")
+	sourceBranch := gitOutput(t, source, "symbolic-ref", "--short", "HEAD")
+	knowledgeCommit := gitOutput(t, knowledge, "rev-parse", "--short=7", "HEAD")
+	sourceCommit := gitOutput(t, source, "rev-parse", "--short=7", "HEAD")
+	expected := expectedStatus(root, "example",
+		repositoryExpectation{"Knowledge", knowledge, knowledgeBranch, knowledgeCommit, "limpo", 0, 0, 0},
+		repositoryExpectation{"Source", source, sourceBranch, sourceCommit, "limpo", 0, 0, 0},
+	)
+
+	status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
+	if status != 0 || stdout != expected || stderr != "" {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q\nesperado = %q", status, stdout, stderr, expected)
+	}
+
+	subdir := filepath.Join(source, "pkg")
+	if err := os.Mkdir(subdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	status, stdout, stderr = executeCLI(t, binary, subdir, nil, "status")
+	if status != 0 || stdout != expected || stderr != "" {
+		t.Fatalf("subdir status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+}
+
+func TestCLIStatusPendingDetachedAndNoCommits(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+	source := filepath.Join(root, "source")
+	gitOutput(t, source, "config", "core.autocrlf", "false")
+	gitOutput(t, source, "config", "user.email", "test@example.com")
+	gitOutput(t, source, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(source, "tracked.txt"), []byte("base\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitOutput(t, source, "add", "tracked.txt")
+	gitOutput(t, source, "commit", "-m", "init")
+	gitOutput(t, source, "checkout", "--detach")
+	commit := gitOutput(t, source, "rev-parse", "--short=7", "HEAD")
+	if err := os.WriteFile(filepath.Join(source, "tracked.txt"), []byte("changed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "staged.txt"), []byte("staged\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitOutput(t, source, "add", "staged.txt")
+	if err := os.WriteFile(filepath.Join(source, "untracked.txt"), []byte("untracked\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
+	if status != 0 || stderr != "" {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+	for _, want := range []string{
+		"Knowledge\n",
+		"  Commit: sem commits\n",
+		"Source\n",
+		"  Branch: detached HEAD\n",
+		"  Commit: " + commit + "\n",
+		"  Estado: alterações pendentes\n",
+		"  Modificados: 1\n",
+		"  Em stage: 1\n",
+		"  Não rastreados: 1\n",
+	} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("stdout não contém %q:\n%s", want, stdout)
+		}
+	}
+}
+
+func TestCLIStatusFailuresHelpUsageAndReadOnly(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+
+	t.Run("help", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "status", "--help")
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne status") ||
+			!strings.Contains(stdout, "Leitura exclusiva") || !strings.Contains(stdout, "detached HEAD") {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("invalid usage", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "status", "extra")
+		expected := "erro: argumento inválido\nuso: cerne status\n"
+		if status != 2 || stdout != "" || stderr != expected {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("workspace not found", func(t *testing.T) {
+		dir := t.TempDir()
+		status, stdout, stderr := executeCLI(t, binary, dir, nil, "status")
+		if status != 1 || stdout != "" || !strings.Contains(stderr, "workspace Cerne não localizado") ||
+			!containsPathAlias(stderr, dir) || !strings.Contains(stderr, "correção:") {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("missing manifest", func(t *testing.T) {
+		root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+		manifest := filepath.Join(root, "knowledge", "cerne.json")
+		if err := os.Remove(manifest); err != nil {
+			t.Fatal(err)
+		}
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
+		if status != 1 || stdout != "" || !strings.Contains(stderr, "manifesto Cerne ausente") ||
+			!containsPathAlias(stderr, manifest) {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("not git repository", func(t *testing.T) {
+		root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+		source := filepath.Join(root, "source")
+		if err := os.RemoveAll(filepath.Join(source, ".git")); err != nil {
+			t.Fatal(err)
+		}
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
+		if status != 1 || stdout != "" || !strings.Contains(stderr, "repositório Git") ||
+			!containsPathAlias(stderr, source) {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("read only", func(t *testing.T) {
+		root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+		before := snapshotTree(t, root)
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
+		after := snapshotTree(t, root)
+		if status != 0 || stdout == "" || stderr != "" {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+		if !reflect.DeepEqual(before, after) {
+			t.Fatalf("status alterou o workspace\nantes=%#v\ndepois=%#v", before, after)
+		}
+	})
+}
+
+func TestCLIStatusPreReportFailure(t *testing.T) {
+	original := currentDirectory
+	currentDirectory = func() (string, error) { return "", errors.New("cwd indisponível") }
+	t.Cleanup(func() { currentDirectory = original })
+
+	var stdout, stderr strings.Builder
+	status := runStatus(nil, &stdout, &stderr)
+	if status != 1 || stdout.String() != "" ||
+		!strings.Contains(stderr.String(), "correção: execute o comando em um diretório acessível") {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout.String(), stderr.String())
+	}
+}
+
 const expectedDoctorHealthy = `✓ Manifesto: legível
 ✓ Repositório de conhecimento: encontrado
 ✓ Repositório de código-fonte: encontrado
@@ -306,6 +481,37 @@ const expectedDoctorHealthy = `✓ Manifesto: legível
 ✓ Versão do manifesto: versão 1 implícita e suportada
 Workspace saudável
 `
+
+type repositoryExpectation struct {
+	Title     string
+	Path      string
+	Branch    string
+	Commit    string
+	State     string
+	Modified  int
+	Staged    int
+	Untracked int
+}
+
+func expectedStatus(root, project string, repositories ...repositoryExpectation) string {
+	var output strings.Builder
+	output.WriteString("Projeto: " + project + "\n")
+	output.WriteString("Workspace: " + displayPath(root) + "\n\n")
+	for index, repository := range repositories {
+		if index > 0 {
+			output.WriteString("\n")
+		}
+		output.WriteString(repository.Title + "\n")
+		output.WriteString("  Caminho: " + displayPath(repository.Path) + "\n")
+		output.WriteString("  Branch: " + repository.Branch + "\n")
+		output.WriteString("  Commit: " + repository.Commit + "\n")
+		output.WriteString("  Estado: " + repository.State + "\n")
+		output.WriteString("  Modificados: " + strconv.Itoa(repository.Modified) + "\n")
+		output.WriteString("  Em stage: " + strconv.Itoa(repository.Staged) + "\n")
+		output.WriteString("  Não rastreados: " + strconv.Itoa(repository.Untracked) + "\n")
+	}
+	return output.String()
+}
 
 func buildCLI(t *testing.T) string {
 	t.Helper()
@@ -429,6 +635,20 @@ func samePath(left, right string) bool {
 		right = resolved
 	}
 	return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
+}
+
+func displayPath(path string) string {
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	return filepath.Clean(path)
+}
+
+func containsPathAlias(text, path string) bool {
+	return strings.Contains(text, filepath.Clean(path)) || strings.Contains(text, displayPath(path))
 }
 
 func readFile(t *testing.T, path string) string {
