@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -17,6 +18,12 @@ func TestLinkUpdatesManifestAfterValidations(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeManifest(t, root, `{"name":"example","source":"../source","kept":true}`)
+	manifestPath := filepath.Join(root, "knowledge", "cerne.json")
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(manifestPath, 0o640); err != nil {
+			t.Fatal(err)
+		}
+	}
 	input, err := filepath.Rel(start, source)
 	if err != nil {
 		t.Fatal(err)
@@ -33,6 +40,15 @@ func TestLinkUpdatesManifestAfterValidations(t *testing.T) {
 	raw := readManifestJSON(t, root)
 	if string(raw["source"]) != `"`+wantSource+`"` || string(raw["kept"]) != "true" {
 		t.Fatalf("manifesto = %#v", raw)
+	}
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(manifestPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o640 {
+			t.Fatalf("permissões do manifesto = %o, esperado 640", info.Mode().Perm())
+		}
 	}
 }
 

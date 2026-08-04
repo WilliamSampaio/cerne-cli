@@ -36,7 +36,15 @@ func collectStatus(git, directory string) (RepositoryStatus, error) {
 	if err != nil {
 		return RepositoryStatus{}, err
 	}
-	if !strings.EqualFold(cleanPath(root), cleanPath(directory)) {
+	rootPath := cleanPath(root)
+	requestedPath := cleanPath(directory)
+	sameRoot := rootPath == requestedPath
+	rootInfo, rootErr := os.Stat(rootPath)
+	requestedInfo, requestedErr := os.Stat(requestedPath)
+	if rootErr == nil && requestedErr == nil {
+		sameRoot = os.SameFile(rootInfo, requestedInfo)
+	}
+	if !sameRoot {
 		return RepositoryStatus{}, fmt.Errorf("%q não é raiz Git própria", directory)
 	}
 	if _, err := statusOutput(git, directory, "rev-parse", "--git-common-dir"); err != nil {

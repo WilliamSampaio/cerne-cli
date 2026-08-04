@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,6 +57,28 @@ func TestCurrentStatusClassifiesPendingDetachedHeadAndNoCommits(t *testing.T) {
 	}
 }
 
+func TestCurrentStatusAcceptsExternalSource(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	external := filepath.Join(filepath.Dir(root), "external-source")
+	if err := os.Mkdir(external, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, source := range []string{
+		filepath.ToSlash(mustRel(t, filepath.Join(root, "knowledge"), external)),
+		filepath.ToSlash(canonical(external)),
+	} {
+		writeManifest(t, root, fmt.Sprintf(`{"name":"example","source":%q}`, source))
+		got, err := CurrentStatus(root, fakeGitStatus(nil, nil))
+		if err != nil {
+			t.Fatalf("source %q: %v", source, err)
+		}
+		if !samePath(got.Repositories[1].Path, external) {
+			t.Fatalf("source = %q, esperado %q", got.Repositories[1].Path, external)
+		}
+	}
+}
+
 func TestCurrentStatusFailures(t *testing.T) {
 	cases := map[string]func(*testing.T) (string, GitStatus, string){
 		"workspace not found": func(t *testing.T) (string, GitStatus, string) {
@@ -76,16 +99,6 @@ func TestCurrentStatusFailures(t *testing.T) {
 		"missing source": func(t *testing.T) (string, GitStatus, string) {
 			root := newDoctorWorkspace(t, "example")
 			writeManifest(t, root, `{"name":"example","source":"../missing"}`)
-			return root, fakeGitStatus(nil, nil), "caminho source inválido"
-		},
-		"escaping source": func(t *testing.T) (string, GitStatus, string) {
-			root := newDoctorWorkspace(t, "example")
-			writeManifest(t, root, `{"name":"example","source":"../../source"}`)
-			return root, fakeGitStatus(nil, nil), "caminho source inválido"
-		},
-		"absolute source": func(t *testing.T) (string, GitStatus, string) {
-			root := newDoctorWorkspace(t, "example")
-			writeManifest(t, root, `{"name":"example","source":"/tmp/source"}`)
 			return root, fakeGitStatus(nil, nil), "caminho source inválido"
 		},
 		"invalid git repository": func(t *testing.T) (string, GitStatus, string) {

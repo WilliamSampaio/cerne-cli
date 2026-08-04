@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,6 +26,20 @@ func TestDoctorHealthyLegacyAndExplicitVersion(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("external source", func(t *testing.T) {
+		root := newDoctorWorkspace(t, "example")
+		external := filepath.Join(filepath.Dir(root), "external-source")
+		if err := os.Mkdir(external, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		source := filepath.ToSlash(mustRel(t, filepath.Join(root, "knowledge"), external))
+		writeManifest(t, root, fmt.Sprintf(`{"name":"example","source":%q}`, source))
+		got := Doctor(root, fakeInspect(nil), allowAccess)
+		if got.Status != Healthy {
+			t.Fatalf("diagnóstico = %#v", got)
+		}
+	})
 }
 
 func TestDoctorBlockingFailures(t *testing.T) {
@@ -45,14 +60,6 @@ func TestDoctorBlockingFailures(t *testing.T) {
 		},
 		"invalid name": func(t *testing.T, root string) (GitInspect, AccessCheck) {
 			writeManifest(t, root, `{"name":"bad/name","source":"../source"}`)
-			return fakeInspect(nil), allowAccess
-		},
-		"absolute source": func(t *testing.T, root string) (GitInspect, AccessCheck) {
-			writeManifest(t, root, `{"name":"example","source":"/tmp/source"}`)
-			return fakeInspect(nil), allowAccess
-		},
-		"escaping source": func(t *testing.T, root string) (GitInspect, AccessCheck) {
-			writeManifest(t, root, `{"name":"example","source":"../../source"}`)
 			return fakeInspect(nil), allowAccess
 		},
 		"source symlink": func(t *testing.T, root string) (GitInspect, AccessCheck) {
@@ -101,6 +108,21 @@ func TestDoctorBlockingFailures(t *testing.T) {
 				t.Fatalf("nenhum erro em %#v", got)
 			}
 		})
+	}
+}
+
+func TestSamePathUsesFilesystemIdentity(t *testing.T) {
+	parent := t.TempDir()
+	upper := filepath.Join(parent, "Source")
+	lower := filepath.Join(parent, "source")
+	if err := os.Mkdir(upper, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(lower, 0o755); err != nil {
+		t.Skip("sistema de arquivos não diferencia maiúsculas de minúsculas")
+	}
+	if samePath(upper, lower) {
+		t.Fatal("diretórios distintos foram considerados iguais")
 	}
 }
 
