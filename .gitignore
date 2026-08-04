@@ -39,4 +39,4 @@ Thumbs.db
 *.swp
 
 # Cerne CLI bin
-cerne
+/cerne

@@ -120,6 +120,41 @@ Exemplo:
   cerne status
 `
 
+const linkHelp = `Vincula o workspace Cerne atual a um repositório Git local existente como source.
+
+Uso:
+  cerne link <caminho>
+  cerne link <caminho> --replace
+  cerne link --help
+
+Caminho:
+  Pode ser relativo ao diretório atual ou absoluto. Deve apontar para a raiz
+  de um repositório Git local com árvore de trabalho. Worktrees válidos são
+  aceitos; repositórios bare não são aceitos.
+
+Substituição:
+  Se outro source já estiver configurado, a troca exige --replace. Mesmo com
+  --replace, o Cerne atualiza somente knowledge/cerne.json e não altera o
+  source anterior nem o novo.
+
+Validações:
+  Workspace, manifesto, versão, caminho informado, Git local, repositório
+  non-bare, independência entre knowledge/source e sobreposição perigosa.
+
+Saídas:
+  Sucesso e ajuda usam stdout. Uso inválido e falhas usam stderr.
+  Status 0: atualizado, nenhuma alteração ou ajuda; 1: falha operacional;
+  2: uso inválido.
+
+Efeitos:
+  Lê o workspace e metadados Git locais. Não copia, move, apaga, faz checkout,
+  reset, add, commit, clean, fetch, pull, push, acessa remotos, credenciais ou
+  agentes de IA.
+
+Exemplo:
+  cerne link ../geo-app --replace
+`
+
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
@@ -137,6 +172,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runDoctor(args[1:], stdout, stderr)
 	case "status":
 		return runStatus(args[1:], stdout, stderr)
+	case "link":
+		return runLink(args[1:], stdout, stderr)
 	default:
 		return commandUsageError(stderr, "comando desconhecido")
 	}
@@ -256,6 +293,62 @@ func runStatus(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+func runLink(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "--help" {
+		fmt.Fprint(stdout, linkHelp)
+		return 0
+	}
+	source, replace, ok := parseLinkArgs(args)
+	if !ok {
+		fmt.Fprintf(stderr, "erro: argumento inválido\n")
+		fmt.Fprintln(stderr, "uso: cerne link <caminho> [--replace]")
+		return 2
+	}
+
+	current, err := currentDirectory()
+	if err != nil {
+		fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
+		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+		return 1
+	}
+	inspect, err := gitexec.FindLinkInspector()
+	if err != nil {
+		fmt.Fprintf(stderr, "erro: %v\n", err)
+		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+		return 1
+	}
+	result, err := workspace.Link(current, workspace.LinkRequest{SourceInput: source, Replace: replace}, adaptLink(inspect))
+	if err != nil {
+		var failure workspace.LinkFailure
+		if errors.As(err, &failure) {
+			if failure.Path != "" {
+				fmt.Fprintf(stderr, "erro: %s: %s\n", failure.Cause, failure.Path)
+			} else {
+				fmt.Fprintf(stderr, "erro: %s\n", failure.Cause)
+			}
+			if failure.Correction != "" {
+				fmt.Fprintf(stderr, "correção: %s\n", failure.Correction)
+			}
+		} else {
+			fmt.Fprintf(stderr, "erro: %v\n", err)
+			fmt.Fprintln(stderr, "correção: verifique o workspace e tente novamente")
+		}
+		return 1
+	}
+	renderLink(stdout, result)
+	return 0
+}
+
+func parseLinkArgs(args []string) (string, bool, bool) {
+	if len(args) == 1 && args[0] != "--replace" {
+		return args[0], false, true
+	}
+	if len(args) == 2 && args[0] != "--replace" && args[1] == "--replace" {
+		return args[0], true, true
+	}
+	return "", false, false
+}
+
 func adaptGit(inspect func(string) (gitexec.Repository, error)) workspace.GitInspect {
 	if inspect == nil {
 		return nil
@@ -280,6 +373,19 @@ func adaptStatus(collect func(string) (gitexec.RepositoryStatus, error)) workspa
 			ModifiedCount:  result.ModifiedCount,
 			StagedCount:    result.StagedCount,
 			UntrackedCount: result.UntrackedCount,
+		}, err
+	}
+}
+
+func adaptLink(inspect func(string) (gitexec.LinkRepository, error)) workspace.LinkGitInspect {
+	return func(path string) (workspace.LinkRepositoryFacts, error) {
+		result, err := inspect(path)
+		return workspace.LinkRepositoryFacts{
+			RequestedPath: result.RequestedPath,
+			WorktreeRoot:  result.WorktreeRoot,
+			CommonDir:     result.CommonDir,
+			IsBare:        result.IsBare,
+			HasWorktree:   result.HasWorktree,
 		}, err
 	}
 }
@@ -330,6 +436,20 @@ func renderStatus(stdout io.Writer, report workspace.WorkspaceReport) {
 	}
 }
 
+func renderLink(stdout io.Writer, result workspace.LinkResult) {
+	fmt.Fprintf(stdout, "Projeto: %s\n", result.ProjectName)
+	if !result.Changed {
+		fmt.Fprintf(stdout, "Source atual: %s\n", result.NewSource)
+		fmt.Fprintln(stdout, "Nenhuma alteração necessária.")
+		return
+	}
+	if result.PreviousSource != "" {
+		fmt.Fprintf(stdout, "Source anterior: %s\n", result.PreviousSource)
+	}
+	fmt.Fprintf(stdout, "Novo source: %s\n", result.NewSource)
+	fmt.Fprintln(stdout, "Manifesto atualizado.")
+}
+
 func repositoryTitle(name string) string {
 	if name == "source" {
 		return "Source"
@@ -356,6 +476,6 @@ func initUsageError(stderr io.Writer, cause string) int {
 
 func commandUsageError(stderr io.Writer, cause string) int {
 	fmt.Fprintf(stderr, "erro: %s\n", cause)
-	fmt.Fprintln(stderr, "uso: cerne <init|doctor|status>")
+	fmt.Fprintln(stderr, "uso: cerne <init|doctor|status|link>")
 	return 2
 }
