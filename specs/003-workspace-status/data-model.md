@@ -56,7 +56,7 @@ Documento usado para identificar o projeto e localizar `source`.
 | Campo | Tipo conceitual | Regras |
 |---|---|---|
 | `name` | string | Obrigatório e válido para exibição do projeto |
-| `source` | caminho relativo | Obrigatório, relativo a `knowledge`, existente e dentro do workspace |
+| `source` | caminho relativo ou absoluto | Obrigatório, relativo a `knowledge` quando possível e existente; pode ser externo |
 | `version` | inteiro opcional | Semântica compatível com o manifesto atual |
 
 ## Failure Result
@@ -76,4 +76,3 @@ Falha anterior à produção do relatório.
 - Alterações pendentes nunca tornam o comando inválido por si só.
 - Falhas de workspace, manifesto, path ou consulta Git interrompem o relatório e usam stderr.
 - Nenhum modelo contém operação de criação, correção, remoção, stage, commit, checkout ou remoto.
-

@@ -66,9 +66,9 @@ func CurrentStatus(start string, collect GitStatus) (WorkspaceReport, error) {
 	}
 
 	knowledge := filepath.Join(root, "knowledge")
-	source, err := validateSourcePath(root, knowledge, data.Source)
+	source, err := validateSourcePath(knowledge, data.Source)
 	if err != nil {
-		return WorkspaceReport{}, statusFailure("caminho source inválido no manifesto", manifestSourcePath(knowledge, data.Source), "use caminho relativo existente dentro do workspace")
+		return WorkspaceReport{}, statusFailure("caminho source inválido no manifesto", manifestSourcePath(knowledge, data.Source), "configure um caminho source existente e seguro")
 	}
 	if err := regularDir(knowledge); err != nil {
 		return WorkspaceReport{}, statusFailure("repositório de conhecimento não encontrado", knowledge, "restaure o diretório knowledge")

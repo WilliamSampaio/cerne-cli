@@ -72,9 +72,9 @@ func Doctor(root string, inspectGit GitInspect, checkAccess AccessCheck) Diagnos
 	manifest, manifestErr := readManifest(manifestPath)
 	source := filepath.Join(root, "source")
 	if manifest.Source != "" {
-		source = filepath.Clean(filepath.Join(knowledge, manifest.Source))
+		source = manifestSourcePath(knowledge, manifest.Source)
 	}
-	sourceValid, sourceErr := validateSourcePath(root, knowledge, manifest.Source)
+	sourceValid, sourceErr := validateSourcePath(knowledge, manifest.Source)
 	if sourceValid != "" {
 		source = sourceValid
 	}
@@ -214,7 +214,7 @@ func manifestPathsCheck(manifestErr, sourceErr error, sourceOK bool) CheckResult
 		return check("manifest-paths", "Caminhos do manifesto", Error, "manifesto inválido impede resolver caminhos", "corrija knowledge/cerne.json")
 	}
 	if sourceErr != nil {
-		return check("manifest-paths", "Caminhos do manifesto", Error, "source inválido", "use caminho relativo existente dentro do workspace")
+		return check("manifest-paths", "Caminhos do manifesto", Error, "source inválido", "configure um caminho source existente e seguro")
 	}
 	if !sourceOK {
 		return check("manifest-paths", "Caminhos do manifesto", Error, "source não existe como diretório regular", "restaure o diretório de código-fonte")
@@ -277,29 +277,23 @@ func manifestVersionCheck(state string, err error) CheckResult {
 	return check("manifest-version", "Versão do manifesto", Pass, "versão 1 implícita e suportada", "")
 }
 
-func validateSourcePath(root, knowledge, source string) (string, error) {
+func validateSourcePath(knowledge, source string) (string, error) {
 	if source == "" {
 		return "", errors.New("source ausente")
 	}
-	if filepath.IsAbs(source) {
-		return "", errors.New("source absoluto")
+	candidate := source
+	if !filepath.IsAbs(candidate) {
+		candidate = filepath.Join(knowledge, candidate)
 	}
-	candidate := filepath.Clean(filepath.Join(knowledge, source))
-	if !containsPath(root, candidate) && !samePath(root, candidate) {
-		return "", errors.New("source escapa do workspace")
-	}
-	if err := noSymlink(root, candidate); err != nil {
+	candidate = filepath.Clean(candidate)
+	if err := noSymlink(candidate); err != nil {
 		return "", err
 	}
 	resolved, err := filepath.EvalSymlinks(candidate)
 	if err != nil {
 		return "", err
 	}
-	resolved = filepath.Clean(resolved)
-	if !containsPath(root, resolved) && !samePath(root, resolved) {
-		return "", errors.New("source resolve fora do workspace")
-	}
-	return resolved, nil
+	return filepath.Clean(resolved), nil
 }
 
 func regularDir(path string) error {
@@ -336,7 +330,14 @@ func canonical(path string) string {
 }
 
 func samePath(left, right string) bool {
-	return strings.EqualFold(canonical(left), canonical(right))
+	left = canonical(left)
+	right = canonical(right)
+	leftInfo, leftErr := os.Stat(left)
+	rightInfo, rightErr := os.Stat(right)
+	if leftErr == nil && rightErr == nil {
+		return os.SameFile(leftInfo, rightInfo)
+	}
+	return left == right
 }
 
 func containsPath(parent, child string) bool {
@@ -346,21 +347,19 @@ func containsPath(parent, child string) bool {
 	return err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
-func noSymlink(root, path string) error {
-	relative, err := filepath.Rel(root, path)
-	if err != nil {
-		return err
-	}
-	current := root
-	for _, part := range strings.Split(relative, string(filepath.Separator)) {
-		current = filepath.Join(current, part)
-		info, err := os.Lstat(current)
+func noSymlink(path string) error {
+	for {
+		info, err := os.Lstat(path)
 		if err != nil {
 			return err
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
 			return errors.New("link não permitido")
 		}
+		parent := filepath.Dir(path)
+		if parent == path {
+			return nil
+		}
+		path = parent
 	}
-	return nil
 }

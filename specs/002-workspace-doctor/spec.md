@@ -100,8 +100,8 @@ saudáveis, com avisos e inválidos; comparar os estados, a saída e o código d
 - O manifesto existe, mas está vazio, malformado, com campos obrigatórios ausentes ou caminhos
   inválidos.
 - O `name` do manifesto é válido, mas diverge do nome do diretório raiz.
-- Um caminho do manifesto é absoluto, escapa da raiz esperada, aponta para link, arquivo ou para o
-  mesmo local do outro repositório.
+- Um caminho do manifesto aponta para recurso inexistente, link, arquivo ou para o mesmo local do
+  outro repositório; sources externos válidos continuam sujeitos às verificações de independência.
 - Um repositório Git existe acima do workspace e pode fazer um diretório ausente parecer
   versionado.
 - `knowledge` e `source` existem, mas somente um possui raiz Git própria.
@@ -138,8 +138,8 @@ saudáveis, com avisos e inválidos; comparar os estados, a saída e o código d
   código-fonte. `name` inválido MUST ser erro; `name` válido diferente do nome da raiz MUST ser
   aviso não bloqueante.
 - **FR-008**: O sistema MUST resolver os caminhos registrados no manifesto a partir da localização
-  definida pelo próprio contrato do manifesto e MUST rejeitar caminhos inexistentes, absolutos,
-  que escapem da raiz do workspace, sejam links ou não representem o tipo de recurso esperado.
+  definida pelo próprio contrato, MUST aceitar sources externos relativos ou absolutos introduzidos
+  por `cerne link` e MUST rejeitar caminhos inexistentes, links ou recursos de tipo incorreto.
 - **FR-009**: O sistema MUST considerar `knowledge` válido somente quando o diretório esperado
   existir como diretório acessível e representar o repositório de conhecimento do workspace.
 - **FR-010**: O sistema MUST considerar `source` válido somente quando o caminho registrado no
@@ -240,8 +240,8 @@ saudáveis, com avisos e inválidos; comparar os estados, a saída e o código d
 
 - O usuário executa o comando na raiz que deseja diagnosticar; descoberta em diretórios ancestrais
   ou seleção por argumento fica fora desta primeira versão.
-- O manifesto atual fica em `knowledge/cerne.json`, identifica o projeto e registra o caminho de
-  `source` relativo a `knowledge`.
+- O manifesto atual fica em `knowledge/cerne.json`, identifica o projeto e registra `source`
+  relativo a `knowledge` quando possível ou absoluto quando necessário.
 - O formato atual sem versão explícita representa implicitamente a versão `1`, preservando como
   saudáveis os workspaces já criados por `cerne init`.
 - Ausência de permissão de escrita torna o workspace inadequado ao uso normal do Cerne e, portanto,

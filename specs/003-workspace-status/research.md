@@ -26,13 +26,13 @@ argumento de caminho, fora do escopo inicial; varrer descendentes, mais caro e a
 ## Decisão 3: Reutilizar regras de manifesto e path do domínio
 
 **Decision**: Reusar a semântica existente de `knowledge/cerne.json`, `name`, `source` relativo a
-`knowledge`, paths canônicos dentro do workspace e rejeição de caminhos inválidos.
+`knowledge` ou absoluto quando necessário, paths canônicos e rejeição de caminhos inválidos.
 
 **Rationale**: `status` e `doctor` interpretam o mesmo workspace. Duplicar uma semântica diferente
 criaria inconsistência pública.
 
-**Alternatives considered**: Parser próprio para status, que poderia divergir; aceitar `source`
-externo, incompatível com o modelo atual; seguir links, arriscado para limites do workspace.
+**Alternatives considered**: Parser próprio para status, que poderia divergir; rejeitar `source`
+externo, incompatível com `cerne link`; seguir links, arriscado para os limites dos repositórios.
 
 ## Decisão 4: Consultas Git locais, separadas e somente-leitura
 
@@ -96,4 +96,3 @@ branch, commits ou configuração remota.
 
 **Alternatives considered**: Comparar todos os metadados, instável em Windows/macOS; confiar apenas
 em revisão de comandos, prova fraca; criar arquivo-sonda, proibido.
-

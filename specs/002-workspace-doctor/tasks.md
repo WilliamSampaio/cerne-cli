@@ -82,7 +82,7 @@ permissões em fixtures temporários e confirmar linha de erro, correção, dez 
 
 > **NOTE: Escrever e executar estes testes primeiro; eles devem falhar antes da implementação.**
 
-- [X] T010 [P] [US2] Adicionar testes table-driven para manifesto ausente/malformado, `name` inválido, versões `"1"`, `1.0`, `null` ou diferente de 1, caminho absoluto/escape/link, diretório ausente/tipo incorreto, Git ancestral/common dir, acesso negado e precedência de erro em `internal/workspace/doctor_test.go`
+- [X] T010 [P] [US2] Adicionar testes table-driven para manifesto ausente/malformado, `name` inválido, versões `"1"`, `1.0`, `null` ou diferente de 1, source externo válido, caminho inexistente/link, diretório ausente/tipo incorreto, Git ancestral/common dir, acesso negado e precedência de erro em `internal/workspace/doctor_test.go`
 - [X] T011 [P] [US2] Adicionar testes do binário para workspace inválido, Git ausente, correções, dez linhas em stdout, stderr vazio, status um e ausência de conteúdo privado em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 2

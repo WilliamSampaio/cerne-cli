@@ -33,7 +33,7 @@ binário real e matriz CI existente
 **Performance Goals**: Diagnóstico completo de um workspace mínimo em até 5 segundos, sem rede
 
 **Constraints**: Dez resultados em ordem fixa; leitura exclusiva; zero prompts, remotos,
-credenciais ou agentes; caminhos sem links ou escape; nenhum shell; stdout/stderr estáveis;
+credenciais ou agentes; caminhos sem links e sources externos validados; nenhum shell; stdout/stderr estáveis;
 status `0` para válido, `1` para erro bloqueante e `2` para uso inválido
 
 **Scale/Scope**: Um workspace por invocação, um manifesto, dois repositórios, cinco diretórios

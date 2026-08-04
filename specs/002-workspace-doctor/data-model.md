@@ -51,12 +51,12 @@ Representação interna lida de `knowledge/cerne.json`.
 | Campo | Tipo | Regras |
 |---|---|---|
 | `name` | string | Obrigatório e portátil; divergência válida da raiz gera aviso |
-| `source` | caminho relativo | Obrigatório; parte de `knowledge`, termina dentro do workspace |
+| `source` | caminho relativo ou absoluto | Obrigatório; relativo a `knowledge` quando possível; pode apontar para repositório externo |
 | `version` | inteiro JSON opcional | Ausente significa 1; explícito aceita somente 1 |
 
 O documento contém um único objeto JSON. Dados posteriores ao objeto, tipos incorretos, caminho
-absoluto, link ou escape da raiz invalidam o manifesto ou seus caminhos. Campos desconhecidos são
-tolerados para evolução compatível. Um `name` portátil que difere do basename da raiz mantém o
+inexistente ou link invalidam o manifesto ou seus caminhos. Campos desconhecidos são tolerados
+para evolução compatível. Um `name` portátil que difere do basename da raiz mantém o
 manifesto válido, mas torna seu check um aviso com orientação para alinhar os nomes.
 
 ## Repository Facts
