@@ -129,7 +129,7 @@ func locateWorkspace(start string) (string, string, error) {
 }
 
 func looksLikeWorkspace(root string) bool {
-	return regularDir(filepath.Join(root, "knowledge")) == nil || regularDir(filepath.Join(root, "source")) == nil
+	return regularDir(filepath.Join(root, "knowledge")) == nil
 }
 
 func repositoryReport(name, path string, status GitRepositoryStatus) RepositoryReport {

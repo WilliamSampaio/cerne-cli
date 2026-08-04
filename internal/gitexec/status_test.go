@@ -15,6 +15,7 @@ func TestStatusCollectorCountsLocalGitState(t *testing.T) {
 	}
 	repo := t.TempDir()
 	gitOutput(t, repo, "init", "--quiet")
+	gitOutput(t, repo, "config", "core.autocrlf", "false")
 	gitOutput(t, repo, "config", "user.email", "test@example.com")
 	gitOutput(t, repo, "config", "user.name", "Test")
 	if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte("base\n"), 0o644); err != nil {
@@ -73,6 +74,7 @@ func TestStatusCollectorDetachedHeadNoCommitsAndOwnRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitOutput(t, repo, "init", "--quiet")
+	gitOutput(t, repo, "config", "core.autocrlf", "false")
 	gitOutput(t, repo, "config", "user.email", "test@example.com")
 	gitOutput(t, repo, "config", "user.name", "Test")
 	if err := os.WriteFile(filepath.Join(repo, "file.txt"), []byte("x\n"), 0o644); err != nil {
@@ -129,7 +131,7 @@ func writeFakeStatusGit(t *testing.T, path string) {
 			"if not \"%1\"==\"-C\" exit /b 3",
 			"if \"%3\"==\"rev-parse\" if \"%4\"==\"--show-toplevel\" echo %2&& exit /b 0",
 			"if \"%3\"==\"rev-parse\" if \"%4\"==\"--git-common-dir\" echo %2\\.git&& exit /b 0",
-			"if \"%3\"==\"rev-parse\" if \"%4\"==\"--verify\" if \"%5\"==\"--short=7\" if \"%6\"==\"HEAD\" echo abc1234&& exit /b 0",
+			"if \"%3\"==\"rev-parse\" if \"%4\"==\"--verify\" echo abc1234&& exit /b 0",
 			"if \"%3\"==\"symbolic-ref\" if \"%4\"==\"--quiet\" if \"%5\"==\"--short\" if \"%6\"==\"HEAD\" echo main&& exit /b 0",
 			"if \"%3\"==\"diff\" if \"%4\"==\"--name-only\" echo modified.txt&& exit /b 0",
 			"if \"%3\"==\"diff\" if \"%4\"==\"--cached\" if \"%5\"==\"--name-only\" echo staged.txt&& exit /b 0",
