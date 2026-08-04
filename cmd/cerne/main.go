@@ -11,6 +11,28 @@ import (
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
 
+const version = "0.1.0"
+
+const globalHelp = `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
+
+Uso:
+  cerne <comando> [argumentos]
+  cerne --help
+  cerne --version
+
+Comandos:
+  init      Cria um workspace Cerne
+  doctor    Valida a estrutura e a segurança do workspace
+  status    Exibe o estado local dos repositórios
+  link      Vincula um repositório Git local como source
+
+Opções:
+  --help       Exibe esta ajuda
+  --version    Exibe a versão do Cerne
+
+Use "cerne <comando> --help" para detalhes de um comando.
+`
+
 const initHelp = `Inicializa um workspace Cerne com repositórios Git independentes.
 
 Uso:
@@ -152,7 +174,7 @@ Efeitos:
   agentes de IA.
 
 Exemplo:
-  cerne link ../geo-app --replace
+  cerne link ../aplicacao-existente --replace
 `
 
 func main() {
@@ -162,6 +184,14 @@ func main() {
 var currentDirectory = os.Getwd
 
 func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "--help" {
+		fmt.Fprint(stdout, globalHelp)
+		return 0
+	}
+	if len(args) == 1 && args[0] == "--version" {
+		fmt.Fprintf(stdout, "cerne %s\n", version)
+		return 0
+	}
 	if len(args) == 0 {
 		return commandUsageError(stderr, "informe um comando")
 	}
