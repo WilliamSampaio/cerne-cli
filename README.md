@@ -42,7 +42,8 @@ Install directly with Go:
 
 ```sh
 go install github.com/WilliamSampaio/cerne-cli/cmd/cerne@latest
-cerne init --help
+cerne --version
+cerne --help
 ```
 
 Go places the binary in `GOBIN`, or in `GOPATH/bin` when `GOBIN` is unset. Make sure that directory
@@ -54,7 +55,7 @@ To build a development copy:
 git clone https://github.com/WilliamSampaio/cerne-cli.git
 cd cerne-cli
 go build -o cerne ./cmd/cerne
-./cerne init --help
+./cerne --version
 ```
 
 On Windows, the generated binary is `cerne.exe`.
@@ -138,6 +139,11 @@ is the JSON integer `1`. Cerne stores a normalized relative source path whenever
 locations allow it.
 
 ## Command reference
+
+### Global options
+
+- `cerne --help` prints the available commands and global options.
+- `cerne --version` prints the stable SemVer identifier, currently `cerne 0.1.0`.
 
 ### `cerne init <project-name>`
 
