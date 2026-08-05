@@ -156,6 +156,226 @@ func TestInitRollsBackOnlyCreatedArtifacts(t *testing.T) {
 	}
 }
 
+func TestInitWithLocalSourceLinksWithoutCreatingOrChangingSource(t *testing.T) {
+	parent := t.TempDir()
+	external := filepath.Join(parent, "código existente Ω")
+	if err := os.Mkdir(external, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(external, "sentinel"), []byte("keep"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	before := readText(t, filepath.Join(external, "sentinel"))
+	input, err := filepath.Rel(parent, external)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := InitWithSource(parent, "example", SourceInitRequest{Mode: SourceLocal, Input: input}, fakeInitRepository, fakeLinkInspect(nil, nil), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(parent, "example")
+	if result.SourceMode != SourceLocal || !samePath(result.SourcePath, external) {
+		t.Fatalf("resultado=%#v", result)
+	}
+	if _, err := os.Stat(filepath.Join(root, "source")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("source interno criado: %v", err)
+	}
+	if readText(t, filepath.Join(external, "sentinel")) != before {
+		t.Fatal("source externo alterado")
+	}
+	raw := readManifestJSON(t, root)
+	var source string
+	if err := json.Unmarshal(raw["source"], &source); err != nil {
+		t.Fatal(err)
+	}
+	if source != filepath.ToSlash(mustRel(t, filepath.Join(root, "knowledge"), external)) {
+		t.Fatalf("source no manifesto=%q", source)
+	}
+}
+
+func TestInitWithLocalSourceRevalidatesAndRollsBack(t *testing.T) {
+	parent := t.TempDir()
+	external := filepath.Join(parent, "external")
+	if err := os.Mkdir(external, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	inspect := func(path string) (LinkRepositoryFacts, error) {
+		calls++
+		common := filepath.Join(path, ".git")
+		if calls == 2 {
+			common = filepath.Join(path, ".git-changed")
+		}
+		return LinkRepositoryFacts{RequestedPath: path, WorktreeRoot: path, CommonDir: common, HasWorktree: true}, nil
+	}
+	_, err := InitWithSource(parent, "example", SourceInitRequest{Mode: SourceLocal, Input: external}, fakeInitRepository, inspect, nil)
+	if err == nil {
+		t.Fatal("mudança concorrente aceita")
+	}
+	if _, err := os.Stat(filepath.Join(parent, "example")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("workspace não revertido: %v", err)
+	}
+}
+
+func TestInitWithClonePromotesValidSourceAndFinalizesRedactedAudit(t *testing.T) {
+	parent := t.TempDir()
+	origin := "https://token@example.invalid/private/repo.git"
+	request := SourceInitRequest{Mode: SourceClone, Input: origin, OriginTransport: "https", OriginFingerprint: strings.Repeat("a", 64)}
+	clone := func(_ string, staging string) error {
+		audit := filepath.Join(parent, "example", "knowledge", "runs", "source-clone.json")
+		if !strings.Contains(readText(t, audit), `"status": "started"`) {
+			t.Fatal("clone começou antes da auditoria")
+		}
+		return os.Mkdir(filepath.Join(staging, ".git"), 0o755)
+	}
+	result, err := InitWithSource(parent, "example", request, fakeInitRepository, fakeLinkInspect(nil, nil), clone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.SourceMode != SourceClone || result.AuditPath == "" {
+		t.Fatalf("resultado=%#v", result)
+	}
+	if _, err := os.Stat(filepath.Join(result.SourcePath, ".git")); err != nil {
+		t.Fatal(err)
+	}
+	audit := readText(t, result.AuditPath)
+	if !strings.Contains(audit, `"status": "succeeded"`) || strings.Contains(audit, origin) || strings.Contains(audit, "token") {
+		t.Fatalf("auditoria insegura=%s", audit)
+	}
+	entries, err := os.ReadDir(filepath.Join(parent, "example"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".source-clone-") {
+			t.Fatalf("staging remanescente=%s", entry.Name())
+		}
+	}
+}
+
+func TestInitWithCloneFailurePreservesKnowledgeAndCleansOnlyStaging(t *testing.T) {
+	parent := t.TempDir()
+	request := SourceInitRequest{Mode: SourceClone, Input: "ssh://example.invalid/repo", OriginTransport: "ssh", OriginFingerprint: strings.Repeat("b", 64)}
+	result, err := InitWithSource(parent, "example", request, fakeInitRepository, fakeLinkInspect(nil, nil), func(_ string, staging string) error {
+		if err := os.WriteFile(filepath.Join(staging, "partial"), []byte("secret-provider-output"), 0o644); err != nil {
+			return err
+		}
+		return errors.New("token-super-secreto")
+	})
+	var failure SourceInitFailure
+	if !errors.As(err, &failure) || !failure.Incomplete || strings.Contains(err.Error(), "token-super-secreto") {
+		t.Fatalf("erro=%#v", err)
+	}
+	if _, err := os.Stat(result.KnowledgePath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(result.SourcePath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("source parcial existe: %v", err)
+	}
+	if !strings.Contains(readText(t, result.AuditPath), `"failure": "clone-failed"`) {
+		t.Fatal("falha não auditada")
+	}
+}
+
+func TestInitWithCloneNeverReplacesConcurrentSourceAndKeepsPromotedSourceOnAuditFailure(t *testing.T) {
+	t.Run("concurrent source", func(t *testing.T) {
+		parent := t.TempDir()
+		request := SourceInitRequest{Mode: SourceClone, Input: "file:///origin", OriginTransport: "file", OriginFingerprint: strings.Repeat("c", 64)}
+		result, err := InitWithSource(parent, "example", request, fakeInitRepository, fakeLinkInspect(nil, nil), func(_ string, staging string) error {
+			if err := os.Mkdir(filepath.Join(staging, ".git"), 0o755); err != nil {
+				return err
+			}
+			if err := os.Mkdir(resultSource(parent), 0o755); err != nil {
+				return err
+			}
+			return os.WriteFile(filepath.Join(resultSource(parent), "sentinel"), []byte("keep"), 0o644)
+		})
+		if err == nil || readText(t, filepath.Join(result.SourcePath, "sentinel")) != "keep" {
+			t.Fatalf("source concorrente alterado: erro=%v", err)
+		}
+	})
+
+	t.Run("audit finalization", func(t *testing.T) {
+		parent := t.TempDir()
+		original := replaceManifestFile
+		replaceManifestFile = func(string, string) error { return errors.New("disk full") }
+		t.Cleanup(func() { replaceManifestFile = original })
+		request := SourceInitRequest{Mode: SourceClone, Input: "file:///origin", OriginTransport: "file", OriginFingerprint: strings.Repeat("d", 64)}
+		result, err := InitWithSource(parent, "example", request, fakeInitRepository, fakeLinkInspect(nil, nil), func(_ string, staging string) error {
+			return os.Mkdir(filepath.Join(staging, ".git"), 0o755)
+		})
+		if err == nil {
+			t.Fatal("falha de auditoria ignorada")
+		}
+		if _, statErr := os.Stat(filepath.Join(result.SourcePath, ".git")); statErr != nil {
+			t.Fatalf("source promovido removido: %v", statErr)
+		}
+		if !strings.Contains(readText(t, result.AuditPath), `"status": "started"`) {
+			t.Fatal("auditoria não permaneceu started")
+		}
+	})
+}
+
+func TestInitWithCloneAuditAndCleanupFailuresStaySafe(t *testing.T) {
+	t.Run("started audit blocks clone and rolls back", func(t *testing.T) {
+		parent := t.TempDir()
+		root := filepath.Join(parent, "example")
+		if err := os.Mkdir(root, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		original := openCloneAudit
+		openCloneAudit = func(string, int, os.FileMode) (*os.File, error) { return nil, errors.New("disk full") }
+		t.Cleanup(func() { openCloneAudit = original })
+		called := false
+		request := SourceInitRequest{Mode: SourceClone, Input: "file:///origin", OriginTransport: "file", OriginFingerprint: strings.Repeat("e", 64)}
+		_, err := InitWithSource(parent, "example", request, fakeInitRepository, fakeLinkInspect(nil, nil), func(string, string) error { called = true; return nil })
+		if err == nil || called {
+			t.Fatalf("erro=%v clone chamado=%v", err, called)
+		}
+		assertEntries(t, root, nil)
+	})
+
+	t.Run("cleanup failure is audited", func(t *testing.T) {
+		parent := t.TempDir()
+		original := removeCloneStaging
+		removeCloneStaging = func(string) error { return errors.New("busy") }
+		t.Cleanup(func() { removeCloneStaging = original })
+		request := SourceInitRequest{Mode: SourceClone, Input: "file:///origin", OriginTransport: "file", OriginFingerprint: strings.Repeat("f", 64)}
+		result, err := InitWithSource(parent, "example", request, fakeInitRepository, fakeLinkInspect(nil, nil), func(_ string, staging string) error {
+			if err := os.WriteFile(filepath.Join(staging, "partial"), []byte("x"), 0o644); err != nil {
+				return err
+			}
+			return errors.New("failed")
+		})
+		if err == nil || !strings.Contains(readText(t, result.AuditPath), `"failure": "cleanup-failed"`) {
+			t.Fatalf("erro=%v auditoria=%s", err, readText(t, result.AuditPath))
+		}
+	})
+
+	t.Run("invalid clone result is removed and audited", func(t *testing.T) {
+		parent := t.TempDir()
+		request := SourceInitRequest{Mode: SourceClone, Input: "file:///origin", OriginTransport: "file", OriginFingerprint: strings.Repeat("0", 64)}
+		inspect := func(path string) (LinkRepositoryFacts, error) {
+			if strings.HasPrefix(filepath.Base(path), ".source-clone-") {
+				return LinkRepositoryFacts{}, errors.New("not a repository")
+			}
+			return fakeLinkInspect(nil, nil)(path)
+		}
+		result, err := InitWithSource(parent, "example", request, fakeInitRepository, inspect, func(_ string, staging string) error {
+			return os.WriteFile(filepath.Join(staging, "partial"), []byte("x"), 0o644)
+		})
+		if err == nil || !strings.Contains(readText(t, result.AuditPath), `"failure": "invalid-result"`) {
+			t.Fatalf("erro=%v auditoria=%s", err, readText(t, result.AuditPath))
+		}
+		if _, statErr := os.Stat(result.SourcePath); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("resultado inválido promovido: %v", statErr)
+		}
+	})
+}
+
+func resultSource(parent string) string { return filepath.Join(parent, "example", "source") }
+
 func assertKnowledge(t *testing.T, knowledge string) {
 	t.Helper()
 	for _, directory := range []string{"product", "specs", "decisions", "policies", "runs"} {

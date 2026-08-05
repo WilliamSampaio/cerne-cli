@@ -3,7 +3,20 @@
 All notable changes to Cerne are documented in this file. This project follows
 [Semantic Versioning](https://semver.org/).
 
-## 0.2.0 - Unreleased
+## 0.3.0 - Unreleased
+
+### Added
+
+- `cerne init --source` to atomically link an existing local Git worktree without modifying it.
+- `cerne init --clone` to securely clone allowed local, file, HTTPS, or SSH origins into source.
+- Redacted pre-execution clone audits with private staging and non-replacing promotion.
+
+### Security
+
+- Clone rejects unsafe transports and embedded credentials, disables Git prompts, uses fixed
+  shell-free arguments, and preserves only owned artifacts across failure boundaries.
+
+## 0.2.0 - 2026-08-05
 
 ### Added
 

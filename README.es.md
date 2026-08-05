@@ -28,8 +28,8 @@ Cerne sigue algunas reglas duraderas:
 - push, merge, publicación, despliegue y operaciones destructivas requieren autorización explícita;
 - los secretos y credenciales nunca deben almacenarse en los repositorios administrados.
 
-La versión actual es deliberadamente local. No llama agentes de IA, accede a GitHub, clona remotos,
-publica ni despliega nada.
+La versión actual es deliberadamente local. No llama agentes de IA, administra servicios de
+alojamiento, publica ni despliega. Solo accede a un origen Git con `init --clone` explícito.
 
 ## Requisitos
 
@@ -95,6 +95,19 @@ workspace no es un repositorio Git.
 Como Git no registra directorios vacíos, Cerne crea un archivo `.gitkeep` en cada directorio
 obligatorio de `knowledge`. Puedes eliminarlo después de añadir contenido al directorio. Cerne no
 crea commits automáticamente.
+
+Para empezar con un source existente, elige exactamente un modo de source:
+
+```sh
+cerne init mi-proyecto --source ../aplicacion-existente
+cerne init mi-proyecto --clone https://host/organizacion/aplicacion.git
+```
+
+`--source` vincula un working tree Git local non-bare, resuelve rutas relativas desde el directorio
+de invocación y nunca crea un source interno ni modifica el repositorio externo. `--clone` acepta
+una ruta local existente, `file`, HTTPS o SSH (incluida la sintaxis SCP-like), realiza un clon
+estándar completo en el `source` interno y mantiene el remoto `origin`. Estas opciones y
+`--workflow` son mutuamente excluyentes.
 
 Para inicializar un workflow opcional de especificación durante la creación:
 
@@ -166,9 +179,9 @@ o `"workflow":{"provider":"openspec"}`. El estado de instalación y la versión 
 ### Opciones globales
 
 - `cerne --help` muestra los comandos disponibles y las opciones globales.
-- `cerne --version` muestra el identificador SemVer estable, actualmente `cerne 0.2.0`.
+- `cerne --version` muestra el identificador SemVer estable, actualmente `cerne 0.3.0`.
 
-### `cerne init <project-name> [--workflow <speckit|openspec>]`
+### `cerne init <project-name> [--workflow ... | --source ... | --clone ...]`
 
 Crea un workspace debajo del directorio actual. El destino debe estar ausente o ser un directorio
 normal vacío; los enlaces simbólicos y destinos no vacíos se rechazan. El contenido existente nunca
@@ -180,6 +193,19 @@ en `.`.
 Sin la opción, el comportamiento no cambia. Con ella, Cerne ejecuta el provider instalado solo en
 knowledge, sin interacción y sin elegir un agente de IA. Un ejecutable ausente genera una
 advertencia; un provider ejecutado que falla conserva el workspace base y devuelve error operativo.
+
+`--source` valida y vincula un working tree local existente sin modificarlo. `--clone` rechaza
+HTTP, `git://`, `ext::`, helpers desconocidos, valores similares a opciones, credenciales
+embebidas, query y fragmento antes de ejecutar Git. La autenticación, los redirects y los filtros
+de checkout siguen bajo responsabilidad de Git; Cerne desactiva los prompts controlables, pero los
+helpers externos aún pueden fallar o actuar fuera del control portable de la CLI. El clon no añade
+depth, branch, submódulos, LFS, push ni fetch extra.
+
+Cada clon iniciado crea primero una auditoría saneada en `knowledge/runs/source-clone.json`. Los
+fallos previos al clon revierten el intento. Los posteriores conservan knowledge y la auditoría,
+eliminan solo el staging privado de Cerne e informan que el workspace quedó incompleto. La promoción
+nunca reemplaza un source concurrente; si falla la auditoría final tras la promoción, el source
+válido permanece.
 
 ### `cerne workflow setup`
 
@@ -229,11 +255,15 @@ un único stream.
 - `link` actualiza únicamente `knowledge/cerne.json` después de completar todas las validaciones.
 - El setup usa argumentos fijos, sin shell, recibe un entorno mínimo y desactiva la telemetría de
   OpenSpec. No recibe credenciales ni la ruta source y no registra la salida bruta del provider.
+- El clon usa argumentos Git fijos sin shell, una lista de protocolos permitidos, staging privado y
+  promoción sin reemplazo. El origen y la salida Git bruta no aparecen en la salida de Cerne, el
+  manifiesto ni la auditoría; la autenticación sigue siendo externa y Git conserva el origen como
+  remoto `origin`.
 - Un intento fallido conserva el workspace base y la auditoría, y solo elimina una nueva raíz
   perteneciente al provider.
 - La inspección Git desactiva locks opcionales y prompts y elimina variables `GIT_*` capaces de
   redirigir los procesos hijos.
-- Ningún comando actual accede a remotos ni necesita credenciales.
+- Solo `init --clone` explícito puede acceder a un origen o usar credenciales configuradas externamente.
 - No guardes tokens, contraseñas, claves privadas u otros secretos en los repositorios administrados.
 
 ## Diseño técnico
@@ -284,12 +314,12 @@ El historial de versiones está documentado en [CHANGELOG.md](CHANGELOG.md).
 
 ## Roadmap y alcance
 
-El alcance actual incluye creación, bootstrap opcional de workflow, validación del workspace,
-estado local y vínculo de un repositorio source local existente. En el futuro, Cerne podrá coordinar agentes auditables para
+El alcance actual incluye creación con source vacío, vinculado o clonado, bootstrap opcional de
+workflow, validación, estado local y vínculo de source. En el futuro, Cerne podrá coordinar agentes auditables para
 producto, documentación, implementación, validación y mantenimiento, sin depender de modelos,
 agentes o proveedores específicos.
 
-La administración de repositorios remotos, commits automáticos, push, pull requests, merge,
+La administración de alojamiento remoto, commits automáticos, push, pull requests, merge,
 publicación, despliegue, interfaz gráfica, salida JSON y ejecución de IA no forman parte de la CLI
 actual.
 
