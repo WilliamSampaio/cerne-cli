@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -172,6 +173,94 @@ func TestDoctorWarningsAndPrecedence(t *testing.T) {
 			t.Fatalf("diagnóstico = %#v", got)
 		}
 	})
+}
+
+func TestDoctorWorkflowStates(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	writeManifest(t, root, `{"name":"example","source":"../source","workflow":{"provider":"alpha"}}`)
+	definition := readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json")
+	resolve := func(string) (WorkflowDefinition, error) { return definition, nil }
+
+	definition.Available = false
+	got := DoctorWithWorkflow(root, fakeInspect(nil), allowAccess, resolve)
+	assertCheck(t, got, "workflow", Warning)
+	if got.Status != Warnings || len(got.Checks) != 11 {
+		t.Fatalf("diagnóstico=%#v", got)
+	}
+
+	definition.Available = true
+	if err := definition.Setup(filepath.Join(root, "knowledge")); err != nil {
+		t.Fatal(err)
+	}
+	got = DoctorWithWorkflow(root, fakeInspect(nil), allowAccess, resolve)
+	assertCheck(t, got, "workflow", Pass)
+	if got.Status != Healthy {
+		t.Fatalf("status=%s", got.Status)
+	}
+
+	definition.Available = false
+	got = DoctorWithWorkflow(root, fakeInspect(nil), allowAccess, resolve)
+	assertCheck(t, got, "workflow", Warning)
+}
+
+func TestDoctorAcceptsWorkflowWithoutTopLevelSpecs(t *testing.T) {
+	definition := readyDefinition("beta", "beta/specs", "beta", "beta/config.yaml")
+	base, _, err := InitWithWorkflow(t.TempDir(), "example", definition, fakeInitRepository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accessExisting := func(path string) AccessResult {
+		if _, err := os.Stat(path); err != nil {
+			return AccessResult{Read: AccessDenied, Write: AccessDenied}
+		}
+		return allowAccess(path)
+	}
+	got := DoctorWithWorkflow(filepath.Dir(base.KnowledgePath), fakeInspect(nil), accessExisting, func(string) (WorkflowDefinition, error) { return definition, nil })
+	if got.Status != Healthy {
+		t.Fatalf("diagnóstico=%#v", got)
+	}
+}
+
+func TestDoctorRejectsMalformedUnknownPartialAndNestedGitWorkflow(t *testing.T) {
+	for _, test := range []struct {
+		name, workflow string
+		prepare        func(*testing.T, string)
+		resolve        WorkflowResolver
+	}{
+		{"malformed", `{"provider":""}`, nil, func(string) (WorkflowDefinition, error) { return WorkflowDefinition{}, errors.New("unknown") }},
+		{"unknown", `{"provider":"other"}`, nil, func(string) (WorkflowDefinition, error) { return WorkflowDefinition{}, errors.New("unknown") }},
+		{"partial", `{"provider":"alpha"}`, func(t *testing.T, knowledge string) {
+			if err := os.Mkdir(filepath.Join(knowledge, ".alpha"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}, func(string) (WorkflowDefinition, error) {
+			return readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json"), nil
+		}},
+		{"nested git", `{"provider":"alpha"}`, func(t *testing.T, knowledge string) {
+			definition := readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json")
+			if err := definition.Setup(knowledge); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(knowledge, ".alpha", "nested", ".git"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}, func(string) (WorkflowDefinition, error) {
+			return readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json"), nil
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := newDoctorWorkspace(t, "example")
+			writeManifest(t, root, `{"name":"example","source":"../source","workflow":`+test.workflow+`}`)
+			if test.prepare != nil {
+				test.prepare(t, filepath.Join(root, "knowledge"))
+			}
+			got := DoctorWithWorkflow(root, fakeInspect(nil), allowAccess, test.resolve)
+			assertCheck(t, got, "workflow", Error)
+			if got.Status != Invalid {
+				t.Fatalf("status=%s", got.Status)
+			}
+		})
+	}
 }
 
 func newDoctorWorkspace(t *testing.T, name string) string {
