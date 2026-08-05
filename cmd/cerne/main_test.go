@@ -287,7 +287,9 @@ func TestCLIInitWithExistingLocalSource(t *testing.T) {
 	}
 
 	status, stdout, stderr = executeCLI(t, binary, parent, nil, "init", "from-worktree", "--source", worktree)
-	if status != 0 || stderr != "" || !strings.Contains(stdout, "Source vinculado: "+worktree+"\n") {
+	lines = strings.Split(stdout, "\n")
+	if status != 0 || stderr != "" || len(lines) != 4 ||
+		!samePath(strings.TrimPrefix(lines[2], "Source vinculado: "), worktree) {
 		t.Fatalf("worktree status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 	if !reflect.DeepEqual(worktreeBefore, snapshotTree(t, worktree)) || !reflect.DeepEqual(before, snapshotTree(t, source)) {
