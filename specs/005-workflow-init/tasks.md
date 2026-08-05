@@ -32,12 +32,12 @@ local process adapter used by every story.
 
 **⚠️ CRITICAL**: Complete this phase before any user story.
 
-- [ ] T001 [P] Write failing domain tests for applying a generic workflow definition, its canonical specs path, absent/ready/partial layouts and started/final audit JSON records while ignoring `runs/.gitkeep`, without provider-specific branches, in `internal/workspace/workflow_test.go`
-- [ ] T002 Implement generic workflow-definition consumption, layout classification and atomic redacted audit lifecycle without Spec Kit/OpenSpec constants in `internal/workspace/workflow.go`
-- [ ] T003 [P] Write failing adapter contract tests for resolving Spec Kit/OpenSpec/unknown identifiers into exact definitions, executable discovery, exact arguments, platform script choice, cwd, allowlisted environment, disabled telemetry and sanitized failures in `internal/workflowexec/setup_test.go`
-- [ ] T004 Implement the closed provider resolver, generic definitions, PATH discovery and shell-free execution with fixed arguments and minimal environment in `internal/workflowexec/setup.go`
-- [ ] T005 [P] Write failing manifest tests for absent, valid, malformed and opaque optional workflow identifiers, acceptance by status and preservation by link in `internal/workspace/doctor_test.go`, `internal/workspace/status_test.go` and `internal/workspace/link_test.go`
-- [ ] T006 Extend manifest decoding with an optional nonempty opaque workflow identifier, deferring provider support validation to the adapter resolver while keeping legacy manifests valid in `internal/workspace/doctor.go`
+- [X] T001 [P] Write failing domain tests for applying a generic workflow definition, its canonical specs path, absent/ready/partial layouts and started/final audit JSON records while ignoring `runs/.gitkeep`, without provider-specific branches, in `internal/workspace/workflow_test.go`
+- [X] T002 Implement generic workflow-definition consumption, layout classification and atomic redacted audit lifecycle without Spec Kit/OpenSpec constants in `internal/workspace/workflow.go`
+- [X] T003 [P] Write failing adapter contract tests for resolving Spec Kit/OpenSpec/unknown identifiers into exact definitions, executable discovery, exact arguments, platform script choice, cwd, allowlisted environment, disabled telemetry and sanitized failures in `internal/workflowexec/setup_test.go`
+- [X] T004 Implement the closed provider resolver, generic definitions, PATH discovery and shell-free execution with fixed arguments and minimal environment in `internal/workflowexec/setup.go`
+- [X] T005 [P] Write failing manifest tests for absent, valid, malformed and opaque optional workflow identifiers, acceptance by status and preservation by link in `internal/workspace/doctor_test.go`, `internal/workspace/status_test.go` and `internal/workspace/link_test.go`
+- [X] T006 Extend manifest decoding with an optional nonempty opaque workflow identifier, deferring provider support validation to the adapter resolver while keeping legacy manifests valid in `internal/workspace/doctor.go`
 
 **Checkpoint**: Providers, layouts, audit and manifests have deterministic contracts without a user-facing workflow yet.
 
@@ -53,13 +53,13 @@ verify manifest, conditional layout, invocation, audit, Git separation, exact st
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Write failing domain tests for legacy init and two opaque identifiers resolved to fake generic definitions, preserving `.gitkeep` in every required common directory, creating `specs/.gitkeep` only for legacy/Spec Kit, successful setup audit and untouched source in `internal/workspace/init_test.go`
-- [ ] T008 [P] [US1] Write failing CLI integration tests for both workflow values, exact success output, argument position and exact legacy init regression including its five `.gitkeep` files in `cmd/cerne/main_test.go`
+- [X] T007 [P] [US1] Write failing domain tests for legacy init and two opaque identifiers resolved to fake generic definitions, preserving `.gitkeep` in every required common directory, creating `specs/.gitkeep` only for legacy/Spec Kit, successful setup audit and untouched source in `internal/workspace/init_test.go`
+- [X] T008 [P] [US1] Write failing CLI integration tests for both workflow values, exact success output, argument position and exact legacy init regression including its five `.gitkeep` files in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Extend workspace creation to persist the opaque identifier, apply its resolved generic definition only after the base Git repositories exist, validate the supplied marker and represent configured or pending state in `internal/workspace/init.go`
-- [ ] T010 [US1] Parse `--workflow`, connect the process adapter, render configured success and preserve the no-flag path in `cmd/cerne/main.go`
+- [X] T009 [US1] Extend workspace creation to persist the opaque identifier, apply its resolved generic definition only after the base Git repositories exist, validate the supplied marker and represent configured or pending state in `internal/workspace/init.go`
+- [X] T010 [US1] Parse `--workflow`, connect the process adapter, render configured success and preserve the no-flag path in `cmd/cerne/main.go`
 
 **Checkpoint**: With an available controlled provider, each workflow initializes in one invocation; legacy init remains unchanged.
 
@@ -75,15 +75,15 @@ provider and run setup from nested workspace directories twice; verify warning, 
 
 ### Tests for User Story 2
 
-- [ ] T011 [P] [US2] Write failing domain tests for init with absent executable, locating pending workspaces, successful resume and ready no-op without a second audit in `internal/workspace/init_test.go` and `internal/workspace/workflow_test.go`
-- [ ] T012 [P] [US2] Write failing doctor tests for pending, ready and ready-with-executable-missing states while preserving the exact legacy ten-check report in `internal/workspace/doctor_test.go`
-- [ ] T013 [P] [US2] Write failing CLI tests for non-blocking init warning, `workflow setup` success/no-op/help, nested invocation and exact status/stream contracts in `cmd/cerne/main_test.go`
+- [X] T011 [P] [US2] Write failing domain tests for init with absent executable, locating pending workspaces, successful resume and ready no-op without a second audit in `internal/workspace/init_test.go` and `internal/workspace/workflow_test.go`
+- [X] T012 [P] [US2] Write failing doctor tests for pending, ready and ready-with-executable-missing states while preserving the exact legacy ten-check report in `internal/workspace/doctor_test.go`
+- [X] T013 [P] [US2] Write failing CLI tests for non-blocking init warning, `workflow setup` success/no-op/help, nested invocation and exact status/stream contracts in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Preserve the initialized workspace and pending result when provider discovery is absent, then implement ancestor location and idempotent resume using the declared provider in `internal/workspace/init.go` and `internal/workspace/workflow.go`
-- [ ] T015 [US2] Add the conditional workflow check through the generic resolver and availability callback without changing legacy doctor output in `internal/workspace/doctor.go`
-- [ ] T016 [US2] Add `workflow setup` dispatch, help, pending init warning, success/no-op rendering and corrective errors in `cmd/cerne/main.go`
+- [X] T014 [US2] Preserve the initialized workspace and pending result when provider discovery is absent, then implement ancestor location and idempotent resume using the declared provider in `internal/workspace/init.go` and `internal/workspace/workflow.go`
+- [X] T015 [US2] Add the conditional workflow check through the generic resolver and availability callback without changing legacy doctor output in `internal/workspace/doctor.go`
+- [X] T016 [US2] Add `workflow setup` dispatch, help, pending init warning, success/no-op rendering and corrective errors in `cmd/cerne/main.go`
 
 **Checkpoint**: Missing optional tools no longer block workspace creation and setup can be resumed exactly once.
 
@@ -99,16 +99,16 @@ owned roots or invalid Git metadata; compare all preexisting files and source be
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] Write failing domain tests for init provider failure and conditional rollback, missing marker after success, partial preexisting layout, nested Git, audit-finalization failure leaving `started`, conservative cleanup and byte-preserved prior files in `internal/workspace/init_test.go` and `internal/workspace/workflow_test.go`
-- [ ] T018 [P] [US3] Write failing adapter tests proving credential-like environment variables and raw token-like output never reach the subprocess result or diagnostics in `internal/workflowexec/setup_test.go`
-- [ ] T019 [P] [US3] Write failing doctor tests for malformed workflow identifier, identifier unresolved by the adapter, partial generic marker and nested Git as blocking findings in `internal/workspace/doctor_test.go`
-- [ ] T020 [P] [US3] Write failing CLI tests for invalid init flag forms, setup without declaration, missing/incompatible executable, provider failure, safe stderr and preserved base workspace in `cmd/cerne/main_test.go`
+- [X] T017 [P] [US3] Write failing domain tests for init provider failure and conditional rollback, missing marker after success, partial preexisting layout, nested Git, audit-finalization failure leaving `started`, conservative cleanup and byte-preserved prior files in `internal/workspace/init_test.go` and `internal/workspace/workflow_test.go`
+- [X] T018 [P] [US3] Write failing adapter tests proving credential-like environment variables and raw token-like output never reach the subprocess result or diagnostics in `internal/workflowexec/setup_test.go`
+- [X] T019 [P] [US3] Write failing doctor tests for malformed workflow identifier, identifier unresolved by the adapter, partial generic marker and nested Git as blocking findings in `internal/workspace/doctor_test.go`
+- [X] T020 [P] [US3] Write failing CLI tests for invalid init flag forms, setup without declaration, missing/incompatible executable, provider failure, safe stderr and preserved base workspace in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Preserve the base workspace after an executed provider fails while retaining pre-execution rollback, then complete safe failure categorization, marker validation, nested-Git refusal, audit finalization and owned-root-only cleanup in `internal/workspace/init.go` and `internal/workspace/workflow.go`
-- [ ] T022 [US3] Complete blocking workflow diagnoses and corrections without exposing provider output in `internal/workspace/doctor.go`
-- [ ] T023 [US3] Complete usage parsing and operational error rendering for all invalid and failed workflow paths in `cmd/cerne/main.go`
+- [X] T021 [US3] Preserve the base workspace after an executed provider fails while retaining pre-execution rollback, then complete safe failure categorization, marker validation, nested-Git refusal, audit finalization and owned-root-only cleanup in `internal/workspace/init.go` and `internal/workspace/workflow.go`
+- [X] T022 [US3] Complete blocking workflow diagnoses and corrections without exposing provider output in `internal/workspace/doctor.go`
+- [X] T023 [US3] Complete usage parsing and operational error rendering for all invalid and failed workflow paths in `cmd/cerne/main.go`
 
 **Checkpoint**: All refusal and provider-failure scenarios are recoverable, auditable and leave source untouched.
 
@@ -118,11 +118,11 @@ owned roots or invalid Git metadata; compare all preexisting files and source be
 
 **Purpose**: Stabilize public documentation, release identity and cross-platform acceptance.
 
-- [ ] T024 [P] Document workflow selection, layouts, optional dependencies, recovery, audit and effects in `README.md`
-- [ ] T025 [P] Mirror the command and safety documentation in `README.pt-BR.md` and `README.es.md`
-- [ ] T026 Update global/init/doctor/workflow help contracts and bump the compatible MINOR version with exact regression expectations in `cmd/cerne/main.go` and `cmd/cerne/main_test.go`
-- [ ] T027 Validate all twelve scenarios from `specs/005-workflow-init/quickstart.md`, using controlled providers for failure/security cases and recording any corrections in that file
-- [ ] T028 Run `gofmt` on changed Go files, `go vet ./...`, `go test -count=1 ./...` and `git diff --check`, confirming `.github/workflows/test.yml` covers Linux, Windows and macOS without real providers
+- [X] T024 [P] Document workflow selection, layouts, optional dependencies, recovery, audit and effects in `README.md`
+- [X] T025 [P] Mirror the command and safety documentation in `README.pt-BR.md` and `README.es.md`
+- [X] T026 Update global/init/doctor/workflow help contracts and bump the compatible MINOR version with exact regression expectations in `cmd/cerne/main.go` and `cmd/cerne/main_test.go`
+- [X] T027 Validate all twelve scenarios from `specs/005-workflow-init/quickstart.md`, using controlled providers for failure/security cases and recording any corrections in that file
+- [X] T028 Run `gofmt` on changed Go files, `go vet ./...`, `go test -count=1 ./...` and `git diff --check`, confirming `.github/workflows/test.yml` covers Linux, Windows and macOS without real providers
 
 ---
 

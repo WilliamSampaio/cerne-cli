@@ -22,6 +22,26 @@ type Result struct {
 }
 
 func Init(parent, name string, initRepository func(string) error) (result Result, err error) {
+	return initWorkspace(parent, name, WorkflowDefinition{}, initRepository)
+}
+
+func InitWithWorkflow(parent, name string, definition WorkflowDefinition, initRepository func(string) error) (Result, WorkflowResult, error) {
+	if definition.Provider == "" {
+		return Result{}, WorkflowResult{}, errors.New("workflow inválido")
+	}
+	if _, _, err := workflowPaths(filepath.Join(parent, name, "knowledge"), definition); err != nil {
+		return Result{}, WorkflowResult{}, errors.New("workflow inválido")
+	}
+	result, err := initWorkspace(parent, name, definition, initRepository)
+	if err != nil {
+		return Result{}, WorkflowResult{}, err
+	}
+	workflow, err := applyWorkflow(result.KnowledgePath, definition, "init", "--workflow")
+	workflow.ProjectName = name
+	return result, workflow, err
+}
+
+func initWorkspace(parent, name string, definition WorkflowDefinition, initRepository func(string) error) (result Result, err error) {
 	if err := ValidateName(name); err != nil {
 		return Result{}, err
 	}
@@ -63,7 +83,10 @@ func Init(parent, name string, initRepository func(string) error) (result Result
 
 	knowledge := filepath.Join(root, "knowledge")
 	source := filepath.Join(root, "source")
-	knowledgeDirs := knowledgeDirectories(knowledge)
+	knowledgeDirs := commonKnowledgeDirectories(knowledge)
+	if definition.Provider == "" || filepath.Clean(filepath.FromSlash(definition.CanonicalSpecs)) == "specs" {
+		knowledgeDirs = append(knowledgeDirs, filepath.Join(knowledge, "specs"))
+	}
 	for _, directory := range append([]string{knowledge, source}, knowledgeDirs...) {
 		if err := os.Mkdir(directory, 0o755); err != nil {
 			return Result{}, fmt.Errorf("não foi possível criar %q: %w", directory, err)
@@ -84,10 +107,19 @@ func Init(parent, name string, initRepository func(string) error) (result Result
 	created = append(created, manifestPath)
 	encoder := json.NewEncoder(manifest)
 	encoder.SetIndent("", "  ")
-	writeErr := encoder.Encode(struct {
-		Name   string `json:"name"`
-		Source string `json:"source"`
-	}{name, "../source"})
+	manifestData := struct {
+		Name     string `json:"name"`
+		Source   string `json:"source"`
+		Workflow *struct {
+			Provider string `json:"provider"`
+		} `json:"workflow,omitempty"`
+	}{Name: name, Source: "../source"}
+	if definition.Provider != "" {
+		manifestData.Workflow = &struct {
+			Provider string `json:"provider"`
+		}{Provider: definition.Provider}
+	}
+	writeErr := encoder.Encode(manifestData)
 	closeErr := manifest.Close()
 	if writeErr != nil {
 		return Result{}, fmt.Errorf("não foi possível gravar o manifesto: %w", writeErr)
@@ -147,6 +179,14 @@ func removeCreated(paths []string) error {
 
 func knowledgeDirectories(root string) []string {
 	names := []string{"product", "specs", "decisions", "policies", "runs"}
+	return namedDirectories(root, names)
+}
+
+func commonKnowledgeDirectories(root string) []string {
+	return namedDirectories(root, []string{"product", "decisions", "policies", "runs"})
+}
+
+func namedDirectories(root string, names []string) []string {
 	directories := make([]string, len(names))
 	for index, name := range names {
 		directories[index] = filepath.Join(root, name)

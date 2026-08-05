@@ -27,6 +27,7 @@ Comandos:
   doctor    Valida a estrutura e a segurança do workspace
   status    Exibe o estado local dos repositórios
   link      Vincula um repositório Git local como source
+  workflow  Inicializa o workflow declarado no workspace
 
 Opções:
   --help       Exibe esta ajuda
@@ -38,7 +39,7 @@ Use "cerne <comando> --help" para detalhes de um comando.
 const expectedInitHelp = `Inicializa um workspace Cerne com repositórios Git independentes.
 
 Uso:
-  cerne init <project-name>
+  cerne init <project-name> [--workflow <speckit|openspec>]
 
 Nome:
   1 a 255 caracteres ASCII; começa por letra ou número e continua com
@@ -56,9 +57,16 @@ Estrutura:
   │   └── runs/
   └── source/
 
+Workflow:
+  Sem a opção, mantém o layout padrão em knowledge/specs. Spec Kit também usa
+  specs e cria .specify. OpenSpec usa openspec/specs e cria openspec.
+  O Cerne usa somente uma instalação local existente, sem instalar, atualizar,
+  selecionar agente ou fornecer credenciais. Se ausente, o setup fica pendente.
+
 Efeitos:
   Cria dois repositórios Git locais vazios, sem commit ou remoto.
-  Não acessa a rede e não altera conteúdo existente.
+  Com --workflow, executa o init local do provider somente em knowledge e cria
+  uma auditoria em runs. Não altera source nem autoriza operações Git remotas.
 
 Saídas:
   Sucesso e ajuda usam stdout. Erros usam stderr.
@@ -70,6 +78,7 @@ Erros:
 
 Exemplo:
   cerne init exemplo
+  cerne init exemplo --workflow speckit
 `
 
 func TestCLIGlobalHelpAndVersion(t *testing.T) {
@@ -79,7 +88,7 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 		expected string
 	}{
 		{"--help", expectedGlobalHelp},
-		{"--version", "cerne 0.1.0\n"},
+		{"--version", "cerne 0.2.0\n"},
 	} {
 		t.Run(test.argument, func(t *testing.T) {
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, test.argument)
@@ -144,7 +153,7 @@ func TestCLIStableContractAndPortablePath(t *testing.T) {
 
 	t.Run("missing argument", func(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "init")
-		expected := "erro: informe exatamente um nome de projeto\nuso: cerne init <project-name>\n"
+		expected := "erro: argumento inválido\nuso: cerne init <project-name> [--workflow <speckit|openspec>]\n"
 		if status != 2 || stdout != "" || stderr != expected {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
@@ -218,6 +227,124 @@ func TestCLIFailures(t *testing.T) {
 			t.Fatalf("workspace parcial encontrado: %v", err)
 		}
 	})
+}
+
+func TestCLIWorkflowInitPendingResumeIdempotentAndFailure(t *testing.T) {
+	binary := buildCLI(t)
+
+	t.Run("configured speckit", func(t *testing.T) {
+		tools := buildWorkflowTools(t, "speckit", false)
+		parent := t.TempDir()
+		status, stdout, stderr := executeCLI(t, binary, parent, replaceEnvironment(os.Environ(), "PATH", tools), "init", "spec", "--workflow", "speckit")
+		knowledge := filepath.Join(parent, "spec", "knowledge")
+		if status != 0 || !strings.HasSuffix(stdout, "Workflow: speckit\nSetup: concluído\n") || stderr != "" {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		for _, path := range []string{filepath.Join(knowledge, ".specify", "init-options.json"), filepath.Join(knowledge, "specs", ".gitkeep")} {
+			if _, err := os.Stat(path); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+
+	t.Run("configured openspec", func(t *testing.T) {
+		tools := buildWorkflowTools(t, "openspec", false)
+		parent := t.TempDir()
+		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "example", "--workflow", "openspec")
+		knowledge := filepath.Join(parent, "example", "knowledge")
+		expected := "Workspace \"example\" criado.\nKnowledge: " + knowledge + "\nSource: " + filepath.Join(parent, "example", "source") + "\nWorkflow: openspec\nSetup: concluído\n"
+		if status != 0 || stdout != expected || stderr != "" {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(knowledge, "openspec", "config.yaml")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(knowledge, "specs")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("specs top-level existe: %v", err)
+		}
+		if strings.Contains(readFile(t, filepath.Join(knowledge, "openspec", "record")), "SECRET") {
+			t.Fatal("segredo chegou ao provider")
+		}
+	})
+
+	t.Run("pending resume and no-op", func(t *testing.T) {
+		tools := buildWorkflowTools(t, "", false)
+		parent := t.TempDir()
+		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "pending", "--workflow", "speckit")
+		root := filepath.Join(parent, "pending")
+		if status != 0 || !strings.Contains(stdout, "Setup: pendente") || !strings.Contains(stderr, `aviso: executável "specify" não encontrado`) {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		installWorkflowTool(t, tools, "speckit")
+		nested := filepath.Join(root, "knowledge", "product")
+		status, stdout, stderr = executeCLI(t, binary, nested, environment, "workflow", "setup")
+		knowledge := filepath.Join(root, "knowledge")
+		expected := "Workflow: speckit\nKnowledge: " + knowledge + "\nSetup concluído.\n"
+		if status != 0 || stdout != expected || stderr != "" {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		before := snapshotTree(t, root)
+		status, stdout, stderr = executeCLI(t, binary, nested, environment, "workflow", "setup")
+		if status != 0 || stdout != "Workflow: speckit\nKnowledge: "+knowledge+"\nNenhuma alteração necessária.\n" || stderr != "" || !reflect.DeepEqual(before, snapshotTree(t, root)) {
+			t.Fatalf("no-op status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("safe provider failure preserves base", func(t *testing.T) {
+		tools := buildWorkflowTools(t, "speckit", true)
+		parent := t.TempDir()
+		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment = append(environment, "CERNE_SECRET_TOKEN=SECRET-value")
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "failed", "--workflow", "speckit")
+		root := filepath.Join(parent, "failed")
+		if status != 1 || stdout != "" || strings.Contains(stderr, "SECRET") || !strings.Contains(stderr, "provider não concluiu") {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(root, "knowledge", "cerne.json")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(root, "source", ".git")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(root, "knowledge", ".specify")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("raiz parcial existe: %v", err)
+		}
+		runs, err := os.ReadDir(filepath.Join(root, "knowledge", "runs"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(runs) != 2 {
+			t.Fatalf("runs=%v", runs)
+		}
+	})
+}
+
+func TestCLIWorkflowUsageAndHelp(t *testing.T) {
+	binary := buildCLI(t)
+	for _, args := range [][]string{
+		{"init", "example", "--workflow"},
+		{"init", "example", "--workflow", "other"},
+		{"init", "example", "--workflow", "speckit", "extra"},
+		{"init", "--workflow", "speckit", "example"},
+		{"workflow", "setup", "extra"},
+	} {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, args...)
+		if status != 2 || stdout != "" || !strings.Contains(stderr, "uso:") {
+			t.Fatalf("args=%v status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
+		}
+	}
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "workflow", "--help")
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne workflow setup") {
+		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	parent := t.TempDir()
+	root := initWorkspaceWithCLI(t, binary, parent, "legacy")
+	status, stdout, stderr = executeCLI(t, binary, root, nil, "workflow", "setup")
+	if status != 1 || stdout != "" || !strings.Contains(stderr, "workflow não configurado") {
+		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
 }
 
 func TestCLIDoctorHealthyWarningAndInvalidReports(t *testing.T) {
@@ -769,6 +896,74 @@ func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
 		t.Fatal(err)
 	}
 	return out
+}
+
+func buildWorkflowTools(t *testing.T, provider string, fail bool) string {
+	t.Helper()
+	directory := t.TempDir()
+	source := filepath.Join(directory, "main.go")
+	program := `package main
+import ("fmt"; "os"; "path/filepath"; "strings")
+func main() {
+  executable, _ := os.Executable()
+  name := strings.TrimSuffix(filepath.Base(executable), filepath.Ext(executable))
+  if name == "git" { if err := os.Mkdir(".git", 0755); err != nil { os.Exit(1) }; return }
+  root, marker := ".specify", ".specify/init-options.json"
+  if name == "openspec" { root, marker = "openspec", "openspec/config.yaml" }
+  if _, err := os.Stat(filepath.Join(filepath.Dir(executable), "fail")); err == nil {
+    _ = os.MkdirAll(root, 0755); fmt.Fprintln(os.Stderr, "SECRET raw provider output"); os.Exit(9)
+  }
+  if err := os.MkdirAll(filepath.Dir(marker), 0755); err != nil { os.Exit(1) }
+  if name == "openspec" { _ = os.MkdirAll(filepath.Join(root, "specs"), 0755) }
+  if err := os.WriteFile(marker, []byte("configured"), 0644); err != nil { os.Exit(1) }
+  record := strings.Join(os.Args[1:], "\n") + "\n" + strings.Join(os.Environ(), "\n")
+  if err := os.WriteFile(filepath.Join(root, "record"), []byte(record), 0644); err != nil { os.Exit(1) }
+}`
+	if err := os.WriteFile(source, []byte(program), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tool := filepath.Join(directory, "workflow-test-tool")
+	if runtime.GOOS == "windows" {
+		tool += ".exe"
+	}
+	command := exec.Command("go", "build", "-o", tool, source)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build workflow tool: %v: %s", err, output)
+	}
+	installToolBinary(t, tool, filepath.Join(directory, executableFilename("git")))
+	if provider != "" {
+		installWorkflowTool(t, directory, provider)
+	}
+	if fail {
+		if err := os.WriteFile(filepath.Join(directory, "fail"), []byte("1"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return directory
+}
+
+func installWorkflowTool(t *testing.T, directory, provider string) {
+	t.Helper()
+	name := map[string]string{"speckit": "specify", "openspec": "openspec"}[provider]
+	installToolBinary(t, filepath.Join(directory, executableFilename("workflow-test-tool")), filepath.Join(directory, executableFilename(name)))
+}
+
+func installToolBinary(t *testing.T, source, destination string) {
+	t.Helper()
+	data, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(destination, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func executableFilename(name string) string {
+	if runtime.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
 }
 
 func executeCLI(t *testing.T, binary, directory string, environment []string, args ...string) (int, string, string) {

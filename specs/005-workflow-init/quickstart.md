@@ -146,3 +146,12 @@ git diff --check
 
 The CI matrix must pass the same suite on Linux, Windows and macOS without real provider installs,
 network access or credentials.
+
+## Validation record
+
+On 2026-08-05, the twelve scenarios were covered by the automated domain, adapter, and CLI suites
+using locally built controlled `specify` and `openspec` substitutes. The fixtures verify exact
+arguments, platform script choice, conditional layouts, pending recovery, idempotency, refusal and
+cleanup paths, doctor classifications, environment filtering, redacted diagnostics, audit states,
+and source isolation. Real provider installations remain an optional release smoke test and are
+not required by CI.
