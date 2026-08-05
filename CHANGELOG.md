@@ -3,6 +3,19 @@
 All notable changes to Cerne are documented in this file. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## 0.2.0 - Unreleased
+
+### Added
+
+- Optional Spec Kit or OpenSpec bootstrap through `cerne init --workflow`.
+- Idempotent `cerne workflow setup` recovery for pending workspaces.
+- Redacted workflow audit records and workflow-aware `cerne doctor` diagnostics.
+
+### Security
+
+- Workflow providers run without a shell, with fixed arguments, a minimal environment, and no
+  inherited credentials; OpenSpec telemetry is disabled.
+
 ## 0.1.0 - 2026-08-03
 
 ### Added
