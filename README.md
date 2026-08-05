@@ -88,9 +88,9 @@ my-project/
 Both repositories are local, independent, and initially have no commits or remotes. The workspace
 root itself is not a Git repository.
 
-Git does not track empty directories. Add project knowledge before the first knowledge commit so
-the directories that matter are preserved; Cerne intentionally creates no placeholder files or
-automatic commits.
+Because Git does not track empty directories, Cerne creates a `.gitkeep` file in each required
+`knowledge` directory. You can remove it after adding content to that directory. Cerne does not
+create commits automatically.
 
 ### 2. Validate it
 
