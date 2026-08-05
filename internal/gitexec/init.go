@@ -64,8 +64,6 @@ func ClassifyCloneOrigin(start, input string) (CloneOrigin, error) {
 			return CloneOrigin{}, ErrInvalidCloneOrigin
 		}
 		return cloneOrigin(filepath.Clean(absolute), "local", input), nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return CloneOrigin{}, ErrInvalidCloneOrigin
 	}
 
 	parsed, err := url.Parse(input)
