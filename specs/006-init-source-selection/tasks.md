@@ -33,8 +33,8 @@ infrastructure, and the plan adds no dependency or package.
 
 **⚠️ CRITICAL**: Complete this phase before any user story.
 
-- [ ] T001 Write failing table-driven tests for default, `--source`, `--clone`, missing values, mutual exclusion, repetition, ordering and extra arguments before Git lookup or filesystem effects in `cmd/cerne/main_test.go`
-- [ ] T002 Implement the exact-shape manual init parser and source-mode request without changing legacy dispatch in `cmd/cerne/main.go`
+- [X] T001 Write failing table-driven tests for default, `--source`, `--clone`, missing values, mutual exclusion, repetition, ordering and extra arguments before Git lookup or filesystem effects in `cmd/cerne/main_test.go`
+- [X] T002 Implement the exact-shape manual init parser and source-mode request without changing legacy dispatch in `cmd/cerne/main.go`
 
 **Checkpoint**: Every accepted or rejected invocation has a deterministic request and status-two contract.
 
@@ -51,13 +51,13 @@ identical external snapshot.
 
 ### Tests for User Story 1
 
-- [ ] T003 [P] [US1] Write failing domain tests for local path resolution, non-bare root/worktree acceptance, unsafe overlap refusal, portable manifest path, pre-success revalidation, no internal source, byte-preserved external repository and unchanged `link` behavior in `internal/workspace/init_test.go` and `internal/workspace/link_test.go`
-- [ ] T004 [P] [US1] Write failing CLI integration tests for `--source`, exact success/failure streams, spaces/Unicode, Git absence and exact no-flag regression in `cmd/cerne/main_test.go`
+- [X] T003 [P] [US1] Write failing domain tests for local path resolution, non-bare root/worktree acceptance, unsafe overlap refusal, portable manifest path, pre-success revalidation, no internal source, byte-preserved external repository and unchanged `link` behavior in `internal/workspace/init_test.go` and `internal/workspace/link_test.go`
+- [X] T004 [P] [US1] Write failing CLI integration tests for `--source`, exact success/failure streams, spaces/Unicode, Git absence and exact no-flag regression in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Refactor only the reusable path, repository and separation checks from `internal/workspace/link.go` and extend init request handling for default/local modes in `internal/workspace/init.go`
-- [ ] T006 [US1] Connect the existing link inspector to init, render `Source vinculado` and preserve byte-for-byte legacy output in `cmd/cerne/main.go`
+- [X] T005 [US1] Refactor only the reusable path, repository and separation checks from `internal/workspace/link.go` and extend init request handling for default/local modes in `internal/workspace/init.go`
+- [X] T006 [US1] Connect the existing link inspector to init, render `Source vinculado` and preserve byte-for-byte legacy output in `cmd/cerne/main.go`
 
 **Checkpoint**: Local source init works in one invocation and default init remains exact.
 
@@ -74,15 +74,15 @@ noninteraction and absence of origin/output in returned data.
 
 ### Tests for User Story 2
 
-- [ ] T007 [P] [US2] Write failing adapter contract tests for allowed/rejected origin forms, embedded credentials, exact clone argv, `--` injection protection, `origin`, `--no-local`, protocol allowlist, empty hooks/templates, prompt controls and redacted errors in `internal/gitexec/init_test.go`
-- [ ] T008 [P] [US2] Write failing domain tests for populated/empty clone success through private staging, promotion without remnants, unchanged origin, manifest, independent Git roots, complete history/remotes, `started` before callback and atomic succeeded audit excluding `runs/.gitkeep` in `internal/workspace/init_test.go`
-- [ ] T009 [P] [US2] Write failing CLI integration tests for successful populated/empty clone, exact output, absent origin in streams/manifest/audit and acceptance by doctor/status in `cmd/cerne/main_test.go`
+- [X] T007 [P] [US2] Write failing adapter contract tests for allowed/rejected origin forms, embedded credentials, exact clone argv, `--` injection protection, `origin`, `--no-local`, protocol allowlist, empty hooks/templates, prompt controls and redacted errors in `internal/gitexec/init_test.go`
+- [X] T008 [P] [US2] Write failing domain tests for populated/empty clone success through private staging, promotion without remnants, unchanged origin, manifest, independent Git roots, complete history/remotes, `started` before callback and atomic succeeded audit excluding `runs/.gitkeep` in `internal/workspace/init_test.go`
+- [X] T009 [P] [US2] Write failing CLI integration tests for successful populated/empty clone, exact output, absent origin in streams/manifest/audit and acceptance by doctor/status in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Implement standard-library origin classification and secure shell-free `FindClone` execution beside the existing Git init adapter in `internal/gitexec/init.go`
-- [ ] T011 [US2] Implement clone mode happy path with private staging, non-replacing promotion, SHA-256 origin fingerprint, fixed atomic audit lifecycle, cloned-repository validation and transient result fields in `internal/workspace/init.go`
-- [ ] T012 [US2] Connect the clone adapter, render `Source clonado` and map safe operational failures in `cmd/cerne/main.go`
+- [X] T010 [US2] Implement standard-library origin classification and secure shell-free `FindClone` execution beside the existing Git init adapter in `internal/gitexec/init.go`
+- [X] T011 [US2] Implement clone mode happy path with private staging, non-replacing promotion, SHA-256 origin fingerprint, fixed atomic audit lifecycle, cloned-repository validation and transient result fields in `internal/workspace/init.go`
+- [X] T012 [US2] Connect the clone adapter, render `Source clonado` and map safe operational failures in `cmd/cerne/main.go`
 
 **Checkpoint**: Both populated and empty local origins clone in one invocation without network fixtures or secret exposure.
 
@@ -98,14 +98,14 @@ all preexisting bytes, exact streams/status and final filesystem/audit state.
 
 ### Tests for User Story 3
 
-- [ ] T013 [P] [US3] Write failing adapter tests proving disallowed transports never execute and token-like origin, environment and Git output never enter errors or results in `internal/gitexec/init_test.go`
-- [ ] T014 [P] [US3] Write failing domain tests for pre-clone full rollback, clone failure preserving knowledge/failed audit, staging-only cleanup, private-directory cleanup failure, invalid clone result, concurrent source blocking promotion and post-promotion audit-finalization failure preserving valid source with `started` in `internal/workspace/init_test.go`
-- [ ] T015 [P] [US3] Write failing CLI tests for unsafe origin, authentication/process failure, incomplete-workspace correction, missing source diagnosis, unchanged existing commands and exact legacy help/output/status in `cmd/cerne/main_test.go`
+- [X] T013 [P] [US3] Write failing adapter tests proving disallowed transports never execute and token-like origin, environment and Git output never enter errors or results in `internal/gitexec/init_test.go`
+- [X] T014 [P] [US3] Write failing domain tests for pre-clone full rollback, clone failure preserving knowledge/failed audit, staging-only cleanup, private-directory cleanup failure, invalid clone result, concurrent source blocking promotion and post-promotion audit-finalization failure preserving valid source with `started` in `internal/workspace/init_test.go`
+- [X] T015 [P] [US3] Write failing CLI tests for unsafe origin, authentication/process failure, incomplete-workspace correction, missing source diagnosis, unchanged existing commands and exact legacy help/output/status in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Complete the post-audit rollback boundary with staging-only failure cleanup, concurrent-source promotion refusal, safe failure categories and post-promotion inconclusive-audit handling in `internal/workspace/init.go`
-- [ ] T017 [US3] Complete CLI failure rendering and corrective guidance without exposing origin or Git output in `cmd/cerne/main.go`
+- [X] T016 [US3] Complete the post-audit rollback boundary with staging-only failure cleanup, concurrent-source promotion refusal, safe failure categories and post-promotion inconclusive-audit handling in `internal/workspace/init.go`
+- [X] T017 [US3] Complete CLI failure rendering and corrective guidance without exposing origin or Git output in `cmd/cerne/main.go`
 
 **Checkpoint**: Every refusal and failure path is noninteractive, auditable when Git ran, secret-safe and limited to owned paths.
 
@@ -115,11 +115,11 @@ all preexisting bytes, exact streams/status and final filesystem/audit state.
 
 **Purpose**: Stabilize documentation, release identity and three-platform acceptance.
 
-- [ ] T018 [P] Document all three init modes, source layouts, transports, authentication, filters, remotes, rollback, audit, streams and examples in `README.md`
-- [ ] T019 [P] Mirror the complete init source-selection contract in `README.pt-BR.md` and `README.es.md`
-- [ ] T020 Update global/init help, exact help tests, compatible MINOR version and release notes in `cmd/cerne/main.go`, `cmd/cerne/main_test.go` and `CHANGELOG.md`
-- [ ] T021 Validate all twelve scenarios from `specs/006-init-source-selection/quickstart.md` with local origins/fake Git and record any corrections in that file
-- [ ] T022 Run `gofmt` on changed Go files, `go vet ./...`, `go test -count=1 ./...` and `git diff --check`, confirming `.github/workflows/test.yml` exercises Linux, Windows and macOS without network or credentials
+- [X] T018 [P] Document all three init modes, source layouts, transports, authentication, filters, remotes, rollback, audit, streams and examples in `README.md`
+- [X] T019 [P] Mirror the complete init source-selection contract in `README.pt-BR.md` and `README.es.md`
+- [X] T020 Update global/init help, exact help tests, compatible MINOR version and release notes in `cmd/cerne/main.go`, `cmd/cerne/main_test.go` and `CHANGELOG.md`
+- [X] T021 Validate all twelve scenarios from `specs/006-init-source-selection/quickstart.md` with local origins/fake Git and record any corrections in that file
+- [X] T022 Run `gofmt` on changed Go files, `go vet ./...`, `go test -count=1 ./...` and `git diff --check`, confirming `.github/workflows/test.yml` exercises Linux, Windows and macOS without network or credentials
 
 ---
 

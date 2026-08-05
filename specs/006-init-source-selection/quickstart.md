@@ -118,3 +118,11 @@ go vet ./...
 go test -count=1 ./...
 git diff --check
 ```
+
+## Validation record
+
+Validated on 2026-08-05. Scenarios 1–12 are covered by the domain, Git-adapter, and CLI tests using
+temporary local repositories, linked worktrees, local clones, and fake Git failures. The full
+uncached suite, `go vet ./...`, `gofmt`, `git diff --check`, and Windows/macOS cross-compilation
+passed. The existing CI matrix already runs `go test ./...` on Linux, Windows, and macOS without
+network fixtures or credentials. No quickstart correction was required.
