@@ -65,6 +65,14 @@ type GitInspect func(string) (RepositoryFacts, error)
 type AccessCheck func(string) AccessResult
 
 func Doctor(root string, inspectGit GitInspect, checkAccess AccessCheck) Diagnosis {
+	return doctor(root, inspectGit, checkAccess, nil)
+}
+
+func DoctorWithWorkflow(root string, inspectGit GitInspect, checkAccess AccessCheck, resolve WorkflowResolver) Diagnosis {
+	return doctor(root, inspectGit, checkAccess, resolve)
+}
+
+func doctor(root string, inspectGit GitInspect, checkAccess AccessCheck, resolve WorkflowResolver) Diagnosis {
 	root = canonical(root)
 	knowledge := filepath.Join(root, "knowledge")
 	manifestPath := filepath.Join(knowledge, "cerne.json")
@@ -91,10 +99,13 @@ func Doctor(root string, inspectGit GitInspect, checkAccess AccessCheck) Diagnos
 		gitIndependenceCheck(inspectGit, knowledge, source, knowledgeGit, sourceGit, knowledgeGitErr, sourceGitErr),
 		versioningIsolationCheck(inspectGit, knowledge, source, knowledgeGit, sourceGit, knowledgeGitErr, sourceGitErr),
 		manifestPathsCheck(manifestErr, sourceErr, sourceOK),
-		knowledgeDirectoriesCheck(knowledge, knowledgeOK),
+		knowledgeDirectoriesCheck(knowledge, knowledgeOK, manifest.WorkflowDeclared),
 		gitAvailableCheck(inspectGit),
-		permissionsCheck(checkAccess, manifestPath, knowledge, source, knowledgeOK, sourceOK),
+		permissionsCheck(checkAccess, manifestPath, knowledge, source, knowledgeOK, sourceOK, manifest.WorkflowDeclared),
 		manifestVersionCheck(manifest.VersionState, manifest.VersionErr),
+	}
+	if manifest.WorkflowDeclared || manifest.WorkflowErr != nil {
+		checks = append(checks, workflowCheck(knowledge, manifest, resolve))
 	}
 	status := Healthy
 	for _, check := range checks {
@@ -110,10 +121,13 @@ func Doctor(root string, inspectGit GitInspect, checkAccess AccessCheck) Diagnos
 }
 
 type manifest struct {
-	Name         string
-	Source       string
-	VersionState string
-	VersionErr   error
+	Name             string
+	Source           string
+	VersionState     string
+	VersionErr       error
+	WorkflowDeclared bool
+	WorkflowProvider string
+	WorkflowErr      error
 }
 
 func readManifest(path string) (manifest, error) {
@@ -148,6 +162,17 @@ func readManifest(path string) (manifest, error) {
 	} else {
 		out.VersionState = "invalid"
 		out.VersionErr = errors.New("versão não suportada")
+	}
+	if value, ok := raw["workflow"]; ok {
+		out.WorkflowDeclared = true
+		var workflow map[string]json.RawMessage
+		if err := json.Unmarshal(value, &workflow); err != nil || len(workflow) != 1 {
+			out.WorkflowErr = errors.New("workflow inválido")
+		} else if err := decodeString(workflow, "provider", &out.WorkflowProvider); err != nil {
+			out.WorkflowErr = err
+		} else if strings.TrimSpace(out.WorkflowProvider) == "" {
+			out.WorkflowErr = errors.New("workflow inválido")
+		}
 	}
 	return out, nil
 }
@@ -222,16 +247,57 @@ func manifestPathsCheck(manifestErr, sourceErr error, sourceOK bool) CheckResult
 	return check("manifest-paths", "Caminhos do manifesto", Pass, "válidos", "")
 }
 
-func knowledgeDirectoriesCheck(knowledge string, knowledgeOK bool) CheckResult {
+func knowledgeDirectoriesCheck(knowledge string, knowledgeOK, workflowDeclared bool) CheckResult {
 	if !knowledgeOK {
 		return check("knowledge-directories", "Diretórios obrigatórios", Error, "knowledge indisponível", "restaure o repositório de conhecimento")
 	}
-	for _, dir := range knowledgeDirectories(knowledge) {
+	directories := commonKnowledgeDirectories(knowledge)
+	if !workflowDeclared {
+		directories = append(directories, filepath.Join(knowledge, "specs"))
+	}
+	for _, dir := range directories {
 		if err := regularDir(dir); err != nil {
 			return check("knowledge-directories", "Diretórios obrigatórios", Error, "diretório obrigatório ausente ou inválido", "restaure product, specs, decisions, policies e runs")
 		}
 	}
+	if workflowDeclared {
+		return check("knowledge-directories", "Diretórios obrigatórios", Pass, "product, decisions, policies e runs encontrados", "")
+	}
 	return check("knowledge-directories", "Diretórios obrigatórios", Pass, "product, specs, decisions, policies e runs encontrados", "")
+}
+
+func workflowCheck(knowledge string, data manifest, resolve WorkflowResolver) CheckResult {
+	if data.WorkflowErr != nil {
+		return check("workflow", "Workflow", Error, "configuração inválida", "corrija o objeto workflow.provider no manifesto")
+	}
+	if resolve == nil {
+		return check("workflow", "Workflow", Error, "provider não pôde ser resolvido", "execute doctor com uma versão atualizada do Cerne")
+	}
+	definition, err := resolve(data.WorkflowProvider)
+	if err != nil {
+		return check("workflow", "Workflow", Error, "provider desconhecido", "use speckit ou openspec em um novo workspace")
+	}
+	root, marker, err := workflowPaths(knowledge, definition)
+	if err != nil {
+		return check("workflow", "Workflow", Error, "definição inválida", "atualize o Cerne")
+	}
+	state, err := workflowLayout(root, marker)
+	if err != nil {
+		return check("workflow", "Workflow", Error, "estrutura inválida ou parcial", "resolva a estrutura do provider antes de executar setup")
+	}
+	if state == WorkflowPending {
+		if definition.Available {
+			return check("workflow", "Workflow", Warning, "configurado, mas pendente", "execute cerne workflow setup")
+		}
+		return check("workflow", "Workflow", Warning, "executável ausente; workflow pendente", "instale o provider e execute cerne workflow setup")
+	}
+	if !workflowSpecsValid(knowledge, root, definition) {
+		return check("workflow", "Workflow", Error, "diretório canônico de especificações ausente", "restaure a estrutura do provider")
+	}
+	if !definition.Available {
+		return check("workflow", "Workflow", Warning, "materializado; executável ausente", "instale o provider para executar comandos do workflow")
+	}
+	return check("workflow", "Workflow", Pass, "materializado e disponível", "")
 }
 
 func gitAvailableCheck(inspect GitInspect) CheckResult {
@@ -241,14 +307,18 @@ func gitAvailableCheck(inspect GitInspect) CheckResult {
 	return check("git-available", "Git", Pass, "disponível", "")
 }
 
-func permissionsCheck(access AccessCheck, manifestPath, knowledge, source string, knowledgeOK, sourceOK bool) CheckResult {
+func permissionsCheck(access AccessCheck, manifestPath, knowledge, source string, knowledgeOK, sourceOK, workflowDeclared bool) CheckResult {
 	if access == nil {
 		return check("permissions", "Permissões", Warning, "não foi possível confirmar permissões", "verifique leitura e escrita manualmente")
 	}
 	paths := []string{manifestPath}
 	if knowledgeOK {
 		paths = append(paths, knowledge)
-		paths = append(paths, knowledgeDirectories(knowledge)...)
+		directories := commonKnowledgeDirectories(knowledge)
+		if !workflowDeclared {
+			directories = append(directories, filepath.Join(knowledge, "specs"))
+		}
+		paths = append(paths, directories...)
 	}
 	if sourceOK {
 		paths = append(paths, source)

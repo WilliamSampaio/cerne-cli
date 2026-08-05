@@ -52,6 +52,25 @@ func TestLinkUpdatesManifestAfterValidations(t *testing.T) {
 	}
 }
 
+func TestLinkPreservesOpaqueWorkflow(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	source := filepath.Join(filepath.Dir(root), "new-source")
+	if err := os.Mkdir(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeManifest(t, root, `{"name":"example","source":"../source","workflow":{"provider":"future"}}`)
+	if _, err := Link(root, LinkRequest{SourceInput: source, Replace: true}, fakeLinkInspect(nil, nil)); err != nil {
+		t.Fatal(err)
+	}
+	raw := readManifestJSON(t, root)
+	var workflow struct {
+		Provider string `json:"provider"`
+	}
+	if err := json.Unmarshal(raw["workflow"], &workflow); err != nil || workflow.Provider != "future" {
+		t.Fatalf("workflow=%s erro=%v", raw["workflow"], err)
+	}
+}
+
 func TestLinkHandlesAbsoluteCanonicalAliasAndRejectsSubdirectory(t *testing.T) {
 	root := newDoctorWorkspace(t, "example")
 	source := filepath.Join(filepath.Dir(root), "source-real")

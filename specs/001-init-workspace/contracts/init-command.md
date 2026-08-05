@@ -87,15 +87,23 @@ Aplica-se a argumento ausente, excedente ou nome inválido. stdout fica vazio.
 │   ├── .git/
 │   ├── cerne.json
 │   ├── product/
+│   │   └── .gitkeep
 │   ├── specs/
+│   │   └── .gitkeep
 │   ├── decisions/
+│   │   └── .gitkeep
 │   ├── policies/
+│   │   └── .gitkeep
 │   └── runs/
+│       └── .gitkeep
 └── source/
     └── .git/
 ```
 
 A raiz `<project-name>/` não recebe `.git`.
+
+Os `.gitkeep` preservam os cinco diretórios obrigatórios em commits e clones e podem ser removidos
+quando o respectivo diretório receber conteúdo.
 
 ## Manifest
 

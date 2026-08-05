@@ -61,6 +61,9 @@ func Link(start string, request LinkRequest, inspect LinkGitInspect) (LinkResult
 	if data.VersionErr != nil {
 		return LinkResult{}, linkFailure("versão do manifesto não suportada", manifestPath, "use version como inteiro JSON 1 ou remova o campo")
 	}
+	if data.WorkflowErr != nil {
+		return LinkResult{}, linkFailure("workflow inválido no manifesto", manifestPath, "corrija o objeto workflow.provider")
+	}
 	if inspect == nil {
 		return LinkResult{}, linkFailure("Git indisponível", "", "instale o Git e disponibilize-o no PATH")
 	}
