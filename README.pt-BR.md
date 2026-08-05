@@ -36,6 +36,9 @@ publica ou realiza deploy.
 - Go 1.26.5 ou mais recente para compilar o projeto;
 - Linux, Windows ou macOS.
 
+O executável `specify`, do Spec Kit, ou `openspec`, do OpenSpec, é opcional e necessário somente
+quando esse workflow é selecionado. O Cerne nunca instala nem atualiza essas ferramentas.
+
 ## Instalação
 
 Instale diretamente com Go:
@@ -92,6 +95,21 @@ Como o Git não registra diretórios vazios, o Cerne cria um arquivo `.gitkeep` 
 obrigatório de `knowledge`. Você pode removê-lo quando adicionar conteúdo ao diretório. O Cerne não
 cria commits automaticamente.
 
+Para inicializar um workflow opcional de especificação durante a criação:
+
+```sh
+cerne init meu-projeto --workflow speckit
+cerne init meu-projeto --workflow openspec
+```
+
+O Spec Kit mantém as especificações em `knowledge/specs` e controla `knowledge/.specify`. O
+OpenSpec usa `knowledge/openspec/specs` e controla `knowledge/openspec`, sem criar o diretório
+superior `knowledge/specs`. Produto, decisões, políticas e execuções permanecem comuns.
+
+Se o executável estiver ausente, o `init` ainda conclui, registra a escolha e avisa em stderr.
+Depois de instalar a ferramenta, execute `cerne workflow setup` de qualquer diretório dentro do
+workspace. O setup é idempotente; estruturas parciais ou com Git aninhado são recusadas.
+
 ### 2. Valide a estrutura
 
 Execute a partir da raiz do workspace:
@@ -138,14 +156,17 @@ A ausência de `version` representa a versão 1 do manifesto. Quando presente, o
 atualmente é o inteiro JSON `1`. O Cerne armazena um caminho source relativo e normalizado sempre
 que as plataformas e localizações permitirem.
 
+Com um workflow selecionado, o manifesto também contém `"workflow":{"provider":"speckit"}` ou
+`"workflow":{"provider":"openspec"}`. Estado de instalação e versão não são persistidos.
+
 ## Referência dos comandos
 
 ### Opções globais
 
 - `cerne --help` exibe os comandos disponíveis e as opções globais.
-- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.1.0`.
+- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.2.0`.
 
-### `cerne init <project-name>`
+### `cerne init <project-name> [--workflow <speckit|openspec>]`
 
 Cria um workspace abaixo do diretório atual. O destino deve estar ausente ou ser um diretório
 regular vazio; links simbólicos e destinos não vazios são recusados. Conteúdo existente nunca é
@@ -153,13 +174,23 @@ substituído. Em caso de falha, o Cerne desfaz somente os artefatos criados naqu
 
 O nome usa de 1 a 255 caracteres ASCII, começa com letra ou número e pode continuar com letras,
 números, `.`, `_` ou `-`. Nomes reservados do Windows e nomes terminados em `.` são recusados.
+Sem a opção, o comportamento não muda. Com ela, o Cerne executa o provider instalado somente em
+knowledge, sem interação e sem selecionar agente de IA. Executável ausente gera aviso; falha de um
+provider executado preserva o workspace base e retorna erro operacional.
+
+### `cerne workflow setup`
+
+Localiza o workspace ancestral mais próximo e materializa o provider declarado no manifesto. Não
+aceita provider, caminho nem opção de força. Cada tentativa real cria um JSON de auditoria
+sanitizado em `knowledge/runs`; executável ausente e layout pronto não criam auditoria.
 
 ### `cerne doctor`
 
 Executa dez verificações somente de leitura a partir da raiz: manifesto, diretórios dos dois
 repositórios, independência Git, isolamento de versionamento, caminhos do manifesto, diretórios
 obrigatórios de conhecimento, Git, permissões e versão do manifesto. O comando nunca corrige o
-workspace.
+workspace. Um workflow declarado acrescenta uma verificação para os estados pronto, pendente,
+indisponível, desconhecido, parcial ou com Git aninhado.
 
 ### `cerne status`
 
@@ -192,6 +223,10 @@ Saídas normais e ajuda usam stdout. Erros de uso e falhas operacionais usam std
 
 - `doctor` e `status` são somente de leitura.
 - `link` atualiza apenas `knowledge/cerne.json`, depois que todas as validações passam.
+- O setup usa argumentos fixos, não usa shell, recebe ambiente mínimo e desabilita a telemetria do
+  OpenSpec. Não recebe credenciais nem o caminho de source e não registra a saída bruta do provider.
+- Uma tentativa falha preserva o workspace base e a auditoria, removendo somente uma nova raiz
+  pertencente ao provider.
 - A inspeção Git desativa locks opcionais e prompts e remove variáveis `GIT_*` capazes de
   redirecionar os processos filhos.
 - Nenhum comando atual acessa remotos ou precisa de credenciais.
@@ -206,6 +241,7 @@ cmd/cerne/          argumentos, saída do terminal e códigos de saída
 internal/workspace/ regras de domínio e operações do workspace
 internal/gitexec/   adaptador para o executável Git local
 internal/filecheck/ verificações multiplataforma de permissões
+internal/workflowexec/ adaptadores para executáveis locais opcionais de workflow
 specs/              especificações, planos, contratos e tarefas
 ```
 
@@ -244,8 +280,8 @@ O histórico de versões está documentado em [CHANGELOG.md](CHANGELOG.md).
 
 ## Roadmap e escopo
 
-O escopo atual inclui criação e validação do workspace, status local e vínculo de um repositório
-source local existente. Futuramente, o Cerne poderá coordenar agentes auditáveis para produto,
+O escopo atual inclui criação, bootstrap opcional de workflow, validação do workspace, status local
+e vínculo de um repositório source local existente. Futuramente, o Cerne poderá coordenar agentes auditáveis para produto,
 documentação, implementação, validação e manutenção, sem depender de modelos, agentes ou
 fornecedores específicos.
 

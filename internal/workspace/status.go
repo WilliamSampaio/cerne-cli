@@ -64,6 +64,9 @@ func CurrentStatus(start string, collect GitStatus) (WorkspaceReport, error) {
 	if data.VersionErr != nil {
 		return WorkspaceReport{}, statusFailure("versão do manifesto não suportada", manifestPath, "use version como inteiro JSON 1 ou remova o campo")
 	}
+	if data.WorkflowErr != nil {
+		return WorkspaceReport{}, statusFailure("workflow inválido no manifesto", manifestPath, "corrija o objeto workflow.provider")
+	}
 
 	knowledge := filepath.Join(root, "knowledge")
 	source, err := validateSourcePath(knowledge, data.Source)

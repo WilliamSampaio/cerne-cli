@@ -79,6 +79,18 @@ func TestCurrentStatusAcceptsExternalSource(t *testing.T) {
 	}
 }
 
+func TestCurrentStatusAcceptsOpaqueWorkflowAndRejectsMalformedWorkflow(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	writeManifest(t, root, `{"name":"example","source":"../source","workflow":{"provider":"future"}}`)
+	if _, err := CurrentStatus(root, fakeGitStatus(nil, nil)); err != nil {
+		t.Fatal(err)
+	}
+	writeManifest(t, root, `{"name":"example","source":"../source","workflow":{"provider":""}}`)
+	if _, err := CurrentStatus(root, fakeGitStatus(nil, nil)); err == nil {
+		t.Fatal("workflow malformado aceito")
+	}
+}
+
 func TestCurrentStatusFailures(t *testing.T) {
 	cases := map[string]func(*testing.T) (string, GitStatus, string){
 		"workspace not found": func(t *testing.T) (string, GitStatus, string) {
