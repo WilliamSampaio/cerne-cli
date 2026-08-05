@@ -54,6 +54,22 @@ func TestInitWithWorkflowConfiguresGenericLayoutAndAudit(t *testing.T) {
 	}
 }
 
+func TestInitWithWorkflowAcceptsEquivalentParentAlias(t *testing.T) {
+	realParent := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "parent-alias")
+	if err := os.Symlink(realParent, alias); err != nil {
+		t.Skipf("symlink indisponível: %v", err)
+	}
+	definition := readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json")
+	base, workflow, err := InitWithWorkflow(alias, "example", definition, fakeInitRepository)
+	if err != nil || workflow.State != WorkflowConfigured {
+		t.Fatalf("base=%#v workflow=%#v erro=%v", base, workflow, err)
+	}
+	if _, err := os.Stat(filepath.Join(realParent, "example", "knowledge", ".alpha", "options.json")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestWorkflowPendingResumeAndIdempotency(t *testing.T) {
 	definition := readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json")
 	definition.Available = false

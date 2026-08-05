@@ -253,7 +253,7 @@ func TestCLIWorkflowInitPendingResumeIdempotentAndFailure(t *testing.T) {
 		environment := replaceEnvironment(os.Environ(), "PATH", tools)
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "example", "--workflow", "openspec")
 		knowledge := filepath.Join(parent, "example", "knowledge")
-		expected := "Workspace \"example\" criado.\nKnowledge: " + knowledge + "\nSource: " + filepath.Join(parent, "example", "source") + "\nWorkflow: openspec\nSetup: concluído\n"
+		expected := "Workspace \"example\" criado.\nKnowledge: " + displayPath(knowledge) + "\nSource: " + displayPath(filepath.Join(parent, "example", "source")) + "\nWorkflow: openspec\nSetup: concluído\n"
 		if status != 0 || stdout != expected || stderr != "" {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
@@ -281,13 +281,13 @@ func TestCLIWorkflowInitPendingResumeIdempotentAndFailure(t *testing.T) {
 		nested := filepath.Join(root, "knowledge", "product")
 		status, stdout, stderr = executeCLI(t, binary, nested, environment, "workflow", "setup")
 		knowledge := filepath.Join(root, "knowledge")
-		expected := "Workflow: speckit\nKnowledge: " + knowledge + "\nSetup concluído.\n"
+		expected := "Workflow: speckit\nKnowledge: " + displayPath(knowledge) + "\nSetup concluído.\n"
 		if status != 0 || stdout != expected || stderr != "" {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		before := snapshotTree(t, root)
 		status, stdout, stderr = executeCLI(t, binary, nested, environment, "workflow", "setup")
-		if status != 0 || stdout != "Workflow: speckit\nKnowledge: "+knowledge+"\nNenhuma alteração necessária.\n" || stderr != "" || !reflect.DeepEqual(before, snapshotTree(t, root)) {
+		if status != 0 || stdout != "Workflow: speckit\nKnowledge: "+displayPath(knowledge)+"\nNenhuma alteração necessária.\n" || stderr != "" || !reflect.DeepEqual(before, snapshotTree(t, root)) {
 			t.Fatalf("no-op status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 	})
