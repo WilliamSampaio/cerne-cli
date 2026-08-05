@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -155,7 +156,7 @@ func workflowPaths(knowledge string, definition WorkflowDefinition) (string, str
 		return "", "", err
 	}
 	marker, err := safeWorkflowPath(knowledge, definition.Marker)
-	if err != nil || !containsPath(root, marker) {
+	if err != nil || !lexicallyContains(root, marker) {
 		return "", "", errors.New("marker fora da raiz do provider")
 	}
 	if _, err := safeWorkflowPath(knowledge, definition.CanonicalSpecs); err != nil {
@@ -169,18 +170,27 @@ func workflowSpecsValid(knowledge, root string, definition WorkflowDefinition) b
 	if err != nil {
 		return false
 	}
-	return containsPath(root, specs) || regularDir(specs) == nil
+	return lexicallyContains(root, specs) || regularDir(specs) == nil
 }
 
 func safeWorkflowPath(knowledge, relative string) (string, error) {
 	if relative == "" || filepath.IsAbs(relative) {
 		return "", errors.New("caminho inválido")
 	}
-	path := filepath.Clean(filepath.Join(knowledge, filepath.FromSlash(relative)))
-	if !containsPath(knowledge, path) {
+	base, err := filepath.Abs(knowledge)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Clean(filepath.Join(base, filepath.FromSlash(relative)))
+	if !lexicallyContains(base, path) {
 		return "", errors.New("caminho fora de knowledge")
 	}
 	return path, nil
+}
+
+func lexicallyContains(parent, child string) bool {
+	relative, err := filepath.Rel(filepath.Clean(parent), filepath.Clean(child))
+	return err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 func workflowLayout(root, marker string) (WorkflowState, error) {
@@ -205,6 +215,9 @@ func workflowLayout(root, marker string) (WorkflowState, error) {
 	markerInfo, err := os.Lstat(marker)
 	if err != nil || markerInfo.Mode()&os.ModeSymlink != 0 || !markerInfo.Mode().IsRegular() || markerInfo.Size() == 0 {
 		return "", errors.New("marker ausente ou inválido")
+	}
+	if !containsPath(root, marker) {
+		return "", errors.New("marker fora da raiz do provider")
 	}
 	return WorkflowUnchanged, nil
 }
