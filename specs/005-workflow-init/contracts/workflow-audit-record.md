@@ -1,6 +1,8 @@
 # Data Contract: Workflow Setup Audit Record
 
-Cada subprocesso de workflow corresponde a exatamente um JSON em `knowledge/runs`:
+Cada subprocesso de workflow corresponde a exatamente um JSON em `knowledge/runs`. O arquivo
+comum `knowledge/runs/.gitkeep` não representa uma tentativa e deve ser ignorado em enumerações e
+contagens:
 
 ```json
 {

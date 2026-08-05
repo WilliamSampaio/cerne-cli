@@ -3,7 +3,8 @@
 ## Decisão 1: Manter o modo padrão inalterado
 
 **Decision**: `cerne init <project-name>` continua sem workflow, sem campo adicional, sem processo
-externo e com a mesma árvore e saídas. O workflow exige `--workflow speckit|openspec`.
+externo e com a mesma árvore e saídas, incluindo os `.gitkeep` obrigatórios incorporados da
+`master`. O workflow exige `--workflow speckit|openspec`.
 
 **Rationale**: Sintaxe, manifesto, stdout, stderr, status e efeitos do init atual são contratos
 públicos. Uma flag opt-in permite a funcionalidade como adição compatível de versão MINOR.
@@ -146,11 +147,13 @@ reexecutar sobre layout parcial; ignorar parcial.
 
 **Decision**: Cada adapter informa seu marcador persistente: arquivos essenciais em `.specify`
 para Spec Kit e `openspec/config.yaml` com configuração reconhecível para OpenSpec. O domínio
-valida o marcador recebido sem ramificações por provider. Diretórios vazios de specs/changes não
-são exigidos pelo doctor.
+valida o marcador recebido sem ramificações por provider. Diretórios nativos vazios de
+specs/changes não são exigidos pelo doctor; essa regra não remove nem substitui os `.gitkeep` dos
+diretórios comuns criados pelo Cerne.
 
 **Rationale**: OpenSpec cria diretórios vazios que não sobrevivem a Git. Um clone saudável deve ser
-diagnosticado por arquivos versionáveis, sem placeholders alheios.
+diagnosticado por arquivos versionáveis do provider, sem placeholders adicionais nas raízes que
+pertencem a ele.
 
 **Alternatives considered**: Exigir a árvore física inicial; criar placeholders Cerne; aceitar
 somente existência da pasta raiz.

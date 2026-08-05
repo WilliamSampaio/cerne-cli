@@ -44,14 +44,18 @@ Todos os modos preservam:
 knowledge/
 ├── cerne.json
 ├── product/
+│   └── .gitkeep
 ├── decisions/
+│   └── .gitkeep
 ├── policies/
+│   └── .gitkeep
 └── runs/
+    └── .gitkeep
 ```
 
-O modo legado acrescenta `specs/`. Spec Kit acrescenta `specs/` e `.specify/`. OpenSpec acrescenta
-`openspec/`; seus diretórios vazios não participam da validação persistente porque não sobrevivem
-ao versionamento Git.
+O modo legado acrescenta `specs/.gitkeep`. Spec Kit preserva `specs/.gitkeep` e acrescenta
+`.specify/`. OpenSpec acrescenta `openspec/` e não cria `knowledge/specs`; diretórios nativos vazios
+do provider não participam da validação persistente porque não sobrevivem ao versionamento Git.
 
 ### Layout state
 
@@ -68,7 +72,8 @@ materializado, mas recebe warning operacional no doctor.
 
 ## Workflow Setup Attempt
 
-Um arquivo JSON criado em `knowledge/runs` antes de cada subprocesso real do provider.
+Um arquivo JSON criado em `knowledge/runs` antes de cada subprocesso real do provider. O
+`runs/.gitkeep` comum não é um registro e MUST ser ignorado ao enumerar ou contar tentativas.
 
 | Field | Type | Rules |
 | --- | --- | --- |

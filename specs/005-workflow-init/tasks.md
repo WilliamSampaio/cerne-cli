@@ -32,7 +32,7 @@ local process adapter used by every story.
 
 **⚠️ CRITICAL**: Complete this phase before any user story.
 
-- [ ] T001 [P] Write failing domain tests for applying a generic workflow definition, its canonical specs path, absent/ready/partial layouts and started/final audit records without provider-specific branches in `internal/workspace/workflow_test.go`
+- [ ] T001 [P] Write failing domain tests for applying a generic workflow definition, its canonical specs path, absent/ready/partial layouts and started/final audit JSON records while ignoring `runs/.gitkeep`, without provider-specific branches, in `internal/workspace/workflow_test.go`
 - [ ] T002 Implement generic workflow-definition consumption, layout classification and atomic redacted audit lifecycle without Spec Kit/OpenSpec constants in `internal/workspace/workflow.go`
 - [ ] T003 [P] Write failing adapter contract tests for resolving Spec Kit/OpenSpec/unknown identifiers into exact definitions, executable discovery, exact arguments, platform script choice, cwd, allowlisted environment, disabled telemetry and sanitized failures in `internal/workflowexec/setup_test.go`
 - [ ] T004 Implement the closed provider resolver, generic definitions, PATH discovery and shell-free execution with fixed arguments and minimal environment in `internal/workflowexec/setup.go`
@@ -53,8 +53,8 @@ verify manifest, conditional layout, invocation, audit, Git separation, exact st
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Write failing domain tests for legacy init and two opaque identifiers resolved to fake generic definitions, conditional knowledge directories, successful setup audit and untouched source in `internal/workspace/init_test.go`
-- [ ] T008 [P] [US1] Write failing CLI integration tests for both workflow values, exact success output, argument position and exact legacy init regression in `cmd/cerne/main_test.go`
+- [ ] T007 [P] [US1] Write failing domain tests for legacy init and two opaque identifiers resolved to fake generic definitions, preserving `.gitkeep` in every required common directory, creating `specs/.gitkeep` only for legacy/Spec Kit, successful setup audit and untouched source in `internal/workspace/init_test.go`
+- [ ] T008 [P] [US1] Write failing CLI integration tests for both workflow values, exact success output, argument position and exact legacy init regression including its five `.gitkeep` files in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 1
 

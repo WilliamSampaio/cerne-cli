@@ -29,7 +29,7 @@ invocação do provider, repositórios Git independentes, saída e registro audi
 
 1. **Given** que Spec Kit está disponível, **When** o usuário executa `cerne init exemplo --workflow speckit`, **Then** o workspace é criado, o manifesto registra `speckit`, a estrutura comum do knowledge é preservada e os artefatos do Spec Kit são inicializados dentro de knowledge.
 2. **Given** que OpenSpec está disponível, **When** o usuário executa `cerne init exemplo --workflow openspec`, **Then** o workspace é criado, o manifesto registra `openspec`, a estrutura comum do knowledge é preservada e os artefatos do OpenSpec são inicializados dentro de knowledge.
-3. **Given** que nenhuma opção de workflow é informada, **When** o usuário executa `cerne init exemplo`, **Then** o comando mantém a sintaxe, estrutura, manifesto, saídas, status e ausência de execução externa do comportamento anterior.
+3. **Given** que nenhuma opção de workflow é informada, **When** o usuário executa `cerne init exemplo`, **Then** o comando mantém a sintaxe, estrutura com os cinco `.gitkeep` obrigatórios, manifesto, saídas, status e ausência de execução externa do comportamento anterior.
 4. **Given** um workflow selecionado, **When** o bootstrap é executado, **Then** ele é não interativo, não configura um agente de IA específico em nome do usuário e não instala nem atualiza ferramentas.
 
 ---
@@ -92,7 +92,7 @@ verificar códigos, streams, rollback, auditoria, ausência de segredos e preser
 ### Functional Requirements
 
 - **FR-001**: O sistema MUST aceitar `cerne init <project-name> --workflow speckit` e `cerne init <project-name> --workflow openspec`.
-- **FR-002**: A ausência de `--workflow` MUST preservar integralmente o contrato público anterior de `cerne init <project-name>`.
+- **FR-002**: A ausência de `--workflow` MUST preservar integralmente o contrato público vigente de `cerne init <project-name>`, incluindo os `.gitkeep` de `product`, `specs`, `decisions`, `policies` e `runs`.
 - **FR-003**: O sistema MUST rejeitar valores de workflow diferentes de `speckit` e `openspec`, flag sem valor, repetição da flag e argumentos excedentes como uso inválido antes de criar arquivos.
 - **FR-004**: Quando um workflow for selecionado, o manifesto MUST registrar a escolha em um campo opcional e estruturado sem registrar disponibilidade transitória do executável.
 - **FR-005**: Workspaces sem o campo de workflow MUST continuar válidos e equivaler ao modo sem workflow.
@@ -148,7 +148,7 @@ verificar códigos, streams, rollback, auditoria, ausência de segredos e preser
 ### Measurable Outcomes
 
 - **SC-001**: Em 100% dos cenários válidos com provider disponível, usuários conseguem criar o workspace e materializar o workflow em uma única execução, sem etapa manual intermediária.
-- **SC-002**: 100% das execuções sem `--workflow` mantêm manifesto, árvore, stdout, stderr, status e efeitos observáveis do init anterior.
+- **SC-002**: 100% das execuções sem `--workflow` mantêm manifesto, árvore com os cinco `.gitkeep` obrigatórios, stdout, stderr, status e efeitos observáveis do init vigente na `master` incorporada.
 - **SC-003**: 100% dos cenários com provider ausente preservam um workspace base saudável, registram a escolha e retornam orientação de retomada sem status de erro.
 - **SC-004**: Após instalar o provider ausente, usuários conseguem concluir o bootstrap com um único `cerne workflow setup`, sem recriar ou editar manualmente o workspace.
 - **SC-005**: 100% das falhas de provider durante init ou retomada preservam byte a byte os arquivos preexistentes antes da tentativa, exceto o registro de auditoria criado pela própria tentativa; exatamente um registro permanece como `failed` ou, se sua finalização também falhar, como `started` inconclusivo, e artefatos parciais não são aceitos como workflow concluído.

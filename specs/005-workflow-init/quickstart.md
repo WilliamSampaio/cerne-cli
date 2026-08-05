@@ -16,7 +16,8 @@ Use `<binary-path>` below for the absolute path of the built Cerne binary.
 ```
 
 Expected: status zero, empty stderr, exact three-line legacy stdout, legacy manifest without
-`workflow`, `knowledge/specs`, and no `.specify` or `openspec` root. Compare with
+`workflow`, `.gitkeep` in each required knowledge directory, `knowledge/specs/.gitkeep`, and no
+`.specify` or `openspec` root. Compare with
 [the original init contract](../../001-init-workspace/contracts/init-command.md).
 
 ## Scenario 2: Spec Kit setup succeeds
@@ -29,7 +30,8 @@ With `specify` installed:
 
 Expected: status zero, `workflow.provider` equals `speckit`, stdout says `Setup: concluído`,
 `knowledge/.specify/init-options.json` exists, `knowledge/specs` is canonical, source remains an
-empty independent Git repository, and one successful workflow audit exists.
+empty independent Git repository, and exactly one successful workflow audit JSON exists besides
+`knowledge/runs/.gitkeep`.
 
 ## Scenario 3: OpenSpec setup succeeds without telemetry
 
@@ -106,8 +108,8 @@ Run the automated integration fixture whose controlled provider creates its owne
 non-zero.
 
 Expected: status one; base workspace, manifest and source remain; provider-owned new partial files
-are removed; exactly one failed audit remains; stderr contains only a safe Cerne-owned cause, not
-raw provider output.
+are removed; exactly one failed audit JSON remains besides `knowledge/runs/.gitkeep`; stderr
+contains only a safe Cerne-owned cause, not raw provider output.
 
 ## Scenario 10: Doctor classifies workflow states
 

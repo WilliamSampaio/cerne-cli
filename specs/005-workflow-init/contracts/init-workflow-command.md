@@ -10,7 +10,8 @@ cerne init --help
 ```
 
 A flag é opcional, aceita somente a posição documentada e não pode ser repetida. O uso sem flag
-mantém integralmente o contrato anterior em `specs/001-init-workspace/contracts/init-command.md`.
+mantém integralmente o contrato vigente em `specs/001-init-workspace/contracts/init-command.md`,
+incluindo os cinco `.gitkeep` obrigatórios do knowledge.
 
 ## Manifest
 

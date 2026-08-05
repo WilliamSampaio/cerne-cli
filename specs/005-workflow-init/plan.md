@@ -37,10 +37,11 @@ testes do despacho CLI sem instalações globais reais
 **Performance Goals**: Criação e bootstrap concluídos em uma única invocação quando o provider está
 disponível; `doctor` e detecção de estado sem varrer conteúdo integral do workspace
 
-**Constraints**: Modo padrão byte a byte compatível; execução não interativa e sem shell; provider
-restrito por cwd, argumentos e ambiente; nenhuma instalação, atualização, telemetria, credencial,
-agente específico, remoto ou mutação de `source`; stdout/stderr e status estáveis; limpeza limitada
-a raízes de provider ausentes antes da tentativa; auditoria obrigatória antes de executar
+**Constraints**: Modo padrão byte a byte compatível, incluindo os cinco `.gitkeep` obrigatórios;
+execução não interativa e sem shell; provider restrito por cwd, argumentos e ambiente; nenhuma
+instalação, atualização, telemetria, credencial, agente específico, remoto ou mutação de `source`;
+stdout/stderr e status estáveis; limpeza limitada a raízes de provider ausentes antes da tentativa;
+auditoria obrigatória antes de executar, desconsiderando `runs/.gitkeep` na contagem de registros
 
 **Scale/Scope**: Um workspace, um manifesto, um provider opcional e uma tentativa por invocação;
 somente Spec Kit e OpenSpec, sem troca, conversão, sincronização ou execução do workflow
