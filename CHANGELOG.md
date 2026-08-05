@@ -3,7 +3,7 @@
 All notable changes to Cerne are documented in this file. This project follows
 [Semantic Versioning](https://semver.org/).
 
-## 0.3.0 - Unreleased
+## 0.3.0 - 2026-08-05
 
 ### Added
 
