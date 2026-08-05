@@ -163,6 +163,10 @@ func assertKnowledge(t *testing.T, knowledge string) {
 		if err != nil || !info.IsDir() {
 			t.Fatalf("diretório %s ausente: %v", directory, err)
 		}
+		info, err = os.Stat(filepath.Join(knowledge, directory, ".gitkeep"))
+		if err != nil || !info.Mode().IsRegular() {
+			t.Fatalf("placeholder de %s ausente: %v", directory, err)
+		}
 	}
 
 	data, err := os.ReadFile(filepath.Join(knowledge, "cerne.json"))

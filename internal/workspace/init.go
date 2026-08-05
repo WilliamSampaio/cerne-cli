@@ -63,12 +63,17 @@ func Init(parent, name string, initRepository func(string) error) (result Result
 
 	knowledge := filepath.Join(root, "knowledge")
 	source := filepath.Join(root, "source")
-	for _, directory := range append([]string{knowledge, source},
-		knowledgeDirectories(knowledge)...) {
+	knowledgeDirs := knowledgeDirectories(knowledge)
+	for _, directory := range append([]string{knowledge, source}, knowledgeDirs...) {
 		if err := os.Mkdir(directory, 0o755); err != nil {
 			return Result{}, fmt.Errorf("não foi possível criar %q: %w", directory, err)
 		}
 		created = append(created, directory)
+	}
+	for _, directory := range knowledgeDirs {
+		if err := os.WriteFile(filepath.Join(directory, ".gitkeep"), nil, 0o644); err != nil {
+			return Result{}, fmt.Errorf("não foi possível preservar %q no Git: %w", directory, err)
+		}
 	}
 
 	manifestPath := filepath.Join(knowledge, "cerne.json")

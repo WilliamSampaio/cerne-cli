@@ -88,9 +88,9 @@ meu-projeto/
 Os dois repositórios são locais, independentes e começam sem commits ou remotos. A raiz do
 workspace não é um repositório Git.
 
-O Git não versiona diretórios vazios. Adicione conhecimento do projeto antes do primeiro commit de
-knowledge para preservar os diretórios necessários; o Cerne não cria placeholders nem commits
-automáticos de propósito.
+Como o Git não registra diretórios vazios, o Cerne cria um arquivo `.gitkeep` em cada diretório
+obrigatório de `knowledge`. Você pode removê-lo quando adicionar conteúdo ao diretório. O Cerne não
+cria commits automaticamente.
 
 ### 2. Valide a estrutura
 
