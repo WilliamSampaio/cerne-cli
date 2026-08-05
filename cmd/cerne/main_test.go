@@ -253,8 +253,11 @@ func TestCLIWorkflowInitPendingResumeIdempotentAndFailure(t *testing.T) {
 		environment := replaceEnvironment(os.Environ(), "PATH", tools)
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "example", "--workflow", "openspec")
 		knowledge := filepath.Join(parent, "example", "knowledge")
-		expected := "Workspace \"example\" criado.\nKnowledge: " + displayPath(knowledge) + "\nSource: " + displayPath(filepath.Join(parent, "example", "source")) + "\nWorkflow: openspec\nSetup: concluído\n"
-		if status != 0 || stdout != expected || stderr != "" {
+		lines := strings.Split(stdout, "\n")
+		if status != 0 || stderr != "" || len(lines) != 6 || lines[0] != `Workspace "example" criado.` ||
+			!samePath(strings.TrimPrefix(lines[1], "Knowledge: "), knowledge) ||
+			!samePath(strings.TrimPrefix(lines[2], "Source: "), filepath.Join(parent, "example", "source")) ||
+			lines[3] != "Workflow: openspec" || lines[4] != "Setup: concluído" || lines[5] != "" {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		if _, err := os.Stat(filepath.Join(knowledge, "openspec", "config.yaml")); err != nil {
