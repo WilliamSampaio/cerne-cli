@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/WilliamSampaio/cerne-cli/internal/filecheck"
 	"github.com/WilliamSampaio/cerne-cli/internal/gitexec"
@@ -13,7 +14,7 @@ import (
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
 
-const version = "0.2.0"
+const version = "0.3.0"
 
 const globalHelp = `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
 
@@ -39,23 +40,29 @@ Use "cerne <comando> --help" para detalhes de um comando.
 const initHelp = `Inicializa um workspace Cerne com repositórios Git independentes.
 
 Uso:
-  cerne init <project-name> [--workflow <speckit|openspec>]
+  cerne init <project-name>
+  cerne init <project-name> --source <caminho>
+  cerne init <project-name> --clone <origem>
+  cerne init <project-name> --workflow <speckit|openspec>
 
 Nome:
   1 a 255 caracteres ASCII; começa por letra ou número e continua com
   letras, números, ponto, hífen ou sublinhado. Nomes reservados e ponto final
   não são aceitos.
 
-Estrutura:
-  <project-name>/
-  ├── knowledge/
-  │   ├── cerne.json
-  │   ├── product/
-  │   ├── specs/
-  │   ├── decisions/
-  │   ├── policies/
-  │   └── runs/
-  └── source/
+Source:
+  Sem flag, cria source como repositório Git vazio. --source vincula a raiz de
+  um working tree Git local non-bare, resolvido a partir do diretório atual,
+  sem criar source interno nem alterar o repositório informado. --clone aceita
+  path local, file, HTTPS ou SSH, inclusive SCP-like, e cria remoto origin.
+  --source, --clone e --workflow são opções exclusivas e ficam após o nome.
+
+Clone:
+  HTTP, git://, ext::, helpers desconhecidos, opções, credenciais embutidas,
+  query e fragmento são recusados. O clone é completo, sem submódulos, usa o
+  checkout padrão e pode seguir redirects, autenticação externa e filtros já
+  configurados no Git. Prompts controláveis pelo Git ficam desabilitados;
+  helpers externos ainda podem falhar ou ter comportamento próprio.
 
 Workflow:
   Sem a opção, mantém o layout padrão em knowledge/specs. Spec Kit também usa
@@ -64,20 +71,26 @@ Workflow:
   selecionar agente ou fornecer credenciais. Se ausente, o setup fica pendente.
 
 Efeitos:
-  Cria dois repositórios Git locais vazios, sem commit ou remoto.
-  Com --workflow, executa o init local do provider somente em knowledge e cria
-  uma auditoria em runs. Não altera source nem autoriza operações Git remotas.
+  Sempre cria knowledge como Git independente. O destino deve estar ausente ou
+  vazio e nunca é substituído. Antes do clone, falhas revertem os artefatos da
+  tentativa. Cada clone iniciado cria runs/source-clone.json antes do Git; uma
+  falha posterior preserva knowledge e a auditoria, remove somente o staging
+  privado e pode deixar o workspace incompleto. A origem e a saída Git não são
+  gravadas na auditoria. Nenhum modo autoriza push, merge ou publicação.
 
 Saídas:
   Sucesso e ajuda usam stdout. Erros usam stderr.
   Status 0: sucesso ou ajuda; 1: falha operacional; 2: uso ou nome inválido.
 
 Erros:
-  O destino deve estar ausente ou ser um diretório regular vazio.
-  Instale Git, corrija o nome ou escolha outro destino conforme o diagnóstico.
+  Status 1 após o clone pode preservar um source já promovido se a auditoria
+  final falhar; um source concorrente nunca é substituído. Consulte a correção
+  exibida e knowledge/runs/source-clone.json antes de remover ou vincular source.
 
-Exemplo:
+Exemplos:
   cerne init exemplo
+  cerne init exemplo --source ../aplicacao
+  cerne init exemplo --clone https://host/organizacao/aplicacao.git
   cerne init exemplo --workflow speckit
 `
 
@@ -253,19 +266,34 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stdout, initHelp)
 		return 0
 	}
-	name, provider, ok := parseInitArgs(args)
+	parsed, ok := parseInitArgs(args)
 	if !ok {
 		return initUsageError(stderr, "argumento inválido")
 	}
-	if err := workspace.ValidateName(name); err != nil {
+	if err := workspace.ValidateName(parsed.Name); err != nil {
 		return initUsageError(stderr, err.Error())
 	}
 	var definition workspace.WorkflowDefinition
-	if provider != "" {
+	if parsed.Workflow != "" {
 		var err error
-		definition, err = workflowexec.Resolve(provider)
+		definition, err = workflowexec.Resolve(parsed.Workflow)
 		if err != nil {
 			return initUsageError(stderr, "workflow inválido: use speckit ou openspec")
+		}
+	}
+	var current string
+	var origin gitexec.CloneOrigin
+	var err error
+	if parsed.SourceMode == workspace.SourceClone {
+		current, err = currentDirectory()
+		if err != nil {
+			fmt.Fprintln(stderr, "erro: não foi possível obter o diretório atual")
+			fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+			return 1
+		}
+		origin, err = gitexec.ClassifyCloneOrigin(current, parsed.SourceValue)
+		if err != nil {
+			return initUsageError(stderr, "origem de clone inválida")
 		}
 	}
 
@@ -275,14 +303,49 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
 		return 1
 	}
-	current, err := currentDirectory()
-	if err != nil {
-		fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
-		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
-		return 1
+	if current == "" {
+		current, err = currentDirectory()
+		if err != nil {
+			fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
+			fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+			return 1
+		}
 	}
-	if provider != "" {
-		result, workflow, err := workspace.InitWithWorkflow(current, name, definition, initRepository)
+	if parsed.SourceMode != "" {
+		inspect, inspectErr := gitexec.FindLinkInspector()
+		if inspectErr != nil {
+			fmt.Fprintf(stderr, "erro: %v\n", inspectErr)
+			fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+			return 1
+		}
+		request := workspace.SourceInitRequest{Mode: parsed.SourceMode, Input: parsed.SourceValue}
+		var clone workspace.CloneSource
+		if parsed.SourceMode == workspace.SourceClone {
+			clone, err = gitexec.FindClone()
+			if err != nil {
+				fmt.Fprintf(stderr, "erro: %v\n", err)
+				fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+				return 1
+			}
+			request.Input = origin.Location
+			request.OriginTransport = origin.Transport
+			request.OriginFingerprint = origin.Fingerprint
+		}
+		result, err := workspace.InitWithSource(current, parsed.Name, request, initRepository, adaptLink(inspect), clone)
+		if err != nil {
+			renderSourceInitFailure(stderr, err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "Workspace %q criado.\nKnowledge: %s\n", result.Name, result.KnowledgePath)
+		if result.SourceMode == workspace.SourceLocal {
+			fmt.Fprintf(stdout, "Source vinculado: %s\n", result.SourcePath)
+		} else {
+			fmt.Fprintf(stdout, "Source clonado: %s\n", result.SourcePath)
+		}
+		return 0
+	}
+	if parsed.Workflow != "" {
+		result, workflow, err := workspace.InitWithWorkflow(current, parsed.Name, definition, initRepository)
 		if err != nil {
 			if result.KnowledgePath == "" {
 				fmt.Fprintf(stderr, "erro: %v\n", err)
@@ -293,20 +356,20 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 				}
 				return 1
 			}
-			fmt.Fprintf(stderr, "erro: não foi possível inicializar workflow %s: %s\n", provider, workflowCause(err))
-			fmt.Fprintf(stderr, "correção: corrija ou atualize %s e execute \"cerne workflow setup\" dentro de %s\n", provider, filepath.Dir(result.KnowledgePath))
+			fmt.Fprintf(stderr, "erro: não foi possível inicializar workflow %s: %s\n", parsed.Workflow, workflowCause(err))
+			fmt.Fprintf(stderr, "correção: corrija ou atualize %s e execute \"cerne workflow setup\" dentro de %s\n", parsed.Workflow, filepath.Dir(result.KnowledgePath))
 			return 1
 		}
 		fmt.Fprintf(stdout, "Workspace %q criado.\nKnowledge: %s\nSource: %s\nWorkflow: %s\nSetup: %s\n",
-			result.Name, result.KnowledgePath, result.SourcePath, provider, map[workspace.WorkflowState]string{workspace.WorkflowConfigured: "concluído", workspace.WorkflowPending: "pendente"}[workflow.State])
+			result.Name, result.KnowledgePath, result.SourcePath, parsed.Workflow, map[workspace.WorkflowState]string{workspace.WorkflowConfigured: "concluído", workspace.WorkflowPending: "pendente"}[workflow.State])
 		if workflow.State == workspace.WorkflowPending {
-			fmt.Fprintf(stderr, "aviso: executável %q não encontrado; workflow %s não inicializado\n", definition.Executor, provider)
-			fmt.Fprintf(stderr, "correção: instale %s e execute \"cerne workflow setup\" dentro do workspace\n", provider)
+			fmt.Fprintf(stderr, "aviso: executável %q não encontrado; workflow %s não inicializado\n", definition.Executor, parsed.Workflow)
+			fmt.Fprintf(stderr, "correção: instale %s e execute \"cerne workflow setup\" dentro do workspace\n", parsed.Workflow)
 		}
 		return 0
 	}
 
-	result, err := workspace.Init(current, name, initRepository)
+	result, err := workspace.Init(current, parsed.Name, initRepository)
 	if err != nil {
 		fmt.Fprintf(stderr, "erro: %v\n", err)
 		if errors.Is(err, workspace.ErrUnsafeDestination) {
@@ -322,14 +385,56 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func parseInitArgs(args []string) (string, string, bool) {
-	if len(args) == 1 && args[0] != "--workflow" {
-		return args[0], "", true
+type initArguments struct {
+	Name        string
+	Workflow    string
+	SourceMode  workspace.SourceMode
+	SourceValue string
+}
+
+func parseInitArgs(args []string) (initArguments, bool) {
+	if len(args) == 1 && !strings.HasPrefix(args[0], "--") {
+		return initArguments{Name: args[0]}, true
 	}
-	if len(args) == 3 && args[0] != "--workflow" && args[1] == "--workflow" && (args[2] == "speckit" || args[2] == "openspec") {
-		return args[0], args[2], true
+	if len(args) != 3 || strings.HasPrefix(args[0], "--") || args[2] == "" || strings.HasPrefix(args[2], "--") {
+		return initArguments{}, false
 	}
-	return "", "", false
+	switch args[1] {
+	case "--workflow":
+		if args[2] == "speckit" || args[2] == "openspec" {
+			return initArguments{Name: args[0], Workflow: args[2]}, true
+		}
+	case "--source":
+		return initArguments{Name: args[0], SourceMode: workspace.SourceLocal, SourceValue: args[2]}, true
+	case "--clone":
+		return initArguments{Name: args[0], SourceMode: workspace.SourceClone, SourceValue: args[2]}, true
+	}
+	return initArguments{}, false
+}
+
+func renderSourceInitFailure(stderr io.Writer, err error) {
+	var cloneFailure workspace.SourceInitFailure
+	if errors.As(err, &cloneFailure) {
+		fmt.Fprintf(stderr, "erro: %s\n", cloneFailure.Cause)
+		fmt.Fprintf(stderr, "correção: %s\n", cloneFailure.Correction)
+		return
+	}
+	var linkFailure workspace.LinkFailure
+	if errors.As(err, &linkFailure) {
+		if linkFailure.Path == "" {
+			fmt.Fprintf(stderr, "erro: %s\n", linkFailure.Cause)
+		} else {
+			fmt.Fprintf(stderr, "erro: %s: %s\n", linkFailure.Cause, linkFailure.Path)
+		}
+		fmt.Fprintf(stderr, "correção: %s\n", linkFailure.Correction)
+		return
+	}
+	fmt.Fprintf(stderr, "erro: %v\n", err)
+	if errors.Is(err, workspace.ErrUnsafeDestination) {
+		fmt.Fprintln(stderr, "correção: escolha um destino inexistente ou vazio")
+	} else {
+		fmt.Fprintln(stderr, "correção: verifique permissões e tente novamente")
+	}
 }
 
 func runWorkflow(args []string, stdout, stderr io.Writer) int {
@@ -633,7 +738,7 @@ func symbol(severity workspace.Severity) string {
 
 func initUsageError(stderr io.Writer, cause string) int {
 	fmt.Fprintf(stderr, "erro: %s\n", cause)
-	fmt.Fprintln(stderr, "uso: cerne init <project-name> [--workflow <speckit|openspec>]")
+	fmt.Fprintln(stderr, "uso: cerne init <project-name> [--workflow <speckit|openspec> | --source <caminho> | --clone <origem>]")
 	return 2
 }
 

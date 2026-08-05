@@ -39,23 +39,29 @@ Use "cerne <comando> --help" para detalhes de um comando.
 const expectedInitHelp = `Inicializa um workspace Cerne com repositórios Git independentes.
 
 Uso:
-  cerne init <project-name> [--workflow <speckit|openspec>]
+  cerne init <project-name>
+  cerne init <project-name> --source <caminho>
+  cerne init <project-name> --clone <origem>
+  cerne init <project-name> --workflow <speckit|openspec>
 
 Nome:
   1 a 255 caracteres ASCII; começa por letra ou número e continua com
   letras, números, ponto, hífen ou sublinhado. Nomes reservados e ponto final
   não são aceitos.
 
-Estrutura:
-  <project-name>/
-  ├── knowledge/
-  │   ├── cerne.json
-  │   ├── product/
-  │   ├── specs/
-  │   ├── decisions/
-  │   ├── policies/
-  │   └── runs/
-  └── source/
+Source:
+  Sem flag, cria source como repositório Git vazio. --source vincula a raiz de
+  um working tree Git local non-bare, resolvido a partir do diretório atual,
+  sem criar source interno nem alterar o repositório informado. --clone aceita
+  path local, file, HTTPS ou SSH, inclusive SCP-like, e cria remoto origin.
+  --source, --clone e --workflow são opções exclusivas e ficam após o nome.
+
+Clone:
+  HTTP, git://, ext::, helpers desconhecidos, opções, credenciais embutidas,
+  query e fragmento são recusados. O clone é completo, sem submódulos, usa o
+  checkout padrão e pode seguir redirects, autenticação externa e filtros já
+  configurados no Git. Prompts controláveis pelo Git ficam desabilitados;
+  helpers externos ainda podem falhar ou ter comportamento próprio.
 
 Workflow:
   Sem a opção, mantém o layout padrão em knowledge/specs. Spec Kit também usa
@@ -64,20 +70,26 @@ Workflow:
   selecionar agente ou fornecer credenciais. Se ausente, o setup fica pendente.
 
 Efeitos:
-  Cria dois repositórios Git locais vazios, sem commit ou remoto.
-  Com --workflow, executa o init local do provider somente em knowledge e cria
-  uma auditoria em runs. Não altera source nem autoriza operações Git remotas.
+  Sempre cria knowledge como Git independente. O destino deve estar ausente ou
+  vazio e nunca é substituído. Antes do clone, falhas revertem os artefatos da
+  tentativa. Cada clone iniciado cria runs/source-clone.json antes do Git; uma
+  falha posterior preserva knowledge e a auditoria, remove somente o staging
+  privado e pode deixar o workspace incompleto. A origem e a saída Git não são
+  gravadas na auditoria. Nenhum modo autoriza push, merge ou publicação.
 
 Saídas:
   Sucesso e ajuda usam stdout. Erros usam stderr.
   Status 0: sucesso ou ajuda; 1: falha operacional; 2: uso ou nome inválido.
 
 Erros:
-  O destino deve estar ausente ou ser um diretório regular vazio.
-  Instale Git, corrija o nome ou escolha outro destino conforme o diagnóstico.
+  Status 1 após o clone pode preservar um source já promovido se a auditoria
+  final falhar; um source concorrente nunca é substituído. Consulte a correção
+  exibida e knowledge/runs/source-clone.json antes de remover ou vincular source.
 
-Exemplo:
+Exemplos:
   cerne init exemplo
+  cerne init exemplo --source ../aplicacao
+  cerne init exemplo --clone https://host/organizacao/aplicacao.git
   cerne init exemplo --workflow speckit
 `
 
@@ -88,7 +100,7 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 		expected string
 	}{
 		{"--help", expectedGlobalHelp},
-		{"--version", "cerne 0.2.0\n"},
+		{"--version", "cerne 0.3.0\n"},
 	} {
 		t.Run(test.argument, func(t *testing.T) {
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, test.argument)
@@ -153,7 +165,7 @@ func TestCLIStableContractAndPortablePath(t *testing.T) {
 
 	t.Run("missing argument", func(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "init")
-		expected := "erro: argumento inválido\nuso: cerne init <project-name> [--workflow <speckit|openspec>]\n"
+		expected := "erro: argumento inválido\nuso: cerne init <project-name> [--workflow <speckit|openspec> | --source <caminho> | --clone <origem>]\n"
 		if status != 2 || stdout != "" || stderr != expected {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
@@ -225,6 +237,232 @@ func TestCLIFailures(t *testing.T) {
 		}
 		if _, err := os.Lstat(filepath.Join(parent, "target")); !os.IsNotExist(err) {
 			t.Fatalf("workspace parcial encontrado: %v", err)
+		}
+	})
+}
+
+func TestCLIInitWithExistingLocalSource(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	source := filepath.Join(parent, "código existente Ω")
+	if err := os.Mkdir(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitOutput(t, source, "init", "--quiet")
+	gitOutput(t, source, "config", "user.email", "test@example.com")
+	gitOutput(t, source, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(source, "tracked.txt"), []byte("keep\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitOutput(t, source, "add", "tracked.txt")
+	gitOutput(t, source, "commit", "-m", "initial")
+	worktree := filepath.Join(parent, "linked-worktree")
+	gitOutput(t, source, "worktree", "add", "--quiet", worktree)
+	before := snapshotTree(t, source)
+	worktreeBefore := snapshotTree(t, worktree)
+	input, err := filepath.Rel(parent, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, stdout, stderr := executeCLI(t, binary, parent, nil, "init", "linked", "--source", input)
+	root := filepath.Join(parent, "linked")
+	lines := strings.Split(stdout, "\n")
+	if status != 0 || stderr != "" || len(lines) != 4 || lines[0] != `Workspace "linked" criado.` ||
+		!samePath(strings.TrimPrefix(lines[1], "Knowledge: "), filepath.Join(root, "knowledge")) ||
+		!samePath(strings.TrimPrefix(lines[2], "Source vinculado: "), source) || lines[3] != "" {
+		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(root, "source")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("source interno criado: %v", err)
+	}
+	if !reflect.DeepEqual(before, snapshotTree(t, source)) {
+		t.Fatal("source externo foi alterado")
+	}
+	status, _, stderr = executeCLI(t, binary, root, nil, "doctor")
+	if status != 0 || stderr != "" {
+		t.Fatalf("doctor status=%d stderr=%q", status, stderr)
+	}
+
+	status, stdout, stderr = executeCLI(t, binary, parent, nil, "init", "from-worktree", "--source", worktree)
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "Source vinculado: "+worktree+"\n") {
+		t.Fatalf("worktree status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	if !reflect.DeepEqual(worktreeBefore, snapshotTree(t, worktree)) || !reflect.DeepEqual(before, snapshotTree(t, source)) {
+		t.Fatal("init com worktree alterou o repositório")
+	}
+}
+
+func TestCLIInitRejectsInvalidLocalSourcesWithoutWorkspace(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	file := filepath.Join(parent, "file")
+	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bare := filepath.Join(parent, "bare.git")
+	if output, err := exec.Command("git", "init", "--bare", "--quiet", bare).CombinedOutput(); err != nil {
+		t.Fatalf("git init --bare: %v: %s", err, output)
+	}
+	repository := filepath.Join(parent, "repository")
+	if err := os.Mkdir(repository, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitOutput(t, repository, "init", "--quiet")
+	if err := os.Mkdir(filepath.Join(repository, "subdirectory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for index, source := range []string{filepath.Join(parent, "missing"), file, bare, filepath.Join(repository, "subdirectory"), repository} {
+		name := "invalid-" + strconv.Itoa(index)
+		directory := parent
+		if source == repository {
+			directory = repository
+			source = "."
+		}
+		status, stdout, stderr := executeCLI(t, binary, directory, nil, "init", name, "--source", source)
+		if status != 1 || stdout != "" || !strings.Contains(stderr, "correção:") {
+			t.Fatalf("source=%q status=%d stdout=%q stderr=%q", source, status, stdout, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(directory, name)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("source=%q criou workspace: %v", source, err)
+		}
+	}
+}
+
+func TestCLIInitClonePopulatedAndEmptyLocalOrigins(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	for _, populated := range []bool{true, false} {
+		t.Run(map[bool]string{true: "populated", false: "empty"}[populated], func(t *testing.T) {
+			parent := t.TempDir()
+			origin := filepath.Join(parent, "sensitive-origin")
+			if err := os.Mkdir(origin, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			gitOutput(t, origin, "init", "--quiet")
+			if populated {
+				gitOutput(t, origin, "config", "user.email", "test@example.com")
+				gitOutput(t, origin, "config", "user.name", "Test")
+				if err := os.WriteFile(filepath.Join(origin, "tracked.txt"), []byte("history\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				gitOutput(t, origin, "add", "tracked.txt")
+				gitOutput(t, origin, "commit", "-m", "initial")
+				gitOutput(t, origin, "tag", "v-test")
+			}
+			before := snapshotTree(t, origin)
+			status, stdout, stderr := executeCLI(t, binary, parent, nil, "init", "cloned", "--clone", origin)
+			root := filepath.Join(parent, "cloned")
+			source := filepath.Join(root, "source")
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Source clonado:") || strings.Contains(stdout, origin) {
+				t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+			}
+			if !samePath(gitOutput(t, source, "rev-parse", "--show-toplevel"), source) || gitOutput(t, source, "remote") != "origin" {
+				t.Fatal("clone ou remoto inválido")
+			}
+			if populated {
+				if gitOutput(t, source, "rev-list", "--all", "--count") != "1" || gitOutput(t, source, "tag", "--list") != "v-test" {
+					t.Fatal("histórico incompleto")
+				}
+			} else if gitOutput(t, source, "rev-list", "--all", "--count") != "0" {
+				t.Fatal("clone vazio ganhou commit")
+			}
+			if !reflect.DeepEqual(before, snapshotTree(t, origin)) {
+				t.Fatal("origem alterada")
+			}
+			audit := readFile(t, filepath.Join(root, "knowledge", "runs", "source-clone.json"))
+			if !strings.Contains(audit, `"status": "succeeded"`) || strings.Contains(audit, origin) {
+				t.Fatalf("auditoria=%s", audit)
+			}
+			for _, command := range []string{"doctor", "status"} {
+				status, _, stderr := executeCLI(t, binary, root, nil, command)
+				if status != 0 || stderr != "" {
+					t.Fatalf("%s status=%d stderr=%q", command, status, stderr)
+				}
+			}
+		})
+	}
+}
+
+func TestCLIInitSourceSelectionRejectsInvalidShapesAndOriginsWithoutEffects(t *testing.T) {
+	binary := buildCLI(t)
+	environment := replaceEnvironment(os.Environ(), "PATH", t.TempDir())
+	for _, args := range [][]string{
+		{"init", "example", "--source"}, {"init", "example", "--clone"},
+		{"init", "example", "--source", "path", "--clone", "origin"},
+		{"init", "--source", "path", "example"}, {"init", "example", "--source", "--clone"},
+		{"init", "example", "--clone", "https://user:secret@example.com/repo"},
+		{"init", "example", "--clone", "http://example.com/repo"},
+		{"init", "example", "--clone", "--upload-pack=evil"},
+	} {
+		parent := t.TempDir()
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, args...)
+		if status != 2 || stdout != "" || !strings.Contains(stderr, "uso: cerne init") {
+			t.Fatalf("args=%q status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(parent, "example")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("args=%q criou workspace: %v", args, err)
+		}
+	}
+}
+
+func TestCLIInitSourceSelectionOperationalFailures(t *testing.T) {
+	binary := buildCLI(t)
+
+	t.Run("Git missing for local source", func(t *testing.T) {
+		parent := t.TempDir()
+		source := filepath.Join(parent, "source")
+		if err := os.Mkdir(source, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		environment := replaceEnvironment(os.Environ(), "PATH", t.TempDir())
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "example", "--source", source)
+		if status != 1 || stdout != "" || !strings.Contains(stderr, "Git") || !strings.Contains(stderr, "correção:") {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(parent, "example")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("workspace criado: %v", err)
+		}
+	})
+
+	t.Run("clone process failure is redacted and incomplete", func(t *testing.T) {
+		realGit, err := exec.LookPath("git")
+		if err != nil {
+			t.Skip("Git não está disponível")
+		}
+		parent := t.TempDir()
+		origin := filepath.Join(parent, "token-super-secreto-origin")
+		if err := os.Mkdir(origin, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		tools := buildWorkflowTools(t, "", true)
+		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment = replaceEnvironment(environment, "CERNE_TEST_REAL_GIT", realGit)
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "example", "--clone", origin)
+		root := filepath.Join(parent, "example")
+		if status != 1 || stdout != "" || !strings.Contains(stderr, "workspace incompleto") ||
+			strings.Contains(stderr, origin) || strings.Contains(stderr, "SECRET") {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		audit := readFile(t, filepath.Join(root, "knowledge", "runs", "source-clone.json"))
+		if !strings.Contains(audit, `"failure": "clone-failed"`) || strings.Contains(audit, origin) {
+			t.Fatalf("auditoria=%s", audit)
+		}
+		if _, err := os.Stat(filepath.Join(root, "source")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("source parcial existe: %v", err)
+		}
+		for _, command := range []string{"doctor", "status"} {
+			status, output, diagnostic := executeCLI(t, binary, root, nil, command)
+			if status != 1 || !strings.Contains(strings.ToLower(output+diagnostic), "source") {
+				t.Fatalf("%s não diagnosticou source ausente: status=%d stdout=%q stderr=%q", command, status, output, diagnostic)
+			}
 		}
 	})
 }
@@ -906,11 +1144,30 @@ func buildWorkflowTools(t *testing.T, provider string, fail bool) string {
 	directory := t.TempDir()
 	source := filepath.Join(directory, "main.go")
 	program := `package main
-import ("fmt"; "os"; "path/filepath"; "strings")
+import ("fmt"; "os"; "os/exec"; "path/filepath"; "strings")
 func main() {
   executable, _ := os.Executable()
   name := strings.TrimSuffix(filepath.Base(executable), filepath.Ext(executable))
-  if name == "git" { if err := os.Mkdir(".git", 0755); err != nil { os.Exit(1) }; return }
+  if name == "git" {
+    for _, argument := range os.Args[1:] {
+      if argument == "clone" {
+        if _, err := os.Stat(filepath.Join(filepath.Dir(executable), "fail")); err == nil {
+          destination := os.Args[len(os.Args)-1]
+          _ = os.WriteFile(filepath.Join(destination, "partial"), []byte("partial"), 0644)
+          fmt.Fprintln(os.Stderr, "SECRET raw Git output")
+          os.Exit(9)
+        }
+      }
+    }
+    if realGit := os.Getenv("CERNE_TEST_REAL_GIT"); realGit != "" {
+      command := exec.Command(realGit, os.Args[1:]...)
+      command.Stdin, command.Stdout, command.Stderr = os.Stdin, os.Stdout, os.Stderr
+      if err := command.Run(); err != nil { os.Exit(1) }
+      return
+    }
+    if err := os.Mkdir(".git", 0755); err != nil { os.Exit(1) }
+    return
+  }
   root, marker := ".specify", ".specify/init-options.json"
   if name == "openspec" { root, marker = "openspec", "openspec/config.yaml" }
   if _, err := os.Stat(filepath.Join(filepath.Dir(executable), "fail")); err == nil {
