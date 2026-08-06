@@ -178,7 +178,7 @@ Com um workflow selecionado, o manifesto também contém `"workflow":{"provider"
 ### Opções globais
 
 - `cerne --help` exibe os comandos disponíveis e as opções globais.
-- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.5.0`.
+- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.6.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
 
@@ -232,6 +232,22 @@ cerne restore git@host:org/knowledge.git --source ../source-existente
 Localiza o workspace ancestral mais próximo e materializa o provider declarado no manifesto. Não
 aceita provider, caminho nem opção de força. Cada tentativa real cria um JSON de auditoria
 sanitizado em `knowledge/runs`; executável ausente e layout pronto não criam auditoria.
+
+### `cerne context [--json]`
+
+Localiza o workspace ancestral mais próximo e informa paths canônicos de workspace, knowledge,
+product, specs, decisions, policies, source e workflow declarado. `--json` emite o schema estável
+versão 1 para skills e scripts. Relatórios saudáveis ou com avisos retornam `0`; relatórios
+estruturalmente inválidos continuam válidos e retornam `1`; uso inválido retorna `2` em stderr.
+
+O comando lê somente metadados estruturais. Não lê conteúdo dos repositórios nem arquivos de
+agente, executa Git ou providers, consulta remotos ou executáveis, acessa rede ou cria auditoria,
+cache, instrução ou alteração no manifesto.
+
+```sh
+cerne context
+cerne context --json
+```
 
 ### `cerne doctor`
 
