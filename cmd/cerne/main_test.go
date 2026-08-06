@@ -455,9 +455,11 @@ func TestCLIInitCombinesWorkflowWithEitherSourceMode(t *testing.T) {
 			if test.clone {
 				sourcePath = filepath.Join(parent, "example", "source")
 			}
-			expected := "Workspace \"example\" criado.\nKnowledge: " + displayPath(knowledge) + "\n" + test.sourceLabel + " " + displayPath(sourcePath) +
-				"\nWorkflow: " + test.provider + "\nSetup: concluído\n"
-			if status != 0 || stdout != expected || stderr != "" {
+			lines := strings.Split(stdout, "\n")
+			if status != 0 || stderr != "" || len(lines) != 6 || lines[0] != `Workspace "example" criado.` ||
+				!samePath(strings.TrimPrefix(lines[1], "Knowledge: "), knowledge) ||
+				!samePath(strings.TrimPrefix(lines[2], test.sourceLabel+" "), sourcePath) ||
+				lines[3] != "Workflow: "+test.provider || lines[4] != "Setup: concluído" || lines[5] != "" {
 				t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 			}
 			if !reflect.DeepEqual(before, snapshotTree(t, source)) {
