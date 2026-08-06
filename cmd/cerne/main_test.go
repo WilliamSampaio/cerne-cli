@@ -43,6 +43,8 @@ Uso:
   cerne init <project-name> --source <caminho>
   cerne init <project-name> --clone <origem>
   cerne init <project-name> --workflow <speckit|openspec>
+  cerne init <project-name> --source <caminho> --workflow <speckit|openspec>
+  cerne init <project-name> --clone <origem> --workflow <speckit|openspec>
 
 Nome:
   1 a 255 caracteres ASCII; começa por letra ou número e continua com
@@ -54,7 +56,8 @@ Source:
   um working tree Git local non-bare, resolvido a partir do diretório atual,
   sem criar source interno nem alterar o repositório informado. --clone aceita
   path local, file, HTTPS ou SSH, inclusive SCP-like, e cria remoto origin.
-  --source, --clone e --workflow são opções exclusivas e ficam após o nome.
+  --source e --clone são exclusivos; --workflow pode acompanhar qualquer modo.
+  As opções ficam após o nome e combinações aceitam qualquer ordem.
 
 Clone:
   HTTP, git://, ext::, helpers desconhecidos, opções, credenciais embutidas,
@@ -91,6 +94,7 @@ Exemplos:
   cerne init exemplo --source ../aplicacao
   cerne init exemplo --clone https://host/organizacao/aplicacao.git
   cerne init exemplo --workflow speckit
+  cerne init exemplo --clone https://host/organizacao/aplicacao.git --workflow speckit
 `
 
 func TestCLIGlobalHelpAndVersion(t *testing.T) {
@@ -165,7 +169,7 @@ func TestCLIStableContractAndPortablePath(t *testing.T) {
 
 	t.Run("missing argument", func(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "init")
-		expected := "erro: argumento inválido\nuso: cerne init <project-name> [--workflow <speckit|openspec> | --source <caminho> | --clone <origem>]\n"
+		expected := "erro: argumento inválido\nuso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec>]\n"
 		if status != 2 || stdout != "" || stderr != expected {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
@@ -399,6 +403,8 @@ func TestCLIInitSourceSelectionRejectsInvalidShapesAndOriginsWithoutEffects(t *t
 	for _, args := range [][]string{
 		{"init", "example", "--source"}, {"init", "example", "--clone"},
 		{"init", "example", "--source", "path", "--clone", "origin"},
+		{"init", "example", "--source", "path", "--clone", "origin", "--workflow", "speckit"},
+		{"init", "example", "--workflow", "speckit", "--workflow", "openspec"},
 		{"init", "--source", "path", "example"}, {"init", "example", "--source", "--clone"},
 		{"init", "example", "--clone", "https://user:secret@example.com/repo"},
 		{"init", "example", "--clone", "http://example.com/repo"},
@@ -412,6 +418,60 @@ func TestCLIInitSourceSelectionRejectsInvalidShapesAndOriginsWithoutEffects(t *t
 		if _, err := os.Stat(filepath.Join(parent, "example")); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("args=%q criou workspace: %v", args, err)
 		}
+	}
+}
+
+func TestCLIInitCombinesWorkflowWithEitherSourceMode(t *testing.T) {
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	for _, test := range []struct {
+		name, provider, sourceLabel, marker string
+		clone                               bool
+	}{
+		{"local", "speckit", "Source vinculado:", ".specify/init-options.json", false},
+		{"clone", "openspec", "Source clonado:", "openspec/config.yaml", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			parent := t.TempDir()
+			source := filepath.Join(parent, "origin")
+			if err := os.Mkdir(source, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			gitOutput(t, source, "init", "--quiet")
+			before := snapshotTree(t, source)
+			tools := buildWorkflowTools(t, test.provider, false)
+			environment := replaceEnvironment(os.Environ(), "PATH", tools)
+			environment = replaceEnvironment(environment, "CERNE_TEST_REAL_GIT", realGit)
+			args := []string{"init", "example", "--workflow", test.provider, "--source", source}
+			if test.clone {
+				args = []string{"init", "example", "--clone", source, "--workflow", test.provider}
+			}
+			status, stdout, stderr := executeCLI(t, binary, parent, environment, args...)
+			knowledge := filepath.Join(parent, "example", "knowledge")
+			sourcePath := source
+			if test.clone {
+				sourcePath = filepath.Join(parent, "example", "source")
+			}
+			lines := strings.Split(stdout, "\n")
+			if status != 0 || stderr != "" || len(lines) != 6 || lines[0] != `Workspace "example" criado.` ||
+				!samePath(strings.TrimPrefix(lines[1], "Knowledge: "), knowledge) ||
+				!samePath(strings.TrimPrefix(lines[2], test.sourceLabel+" "), sourcePath) ||
+				lines[3] != "Workflow: "+test.provider || lines[4] != "Setup: concluído" || lines[5] != "" {
+				t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+			}
+			if !reflect.DeepEqual(before, snapshotTree(t, source)) {
+				t.Fatal("source informado foi alterado")
+			}
+			if _, err := os.Stat(filepath.Join(knowledge, filepath.FromSlash(test.marker))); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(readFile(t, filepath.Join(knowledge, "cerne.json")), `"provider": "`+test.provider+`"`) {
+				t.Fatal("workflow ausente do manifesto")
+			}
+		})
 	}
 }
 

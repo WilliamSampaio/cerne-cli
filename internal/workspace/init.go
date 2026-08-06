@@ -54,11 +54,31 @@ func Init(parent, name string, initRepository func(string) error) (result Result
 }
 
 func InitWithSource(parent, name string, request SourceInitRequest, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
+	result, _, err := InitWithSourceAndWorkflow(parent, name, request, WorkflowDefinition{}, initRepository, inspect, clone)
+	return result, err
+}
+
+func InitWithSourceAndWorkflow(parent, name string, request SourceInitRequest, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
+	if definition.Provider != "" {
+		if _, _, err := workflowPaths(filepath.Join(parent, name, "knowledge"), definition); err != nil {
+			return Result{}, WorkflowResult{}, errors.New("workflow inválido")
+		}
+	}
+	result, err := initWithSource(parent, name, request, definition, initRepository, inspect, clone)
+	if err != nil || definition.Provider == "" {
+		return result, WorkflowResult{}, err
+	}
+	workflow, err := applyWorkflow(result.KnowledgePath, definition, "init", "--workflow")
+	workflow.ProjectName = name
+	return result, workflow, err
+}
+
+func initWithSource(parent, name string, request SourceInitRequest, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
 	switch request.Mode {
 	case SourceLocal:
-		return initWithLocalSource(parent, name, request.Input, initRepository, inspect)
+		return initWithLocalSource(parent, name, request.Input, definition, initRepository, inspect)
 	case SourceClone:
-		return initWithClonedSource(parent, name, request, initRepository, inspect, clone)
+		return initWithClonedSource(parent, name, request, definition, initRepository, inspect, clone)
 	default:
 		return Result{}, errors.New("modo de source inválido")
 	}
@@ -188,7 +208,7 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 	return Result{Name: name, KnowledgePath: knowledge, SourcePath: source, SourceMode: SourceEmpty}, nil
 }
 
-func initWithLocalSource(parent, name, input string, initRepository func(string) error, inspect LinkGitInspect) (Result, error) {
+func initWithLocalSource(parent, name, input string, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect) (Result, error) {
 	if inspect == nil {
 		return Result{}, sourceInitFailure("Git indisponível", "instale o Git e disponibilize-o no PATH", false)
 	}
@@ -207,7 +227,7 @@ func initWithLocalSource(parent, name, input string, initRepository func(string)
 	}
 	rootExisted := pathExists(root)
 	manifestSource := manifestLinkSource(knowledge, candidate)
-	result, err := initWorkspaceMode(parent, name, WorkflowDefinition{}, manifestSource, false, initRepository)
+	result, err := initWorkspaceMode(parent, name, definition, manifestSource, false, initRepository)
 	if err != nil {
 		return Result{}, err
 	}
@@ -238,13 +258,13 @@ func sameRepositoryFacts(left, right LinkRepositoryFacts) bool {
 		samePath(left.WorktreeRoot, right.WorktreeRoot) && samePath(left.CommonDir, right.CommonDir)
 }
 
-func initWithClonedSource(parent, name string, request SourceInitRequest, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
+func initWithClonedSource(parent, name string, request SourceInitRequest, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
 	if inspect == nil || clone == nil || request.Input == "" || request.OriginTransport == "" || request.OriginFingerprint == "" {
 		return Result{}, sourceInitFailure("clone do source indisponível", "instale o Git e tente novamente", false)
 	}
 	root := filepath.Join(canonical(parent), name)
 	rootExisted := pathExists(root)
-	result, err := initWorkspaceMode(parent, name, WorkflowDefinition{}, "../source", false, initRepository)
+	result, err := initWorkspaceMode(parent, name, definition, "../source", false, initRepository)
 	if err != nil {
 		return Result{}, err
 	}

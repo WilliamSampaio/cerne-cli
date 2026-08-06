@@ -105,13 +105,15 @@ cerne init meu-projeto --clone https://host/organizacao/aplicacao.git
 `--source` vincula um working tree Git local non-bare, resolve caminhos relativos a partir do
 diretório da invocação e nunca cria source interno nem altera o repositório externo. `--clone`
 aceita path local existente, `file`, HTTPS ou SSH (inclusive SCP-like), faz um clone padrão completo
-no `source` interno e mantém o remoto `origin`. Essas flags e `--workflow` são mutuamente exclusivas.
+no `source` interno e mantém o remoto `origin`. `--source` e `--clone` são mutuamente exclusivas;
+qualquer uma pode ser combinada com `--workflow`.
 
 Para inicializar um workflow opcional de especificação durante a criação:
 
 ```sh
 cerne init meu-projeto --workflow speckit
 cerne init meu-projeto --workflow openspec
+cerne init meu-projeto --clone https://host/organizacao/aplicacao.git --workflow speckit
 ```
 
 O Spec Kit mantém as especificações em `knowledge/specs` e controla `knowledge/.specify`. O
@@ -178,7 +180,7 @@ Com um workflow selecionado, o manifesto também contém `"workflow":{"provider"
 - `cerne --help` exibe os comandos disponíveis e as opções globais.
 - `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.3.0`.
 
-### `cerne init <project-name> [--workflow ... | --source ... | --clone ...]`
+### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
 
 Cria um workspace abaixo do diretório atual. O destino deve estar ausente ou ser um diretório
 regular vazio; links simbólicos e destinos não vazios são recusados. Conteúdo existente nunca é
@@ -195,7 +197,8 @@ provider executado preserva o workspace base e retorna erro operacional.
 query e fragmento antes de executar Git. Autenticação, redirects e filtros de checkout continuam
 sob responsabilidade do Git; o Cerne desabilita prompts controláveis, mas helpers externos ainda
 podem falhar ou agir fora do controle portátil do CLI. O clone não acrescenta depth, branch,
-submódulos, LFS, push ou fetch extra.
+submódulos, LFS, push ou fetch extra. Qualquer opção de source pode ser combinada com
+`--workflow`; source e clone continuam exclusivos.
 
 Cada clone iniciado cria antes uma auditoria sanitizada em `knowledge/runs/source-clone.json`.
 Falhas anteriores ao clone revertem a tentativa. Falhas posteriores preservam knowledge e
