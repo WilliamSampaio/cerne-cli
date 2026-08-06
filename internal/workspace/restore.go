@@ -120,7 +120,7 @@ func Restore(parent, home string, request RestoreRequest, inspect LinkGitInspect
 	if err != nil {
 		return fail("staging-failed", "não foi possível preparar a restauração", "verifique as permissões do diretório atual")
 	}
-	stagingInfo, err = os.Lstat(staging)
+	stagingInfo, err = restorePathIdentity(staging)
 	if err != nil {
 		return fail("staging-failed", "não foi possível confirmar a restauração", "verifique o sistema de arquivos")
 	}
@@ -452,6 +452,15 @@ func cleanupOwnedRestore(target, parent, prefix string, expected os.FileInfo) er
 		return errors.New("ownership do restore não confirmada")
 	}
 	return os.RemoveAll(clean)
+}
+
+func restorePathIdentity(path string) (os.FileInfo, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return file.Stat()
 }
 
 func restoreFailure(cause, correction string) RestoreFailure {

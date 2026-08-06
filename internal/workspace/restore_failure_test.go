@@ -67,7 +67,7 @@ func TestCleanupOwnedRestoreRejectsReplacedIdentity(t *testing.T) {
 	if err := os.Mkdir(target, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	owned, err := os.Lstat(target)
+	owned, err := restorePathIdentity(target)
 	if err != nil {
 		t.Fatal(err)
 	}
