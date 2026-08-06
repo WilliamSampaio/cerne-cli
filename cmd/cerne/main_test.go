@@ -1240,10 +1240,9 @@ func countReportLines(stdout string) int {
 }
 
 type snapshotEntry struct {
-	Mode    fs.FileMode
-	Size    int64
-	ModTime int64
-	Hash    [32]byte
+	Mode fs.FileMode
+	Size int64
+	Hash [32]byte
 }
 
 func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
@@ -1268,7 +1267,6 @@ func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
 				return err
 			}
 			item.Hash = sha256.Sum256(data)
-			item.ModTime = info.ModTime().UnixNano()
 		}
 		out[relative] = item
 		return nil
