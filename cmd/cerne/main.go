@@ -14,7 +14,7 @@ import (
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
 
-const version = "0.4.0"
+const version = "0.5.0"
 
 const globalHelp = `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
 
@@ -25,6 +25,7 @@ Uso:
 
 Comandos:
   init      Cria um workspace Cerne
+  restore   Restaura um workspace Cerne existente
   doctor    Valida a estrutura e a segurança do workspace
   status    Exibe o estado local dos repositórios
   link      Vincula um repositório Git local como source
@@ -35,6 +36,36 @@ Opções:
   --version    Exibe a versão do Cerne
 
 Use "cerne <comando> --help" para detalhes de um comando.
+`
+
+const restoreHelp = `Restaura um workspace Cerne a partir de um repositório knowledge.
+
+Uso:
+  cerne restore <origem-knowledge> --clone <origem-source>
+  cerne restore <origem-knowledge> --source <caminho-local>
+  cerne restore --help
+
+Comportamento:
+  Knowledge é sempre clonado. --clone também clona source; --source vincula a
+  raiz de um working tree Git local sem copiá-lo nem alterá-lo. O nome e o
+  caminho portátil do source são lidos de knowledge/cerne.json.
+
+Segurança:
+  O destino deve estar ausente e nunca é substituído. A restauração usa staging
+  privado, valida repositórios independentes e não executa setup de workflow.
+  Cada tentativa válida cria um registro redigido em ~/.cerne/audit antes do Git.
+
+Saídas:
+  Sucesso e ajuda usam stdout. Falhas usam stderr.
+  Status 0: sucesso ou ajuda; 1: falha operacional; 2: uso ou origem inválida.
+
+Efeitos:
+  Não faz push, merge, fetch adicional, instalação, deploy ou execução de
+  provider. Autenticação e redirects seguem a configuração externa do Git.
+
+Exemplos:
+  cerne restore git@host:org/knowledge.git --clone git@host:org/source.git
+  cerne restore ../knowledge.git --source ../source-existente
 `
 
 const initHelp = `Inicializa um workspace Cerne com repositórios Git independentes.
@@ -252,6 +283,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "init":
 		return runInit(args[1:], stdout, stderr)
+	case "restore":
+		return runRestore(args[1:], stdout, stderr)
 	case "doctor":
 		return runDoctor(args[1:], stdout, stderr)
 	case "status":
@@ -263,6 +296,106 @@ func run(args []string, stdout, stderr io.Writer) int {
 	default:
 		return commandUsageError(stderr, "comando desconhecido")
 	}
+}
+
+type restoreArguments struct {
+	KnowledgeOrigin string
+	SourceMode      workspace.SourceMode
+	SourceValue     string
+}
+
+func parseRestoreArgs(args []string) (restoreArguments, bool) {
+	if len(args) != 3 || strings.HasPrefix(args[0], "--") || args[0] == "" || args[2] == "" || strings.HasPrefix(args[2], "--") {
+		return restoreArguments{}, false
+	}
+	parsed := restoreArguments{KnowledgeOrigin: args[0], SourceValue: args[2]}
+	switch args[1] {
+	case "--clone":
+		parsed.SourceMode = workspace.SourceClone
+	case "--source":
+		parsed.SourceMode = workspace.SourceLocal
+	default:
+		return restoreArguments{}, false
+	}
+	return parsed, true
+}
+
+func runRestore(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "--help" {
+		fmt.Fprint(stdout, restoreHelp)
+		return 0
+	}
+	parsed, ok := parseRestoreArgs(args)
+	if !ok {
+		fmt.Fprintln(stderr, "erro: argumento inválido")
+		fmt.Fprintln(stderr, "uso: cerne restore <origem-knowledge> (--source <caminho> | --clone <origem-source>)")
+		return 2
+	}
+	current, err := currentDirectory()
+	if err != nil {
+		fmt.Fprintln(stderr, "erro: não foi possível obter o diretório atual")
+		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+		return 1
+	}
+	knowledgeOrigin, err := gitexec.ClassifyCloneOrigin(current, parsed.KnowledgeOrigin)
+	if err != nil {
+		return restoreUsageError(stderr, "origem do knowledge inválida")
+	}
+	sourceInput := parsed.SourceValue
+	if parsed.SourceMode == workspace.SourceClone {
+		sourceOrigin, err := gitexec.ClassifyCloneOrigin(current, parsed.SourceValue)
+		if err != nil {
+			return restoreUsageError(stderr, "origem de clone do source inválida")
+		}
+		sourceInput = sourceOrigin.Location
+	}
+	clone, err := gitexec.FindClone()
+	if err != nil {
+		fmt.Fprintln(stderr, "erro: Git indisponível")
+		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+		return 1
+	}
+	inspect, err := gitexec.FindLinkInspector()
+	if err != nil {
+		fmt.Fprintln(stderr, "erro: Git indisponível")
+		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+		return 1
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintln(stderr, "erro: não foi possível localizar o diretório pessoal")
+		fmt.Fprintln(stderr, "correção: configure um diretório pessoal acessível")
+		return 1
+	}
+	result, err := workspace.Restore(current, home, workspace.RestoreRequest{
+		KnowledgeOrigin: knowledgeOrigin.Location, SourceMode: parsed.SourceMode, SourceInput: sourceInput,
+	}, adaptLink(inspect), clone, workflowexec.Resolve)
+	if err != nil {
+		var failure workspace.RestoreFailure
+		if errors.As(err, &failure) {
+			fmt.Fprintf(stderr, "erro: %s\ncorreção: %s\n", failure.Cause, failure.Correction)
+		} else {
+			fmt.Fprintln(stderr, "erro: não foi possível restaurar o workspace")
+			fmt.Fprintln(stderr, "correção: verifique a auditoria e tente novamente")
+		}
+		return 1
+	}
+	fmt.Fprintf(stdout, "Workspace %q restaurado.\nKnowledge: %s\n", result.Name, result.KnowledgePath)
+	if result.SourceMode == workspace.SourceClone {
+		fmt.Fprintf(stdout, "Source clonado: %s\n", result.SourcePath)
+	} else {
+		fmt.Fprintf(stdout, "Source vinculado: %s\n", result.SourcePath)
+		if result.ManifestChanged {
+			fmt.Fprintln(stdout, "Manifesto: referência de source atualizada.")
+		}
+	}
+	return 0
+}
+
+func restoreUsageError(stderr io.Writer, cause string) int {
+	fmt.Fprintf(stderr, "erro: %s\n", cause)
+	fmt.Fprintln(stderr, "uso: cerne restore <origem-knowledge> (--source <caminho> | --clone <origem-source>)")
+	return 2
 }
 
 func runInit(args []string, stdout, stderr io.Writer) int {

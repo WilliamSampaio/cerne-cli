@@ -426,3 +426,31 @@ func readText(t *testing.T, path string) string {
 	}
 	return string(data)
 }
+
+func TestPromoteDirectoryNoReplacePreservesConcurrentTarget(t *testing.T) {
+	parent := t.TempDir()
+	staging := filepath.Join(parent, "staging")
+	target := filepath.Join(parent, "target")
+	if err := os.Mkdir(staging, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(staging, "ours"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "theirs"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := promoteDirectoryNoReplace(staging, target); err == nil {
+		t.Fatal("promoção deveria recusar target existente")
+	}
+	if _, err := os.Stat(filepath.Join(target, "theirs")); err != nil {
+		t.Fatalf("target concorrente foi alterado: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(staging, "ours")); err != nil {
+		t.Fatalf("staging foi perdido: %v", err)
+	}
+}
