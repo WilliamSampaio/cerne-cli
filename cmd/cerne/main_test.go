@@ -129,6 +129,7 @@ func TestCLIContextJSONContract(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "knowledge", "cerne.json"), []byte(manifest), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	root = canonicalCLIPath(t, root)
 	before := snapshotTree(t, root)
 	status, stdout, stderr := executeCLI(t, binary, filepath.Join(root, "source", "sub"), replaceEnvironment(os.Environ(), "PATH", t.TempDir()), "context", "--json")
 	if status != 0 || stderr != "" || !strings.HasSuffix(stdout, "\n") {
@@ -158,6 +159,7 @@ func TestCLIContextHumanHelpAndFailures(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "knowledge", "cerne.json"), []byte(`{"name":"example","source":"../source","version":1}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	root = canonicalCLIPath(t, root)
 	status, stdout, stderr := executeCLI(t, binary, root, nil, "context")
 	expected := "Workspace: example\nStatus: saudável\nRoot: " + root + "\n\nKnowledge: " + filepath.Join(root, "knowledge") + "\nProduct: " + filepath.Join(root, "knowledge", "product") + "\nSpecs: " + filepath.Join(root, "knowledge", "specs") + "\nDecisions: " + filepath.Join(root, "knowledge", "decisions") + "\nPolicies: " + filepath.Join(root, "knowledge", "policies") + "\n\nSource: " + filepath.Join(root, "source") + "\nLocalização: interno ao workspace\n\nWorkflow: não declarado\n"
 	if status != 0 || stdout != expected || stderr != "" {
@@ -1193,6 +1195,15 @@ func expectedStatus(root, project string, repositories ...repositoryExpectation)
 		output.WriteString("  Não rastreados: " + strconv.Itoa(repository.Untracked) + "\n")
 	}
 	return output.String()
+}
+
+func canonicalCLIPath(t *testing.T, path string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Clean(resolved)
 }
 
 func buildCLI(t *testing.T) string {

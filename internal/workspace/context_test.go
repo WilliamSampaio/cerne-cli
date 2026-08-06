@@ -30,6 +30,7 @@ func TestContextHealthyFromDescendantAndExternalSource(t *testing.T) {
 	if err := os.Mkdir(external, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	external = canonical(external)
 	writeContextManifest(t, root, "example", external, "")
 	report = Context(root, contextResolver)
 	if report.Source == nil || report.Source.InsideWorkspace || report.Source.Path != external {
@@ -238,7 +239,7 @@ func newContextWorkspace(t *testing.T, name, source, provider string) string {
 		}
 	}
 	writeContextManifest(t, root, name, source, provider)
-	return root
+	return canonical(root)
 }
 
 func writeContextManifest(t *testing.T, root, name, source, provider string) {
