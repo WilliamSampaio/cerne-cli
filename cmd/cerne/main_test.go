@@ -24,6 +24,7 @@ Uso:
 
 Comandos:
   init      Cria um workspace Cerne
+  restore   Restaura um workspace Cerne existente
   doctor    Valida a estrutura e a segurança do workspace
   status    Exibe o estado local dos repositórios
   link      Vincula um repositório Git local como source
@@ -104,7 +105,7 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 		expected string
 	}{
 		{"--help", expectedGlobalHelp},
-		{"--version", "cerne 0.4.0\n"},
+		{"--version", "cerne 0.5.0\n"},
 	} {
 		t.Run(test.argument, func(t *testing.T) {
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, test.argument)
@@ -1360,4 +1361,127 @@ func readFile(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(data)
+}
+
+func TestParseRestoreArgsRequiresOneExclusiveSourceMode(t *testing.T) {
+	tests := []struct {
+		args []string
+		ok   bool
+		mode string
+	}{
+		{[]string{"knowledge", "--clone", "source"}, true, "clone"},
+		{[]string{"knowledge", "--source", "../source"}, true, "local"},
+		{[]string{"--clone", "source", "knowledge"}, false, ""},
+		{[]string{"knowledge"}, false, ""},
+		{[]string{"knowledge", "--clone", "source", "extra"}, false, ""},
+		{[]string{"knowledge", "--clone", "--source"}, false, ""},
+	}
+	for _, test := range tests {
+		parsed, ok := parseRestoreArgs(test.args)
+		if ok != test.ok || ok && string(parsed.SourceMode) != test.mode {
+			t.Fatalf("parseRestoreArgs(%v) = %#v, %v", test.args, parsed, ok)
+		}
+	}
+}
+
+func TestCLIRestoreHelpAndInvalidUsage(t *testing.T) {
+	binary := buildCLI(t)
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "restore", "--help")
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne restore <origem-knowledge> --clone <origem-source>") ||
+		!strings.Contains(stdout, "~/.cerne/audit") {
+		t.Fatalf("help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), nil, "restore", "knowledge")
+	expected := "erro: argumento inválido\nuso: cerne restore <origem-knowledge> (--source <caminho> | --clone <origem-source>)\n"
+	if status != 2 || stdout != "" || stderr != expected {
+		t.Fatalf("uso: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+}
+
+func TestCLIRestoreCloneEndToEnd(t *testing.T) {
+	binary := buildCLI(t)
+	parent, home := t.TempDir(), t.TempDir()
+	knowledge := createRestoreGitRepository(t, map[string]string{
+		"cerne.json":       `{"name":"example","source":"../source"}`,
+		"product/.gitkeep": "", "specs/.gitkeep": "", "decisions/.gitkeep": "",
+		"policies/.gitkeep": "", "runs/.gitkeep": "",
+	})
+	source := createRestoreGitRepository(t, map[string]string{"README.md": "source\n"})
+	environment := replaceEnvironment(os.Environ(), "HOME", home)
+	environment = replaceEnvironment(environment, "USERPROFILE", home)
+	status, stdout, stderr := executeCLI(t, binary, parent, environment, "restore", knowledge, "--clone", source)
+	expected := "Workspace \"example\" restaurado.\nKnowledge: " + displayPath(filepath.Join(parent, "example", "knowledge")) +
+		"\nSource clonado: " + displayPath(filepath.Join(parent, "example", "source")) + "\n"
+	if status != 0 || stdout != expected || stderr != "" {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+	entries, err := os.ReadDir(filepath.Join(home, ".cerne", "audit"))
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("audit = %d, %v", len(entries), err)
+	}
+	audit := readFile(t, filepath.Join(home, ".cerne", "audit", entries[0].Name()))
+	if strings.Contains(audit, knowledge) || strings.Contains(audit, source) || !strings.Contains(audit, `"status": "succeeded"`) {
+		t.Fatalf("audit inválido: %s", audit)
+	}
+}
+
+func TestCLIRestoreLocalSourceUpdatesOnlyManifestReference(t *testing.T) {
+	binary := buildCLI(t)
+	parent, home := t.TempDir(), t.TempDir()
+	knowledge := createRestoreGitRepository(t, map[string]string{
+		"cerne.json":       `{"name":"example","source":"../old","custom":true}`,
+		"product/.gitkeep": "", "specs/.gitkeep": "", "decisions/.gitkeep": "",
+		"policies/.gitkeep": "", "runs/.gitkeep": "",
+	})
+	source := createRestoreGitRepository(t, map[string]string{"README.md": "untouched\n"})
+	before := snapshotTree(t, source)
+	environment := replaceEnvironment(os.Environ(), "HOME", home)
+	environment = replaceEnvironment(environment, "USERPROFILE", home)
+	status, stdout, stderr := executeCLI(t, binary, parent, environment, "restore", knowledge, "--source", source)
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "Source vinculado: "+displayPath(source)+"\n") ||
+		!strings.HasSuffix(stdout, "Manifesto: referência de source atualizada.\n") {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+	if after := snapshotTree(t, source); !reflect.DeepEqual(before, after) {
+		t.Fatal("source local foi alterado")
+	}
+	manifest := readFile(t, filepath.Join(parent, "example", "knowledge", "cerne.json"))
+	if !strings.Contains(manifest, `"custom": true`) {
+		t.Fatalf("manifesto perdeu campo: %s", manifest)
+	}
+}
+
+func TestCLIRestoreRejectsInvalidOriginBeforeAudit(t *testing.T) {
+	binary := buildCLI(t)
+	parent, home := t.TempDir(), t.TempDir()
+	environment := replaceEnvironment(os.Environ(), "HOME", home)
+	environment = replaceEnvironment(environment, "USERPROFILE", home)
+	secret := "https://user:password@example.invalid/knowledge.git"
+	status, stdout, stderr := executeCLI(t, binary, parent, environment, "restore", secret, "--clone", "source")
+	if status != 2 || stdout != "" || strings.Contains(stderr, secret) || strings.Contains(stderr, "password") {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".cerne")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("uso inválido criou audit: %v", err)
+	}
+}
+
+func createRestoreGitRepository(t *testing.T, files map[string]string) string {
+	t.Helper()
+	repository := t.TempDir()
+	gitOutput(t, repository, "init", "--quiet")
+	gitOutput(t, repository, "config", "user.email", "restore@example.com")
+	gitOutput(t, repository, "config", "user.name", "Restore Test")
+	for name, content := range files {
+		path := filepath.Join(repository, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitOutput(t, repository, "add", ".")
+	gitOutput(t, repository, "commit", "--quiet", "-m", "fixture")
+	return repository
 }

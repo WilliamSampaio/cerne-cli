@@ -3,6 +3,18 @@
 All notable changes to Cerne are documented in this file. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## 0.5.0 - 2026-08-05
+
+### Added
+
+- `cerne restore` to clone knowledge and either clone or link source in one transactional command.
+- Private global restore audits with redacted phase transitions and cross-platform access controls.
+
+### Security
+
+- Restore validates portable manifest paths, independent Git roots, absent destinations and
+  workflow state before non-replacing promotion, with identity-checked rollback on failure.
+
 ## 0.4.0 - 2026-08-05
 
 ### Added
