@@ -2,15 +2,16 @@
 
 ## Decisão 1: Manter três modos explícitos e fechados
 
-**Decision**: Aceitar somente `cerne init <name>`, `<name> --source <path>` e
-`<name> --clone <origin>`, nessa ordem. As flags são mutuamente exclusivas e o modo sem flag mantém
-seu contrato byte a byte.
+**Decision**: Aceitar `cerne init <name>`, `<name> --source <path>` e `<name> --clone <origin>`.
+`--source` e `--clone` são mutuamente exclusivos; `--workflow` pode acompanhar qualquer modo e,
+quando combinado com uma opção de source, os pares podem aparecer em qualquer ordem depois do nome.
+O modo sem flag mantém seu contrato byte a byte.
 
 **Rationale**: O parser manual atual é suficiente e a posição fixa evita ambiguidade antes de
 qualquer efeito. Os modos representam necessidades presentes, não um registry de estratégias.
 
 **Alternatives considered**: Prompt interativo; flag genérica que tenta adivinhar path versus URL;
-framework CLI; permitir flags em qualquer ordem.
+framework CLI; permitir opções antes do nome.
 
 ## Decisão 2: Reusar integralmente as regras de `cerne link`
 

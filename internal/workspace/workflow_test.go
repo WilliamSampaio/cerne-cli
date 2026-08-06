@@ -70,6 +70,36 @@ func TestInitWithWorkflowAcceptsEquivalentParentAlias(t *testing.T) {
 	}
 }
 
+func TestInitWithSourceAndWorkflowCombinesBothModes(t *testing.T) {
+	for _, mode := range []SourceMode{SourceLocal, SourceClone} {
+		t.Run(string(mode), func(t *testing.T) {
+			parent := t.TempDir()
+			input := filepath.Join(parent, "origin")
+			if err := os.Mkdir(input, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			request := SourceInitRequest{Mode: mode, Input: input}
+			var clone CloneSource
+			if mode == SourceClone {
+				request.OriginTransport, request.OriginFingerprint = "local", "fingerprint"
+				clone = func(_ string, staging string) error { return os.Mkdir(filepath.Join(staging, ".git"), 0o755) }
+			}
+			definition := readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json")
+			base, workflow, err := InitWithSourceAndWorkflow(parent, "example", request, definition, fakeInitRepository, fakeLinkInspect(nil, nil), clone)
+			if err != nil || workflow.State != WorkflowConfigured || base.SourceMode != mode {
+				t.Fatalf("base=%#v workflow=%#v erro=%v", base, workflow, err)
+			}
+			if _, err := os.Stat(filepath.Join(base.KnowledgePath, ".alpha", "options.json")); err != nil {
+				t.Fatal(err)
+			}
+			manifest := readManifestJSON(t, filepath.Dir(base.KnowledgePath))
+			if !containsText(string(manifest["workflow"]), `"provider": "alpha"`) {
+				t.Fatalf("workflow ausente do manifesto: %s", manifest["workflow"])
+			}
+		})
+	}
+}
+
 func TestWorkflowPendingResumeAndIdempotency(t *testing.T) {
 	definition := readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json")
 	definition.Available = false

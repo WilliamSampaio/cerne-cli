@@ -35,7 +35,7 @@ executáveis Git falsos; nenhuma rede ou credencial real
 **Performance Goals**: Validação local concluída sem percorrer conteúdo do working tree; clone
 limitado pelo desempenho normal do Git e da origem
 
-**Constraints**: Modo sem flag exato; flags mutuamente exclusivas; nenhum shell; protocolos
+**Constraints**: Modo sem flag exato; `--source` e `--clone` mutuamente exclusivos e combináveis com `--workflow`; nenhum shell; protocolos
 limitados; credenciais embutidas recusadas; prompts controláveis pelo Git, templates e hooks
 neutralizados, com limitações de helpers externos documentadas; origem e output Git não
 registrados; promoção privada não substitui source concorrente; falha pós-clone preserva auditoria;

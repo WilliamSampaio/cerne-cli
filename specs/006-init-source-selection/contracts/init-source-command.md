@@ -6,11 +6,13 @@
 cerne init <project-name>
 cerne init <project-name> --source <local-path>
 cerne init <project-name> --clone <repository-location>
+cerne init <project-name> --source <local-path> --workflow <speckit|openspec>
+cerne init <project-name> --clone <repository-location> --workflow <speckit|openspec>
 cerne init --help
 ```
 
-As flags aparecem somente depois do nome, exigem um valor, não podem ser repetidas nem combinadas
-e não aceitam argumentos adicionais.
+As flags aparecem somente depois do nome e exigem um valor. `--source` e `--clone` não podem ser
+repetidas nem combinadas entre si; `--workflow` pode acompanhar qualquer uma delas em qualquer ordem.
 
 ## Default mode
 
@@ -80,13 +82,23 @@ Source clonado: <absolute-workspace-source-path>
 
 stderr fica vazio. A localização original do clone não é exibida.
 
+Quando `--workflow` é combinado, o sucesso acrescenta ao stdout:
+
+```text
+Workflow: <speckit|openspec>
+Setup: <concluído|pendente>
+```
+
+Setup pendente mantém status `0` e usa stderr para o aviso e a correção, conforme o contrato de
+workflow. Falha do source impede o provider; falha do provider preserva o source já validado.
+
 ## Invalid usage
 
 Status: `2`; stdout vazio.
 
 ```text
 erro: <cause>
-uso: cerne init <project-name> [--source <caminho> | --clone <origem>]
+uso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec>]
 ```
 
 Nenhum arquivo é criado.
