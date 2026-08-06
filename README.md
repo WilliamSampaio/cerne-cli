@@ -178,7 +178,7 @@ With a selected workflow, the manifest also contains `"workflow":{"provider":"sp
 ### Global options
 
 - `cerne --help` prints the available commands and global options.
-- `cerne --version` prints the stable SemVer identifier, currently `cerne 0.3.0`.
+- `cerne --version` prints the stable SemVer identifier, currently `cerne 0.4.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
 

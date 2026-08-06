@@ -180,7 +180,7 @@ o `"workflow":{"provider":"openspec"}`. El estado de instalación y la versión 
 ### Opciones globales
 
 - `cerne --help` muestra los comandos disponibles y las opciones globales.
-- `cerne --version` muestra el identificador SemVer estable, actualmente `cerne 0.3.0`.
+- `cerne --version` muestra el identificador SemVer estable, actualmente `cerne 0.4.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
 

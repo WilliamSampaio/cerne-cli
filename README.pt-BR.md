@@ -178,7 +178,7 @@ Com um workflow selecionado, o manifesto também contém `"workflow":{"provider"
 ### Opções globais
 
 - `cerne --help` exibe os comandos disponíveis e as opções globais.
-- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.3.0`.
+- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.4.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
 
