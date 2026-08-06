@@ -19,6 +19,11 @@ e preflight de paths, antes de qualquer processo Git.
 
 Um JSON global e privado por tentativa, com filename opaco `restore-<id>.json`.
 
+O diretório e o arquivo pertencem ao usuário atual. POSIX exige diretórios `0700`, arquivo `0600`
+e nenhum bit de grupo/outros. Windows desabilita herança permissiva e usa DACL que concede acesso
+somente ao usuário atual e `SYSTEM`; estado existente incompatível é corrigido somente quando owned
+com segurança ou recusado antes do primeiro processo.
+
 | Field | Type | Rules |
 | --- | --- | --- |
 | `kind` | string | Sempre `workspace-restore` |

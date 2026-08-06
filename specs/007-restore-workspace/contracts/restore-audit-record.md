@@ -38,8 +38,9 @@ No modo local, `authorization` é `restore --source` e `phases.source.operation`
 ## Guarantees
 
 - `.cerne` e `audit` são diretórios regulares privados; symlinks e arquivos são recusados.
-- Diretórios novos usam `0700`; registro novo usa criação exclusiva e `0600`. Em Windows, o perfil
-  do usuário fornece a ACL privada equivalente.
+- Em POSIX, diretórios pertencem ao usuário atual, usam `0700` e o registro exclusivo usa `0600`.
+- No Windows, herança permissiva é desabilitada e a DACL concede acesso somente ao usuário atual e
+  `SYSTEM`; estado incompatível é corrigido quando owned com segurança ou recusado.
 - O primeiro estado `started` é sincronizado antes de Git. Falha nessa criação impede processos.
 - Transições substituem atomicamente o mesmo JSON; uma transição não durável não autoriza a próxima
   fase.

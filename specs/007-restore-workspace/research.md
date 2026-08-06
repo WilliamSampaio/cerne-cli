@@ -20,11 +20,14 @@ violar a imutabilidade do source quando ele contém a home.
 **Decision**: Usar `filepath.Join(os.UserHomeDir(), ".cerne", "audit")` nos três sistemas. Criar
 diretórios regulares privados e recusar `.cerne` ou `audit` como symlink/arquivo. Confinar o acesso
 à home com `os.OpenRoot`, criar um `restore-<id-opaco>.json` exclusivo com modo `0600` e manter
-diretórios em `0700`. Em Windows, a privacidade equivalente depende da ACL herdada do perfil.
+diretórios em `0700`. Em POSIX, exigir ownership do usuário atual e ausência de bits para
+grupo/outros. No Windows, desabilitar herança permissiva e aplicar DACL com acesso somente para o
+usuário atual e `SYSTEM`, corrigindo estado owned ou recusando estado incompatível.
 
 **Rationale**: Corresponde ao local escolhido pelo usuário, existe antes de knowledge e sobrevive ao
-rollback. `os.Root`, biblioteca padrão do Go alvo, limita operações à home sem novo pacote. Nome
-opaco evita colisão e não depende do nome ainda desconhecido do workspace.
+rollback. `os.Root`, biblioteca padrão do Go alvo, limita operações à home; `x/sys/windows` já
+instalado fornece a DACL nativa sem nova dependência. Nome opaco evita colisão e não depende do nome
+ainda desconhecido do workspace.
 
 **Alternatives considered**: `os.UserConfigDir`, que mudaria para XDG/AppData sem necessidade;
 arquivo nomeado pelo projeto, impossível antes do clone e sujeito a colisão; audit dentro de
@@ -64,9 +67,10 @@ knowledge e source publicamente em etapas; copiar recursivamente knowledge local
 Diretório vazio, não vazio, arquivo e symlink existentes são recusados e preservados. A promoção
 repete a garantia de no-replace contra criação concorrente.
 
-**Rationale**: FR-016 exige destino ausente após falha, enquanto FR-017 proíbe remover algo sem
-ownership. Um diretório vazio preexistente não pertence à tentativa; aceitá-lo tornaria as duas
-garantias simultaneamente impossíveis. A regra mais estrita resolve a ambiguidade de FR-005.
+**Rationale**: FR-016 exige remover todos os artefatos cuja ownership permaneça confirmada, enquanto
+FR-017 proíbe remover alvo ambíguo. Um diretório vazio preexistente não pertence à tentativa;
+aceitá-lo impediria garantir rollback sem remover conteúdo alheio. A regra mais estrita resolve a
+ambiguidade de FR-005.
 
 **Alternatives considered**: Aceitar vazio e preservá-lo no rollback, violando “destino ausente”;
 removê-lo, violando ownership; adicionar lock/snapshot do diretório, que não transfere ownership.
@@ -101,6 +105,11 @@ desconhecidos; validação lexical rejeita absolutos/traversal de outro sistema 
 **Alternatives considered**: Copiar ou mover source local; persistir sempre `../source`; aceitar
 absoluto externo para clone; usar lock; atualizar o manifesto depois da promoção, ampliando o
 rollback público.
+
+Origens bare ou raízes de worktree são aceitas quando o clone fixo produz working tree válido;
+source clonado vazio é válido, knowledge vazio falha sem manifesto e source local bare/subdiretório
+é recusado. Duas origens iguais são aceitas porque geram clones independentes e foram autorizadas;
+targets aninhados e symlinks estruturais são recusados, sem proibir symlinks comuns no conteúdo.
 
 ## Decisão 8: Tornar a auditoria parte da transação
 

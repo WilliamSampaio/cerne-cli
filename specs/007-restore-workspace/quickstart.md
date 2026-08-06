@@ -75,7 +75,8 @@ inconclusivo conforme a falha injetada.
 ## Scenario 8: Auditoria bloqueia processos
 
 Use home inacessível e depois `.cerne`/`audit` como arquivo, symlink ou diretório POSIX aberto a
-grupo/outros. Injete falhas de criação, write, sync, close e transição.
+grupo/outros. No Windows, teste DACL herdada permissiva e confirme sua correção segura ou recusa.
+Injete falhas de criação, write, sync, close e transição.
 
 Expected: falha ao iniciar/transicionar audit impede o próximo Git; nenhum workspace final existe.
 Quando o arquivo inicial foi criado, ele permanece como único registro inconclusivo.

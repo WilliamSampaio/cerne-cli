@@ -34,9 +34,11 @@ nenhuma rede, credencial ou remoto real
 clones completos, limitados pelo desempenho normal do Git e das origens
 
 **Constraints**: Auditoria durável antes do primeiro Git; exatamente um source; destino final
-obrigatoriamente ausente; staging privado; promoção sem substituição; rollback integral; source
-local imutável; nenhuma origem, fingerprint ou output Git em registros/saídas; nenhum workflow,
-agente, push, fetch adicional, submódulo, instalação ou deploy
+obrigatoriamente ausente; staging privado; promoção sem substituição; rollback integral dos alvos
+com ownership confirmada e preservação de alvo ambíguo; source local imutável; nenhuma origem,
+fingerprint ou output Git em registros/saídas; nenhum workflow,
+agente, push, fetch adicional, submódulo, instalação ou deploy; audit `0700/0600` e owner-only em
+POSIX, com DACL sem herança permissiva limitada ao usuário atual e `SYSTEM` no Windows
 
 **Scale/Scope**: Uma tentativa, um knowledge e um source por invocação; um arquivo de auditoria e
 no máximo dois subprocessos de clone; sem sync, retry, retenção automática ou seleção de revisão
@@ -54,7 +56,8 @@ no máximo dois subprocessos de clone; sem sync, retry, retenção automática o
 - **Authorization and secrets — PASS**: A invocação autoriza somente os clones ou inspeção local
   pedidos; credenciais embutidas são recusadas e origens, fingerprints e output não são gravados.
 - **Portability — PASS**: `filepath`, `os.UserHomeDir`, `os.Root`, processos sem shell e a promoção
-  no-replace já implementada cobrem Linux, Windows e macOS.
+  no-replace já implementada cobrem Linux, Windows e macOS. Bits/ownership POSIX e DACL explícita
+  via `golang.org/x/sys/windows` tornam a privacidade verificável sem nova dependência.
 - **Testing — PASS**: Domínio, adapter e CLI terão testes determinísticos para parsing, streams,
   status, redaction, corrida, auditoria, rollback e imutabilidade usando apenas fixtures locais.
 - **CLI compatibility and documentation — PASS**: `restore` é adição compatível; manifesto versão
@@ -97,10 +100,17 @@ internal/
 │   ├── init.go
 │   └── init_test.go
 └── workspace/
+    ├── audit_permissions_unix.go
+    ├── audit_permissions_windows.go
     ├── doctor.go
     ├── init.go
+    ├── init_test.go
     ├── link.go
     ├── restore.go
+    ├── restore_audit_test.go
+    ├── restore_audit_windows_test.go
+    ├── restore_failure_test.go
+    ├── restore_security_test.go
     ├── restore_test.go
     ├── source_promote_darwin.go
     ├── source_promote_linux.go
@@ -116,8 +126,9 @@ CHANGELOG.md
 `cmd/cerne`; implementar a transação coesa em um único `internal/workspace/restore.go`; reutilizar
 `gitexec.ClassifyCloneOrigin` e `FindClone` sem alterar a política Git. Generalizar apenas o nome da
 promoção de diretório existente para knowledge/source compartilharem a mesma primitiva no-replace.
-Não chamar `InitWithSource*`: seu manifesto novo, auditoria interna e rollback parcial têm contrato
-diferente do restore.
+Isolar somente a aplicação de permissões em dois arquivos com build tags, sem interface, para usar
+bits/ownership em POSIX e a DACL nativa no Windows. Não chamar `InitWithSource*`: seu manifesto
+novo, auditoria interna e rollback parcial têm contrato diferente do restore.
 
 ## Complexity Tracking
 

@@ -68,7 +68,9 @@ inválida`. O valor recebido nunca é reproduzido.
 
 ## Operational failure
 
-Status `1`, stdout vazio, workspace final ausente e único audit global preservado:
+Status `1`, stdout vazio e único audit global preservado. O workspace final fica ausente enquanto
+sua identidade continua comprovadamente pertencente à tentativa; alvo alterado concorrentemente e
+ambíguo é preservado com falha explícita de cleanup:
 
 ```text
 erro: <causa segura>

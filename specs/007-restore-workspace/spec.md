@@ -18,6 +18,12 @@ manifesto. O nome do workspace deve vir do `cerne.json`."
 - Q: Onde registrar a auditoria antes de o knowledge existir? → A: Em diretório privado global do usuário, sob `~/.cerne/audit` ou equivalente portável.
 - Q: O que fazer se o source falhar depois que o knowledge for obtido? → A: Reverter integralmente os artefatos do workspace e deixar somente a auditoria global.
 
+### Limite da tentativa
+
+Uma tentativa começa depois que sintaxe, classificação das origens e sobreposições verificáveis
+sem processo são aprovadas. Help, uso inválido e origem recusada pela classificação estática não
+criam auditoria, não executam processo e não criam artefato de workspace.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Restaurar knowledge e clonar source (Priority: P1)
@@ -89,15 +95,21 @@ verificando efeitos e registros persistentes.
 3. **Given** uma origem com credenciais embutidas ou transporte recusado, **When** a restauração é
    solicitada, **Then** ela falha antes de contactar a origem e não exibe o valor sensível.
 4. **Given** qualquer tentativa de restauração, **When** ela inicia ou falha, **Then** existe um
-   único registro privado no diretório global de auditoria e nenhum workspace parcial permanece.
+   único registro privado no diretório global de auditoria e nenhum artefato parcial cuja ownership
+   permaneça demonstrável é preservado; alvos concorrentes ou ambíguos nunca são removidos.
 
 ### Edge Cases
 
 - O knowledge é válido, mas não contém `cerne.json`, ou o manifesto está malformado.
 - O `name` contém travessia, separador, nome reservado, Unicode incompatível ou diverge do nome
   esperado pelo usuário.
-- Knowledge ou source são repositórios vazios, bare, worktrees, subpastas Git ou possuem symlinks.
-- As duas origens apontam para o mesmo repositório ou criam aninhamento entre knowledge e source.
+- Origem bare ou raiz de worktree é aceita quando o clone fixo produz um working tree válido;
+  source clonado vazio é aceito, enquanto knowledge vazio falha por não possuir manifesto.
+- Source local bare, subdiretório Git ou path diferente da raiz do worktree é recusado.
+- As duas origens podem apontar para o mesmo repositório porque cada clone permanece independente e
+  foi autorizado explicitamente; qualquer aninhamento entre os targets é recusado.
+- Symlink usado como manifesto, diretório obrigatório ou path estrutural é recusado; symlink comum
+  versionado dentro do conteúdo do source não é percorrido nem removido pelo restore.
 - O destino aparece depois da validação e antes da conclusão.
 - Uma clonagem é interrompida depois de criar conteúdo parcial.
 - O diretório global de auditoria está ausente, inacessível, é link simbólico ou não permite
@@ -140,13 +152,19 @@ verificando efeitos e registros persistentes.
   merge, publicação, instalação ou deploy.
 - **FR-014**: Cada tentativa MUST criar, antes de qualquer clone, um registro único no diretório
   privado de auditoria do usuário, localizado sob `~/.cerne/audit` ou equivalente portável, e MUST
-  registrar separadamente as fases knowledge e source sem armazenar origens ou saída integral.
+  registrar separadamente as fases knowledge e source sem armazenar origens ou saída integral. Em
+  sistemas POSIX, diretórios MUST pertencer ao usuário atual, negar permissões de grupo/outros e os
+  registros MUST usar `0600`. No Windows, a DACL MUST desabilitar herança permissiva e conceder
+  acesso somente ao usuário atual e `SYSTEM`; estado existente incompatível MUST ser corrigido com
+  segurança ou recusado antes de qualquer processo externo.
 - **FR-015**: Falha ao criar ou iniciar o registro global MUST impedir qualquer processo externo;
   falha ao finalizá-lo MUST tornar a operação malsucedida, reverter o workspace e preservar o
   registro inconclusivo quando ele já existir.
-- **FR-016**: Qualquer falha anterior à conclusão integral MUST remover somente os artefatos de
-  workspace comprovadamente criados pela tentativa e deixar o destino final ausente, preservando
-  apenas a auditoria global.
+- **FR-016**: Qualquer falha anterior à conclusão integral MUST remover todos os artefatos cuja
+  propriedade pela tentativa permaneça demonstrável. O destino final MUST ficar ausente quando
+  ainda corresponder ao objeto promovido pela tentativa. Se sua identidade se tornar ambígua por
+  alteração concorrente, o sistema MUST preservar o alvo, registrar `cleanup-failed` e comunicar
+  que a limpeza não foi concluída, preservando a auditoria global.
 - **FR-017**: A limpeza automática MUST limitar-se a artefatos novos cuja propriedade pela tentativa
   seja demonstrável e MUST recusar alvos ambíguos.
 - **FR-018**: Sucesso MUST usar stdout e status zero; falha operacional MUST usar stderr e status
@@ -214,8 +232,9 @@ verificando efeitos e registros persistentes.
 ## Assumptions
 
 - O usuário possui Git e credenciais externas adequadas para as origens autorizadas.
-- O diretório global de auditoria pertence ao usuário, usa permissões privadas e não sofre remoção
-  automática nesta versão; retenção e limpeza permanecem sob controle do usuário.
+- O diretório global de auditoria pertence ao usuário, usa bits privados em POSIX ou DACL restrita
+  ao usuário atual e `SYSTEM` no Windows e não sofre remoção automática nesta versão; retenção e
+  limpeza permanecem sob controle do usuário.
 - O knowledge informado é um repositório Git; importar diretório comum sem histórico permanece
   fora do escopo.
 - A restauração recupera o checkout padrão atual das origens; reprodução de commit, tag ou branch
