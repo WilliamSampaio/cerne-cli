@@ -4,10 +4,38 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
+
+func TestDescribeProvidersWithoutLookingAtPATH(t *testing.T) {
+	original := lookPath
+	lookPath = func(string) (string, error) { panic("Describe consultou PATH") }
+	defer func() { lookPath = original }()
+
+	tests := []struct {
+		provider string
+		expected workspace.WorkflowDefinition
+	}{
+		{"speckit", workspace.WorkflowDefinition{Provider: "speckit", Executor: "specify", CanonicalSpecs: "specs", OwnedRoot: ".specify", Marker: ".specify/init-options.json"}},
+		{"openspec", workspace.WorkflowDefinition{Provider: "openspec", Executor: "openspec", CanonicalSpecs: "openspec/specs", OwnedRoot: "openspec", Marker: "openspec/config.yaml"}},
+	}
+	for _, test := range tests {
+		t.Run(test.provider, func(t *testing.T) {
+			actual, err := Describe(test.provider)
+			if err != nil || !reflect.DeepEqual(actual, test.expected) {
+				t.Fatalf("Describe() = %#v, %v; esperado %#v", actual, err, test.expected)
+			}
+		})
+	}
+	if _, err := Describe("unknown"); !errors.Is(err, ErrUnknownProvider) {
+		t.Fatalf("erro = %v, esperado ErrUnknownProvider", err)
+	}
+}
 
 func TestResolveDefinitionsAndExactInvocations(t *testing.T) {
 	originalLookPath, originalRun := lookPath, runProvider

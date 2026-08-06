@@ -178,7 +178,7 @@ With a selected workflow, the manifest also contains `"workflow":{"provider":"sp
 ### Global options
 
 - `cerne --help` prints the available commands and global options.
-- `cerne --version` prints the stable SemVer identifier, currently `cerne 0.5.0`.
+- `cerne --version` prints the stable SemVer identifier, currently `cerne 0.6.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
 
@@ -230,6 +230,22 @@ cerne restore git@host:org/knowledge.git --source ../existing-source
 Locates the nearest ancestor workspace and materializes the provider declared in its manifest. It
 does not accept a provider, path, or force option. Each real attempt creates one redacted JSON audit
 record in `knowledge/runs`; no audit is created for a missing executable or ready layout.
+
+### `cerne context [--json]`
+
+Locates the nearest ancestor workspace and reports canonical paths for workspace, knowledge,
+product, specs, decisions, policies, source, and the declared workflow. `--json` emits stable
+schema version 1 for skills and scripts. Healthy and warning reports return `0`; structurally
+invalid reports remain valid output and return `1`; invalid usage returns `2` on stderr.
+
+The command reads only structural metadata. It does not read repository content or agent files,
+run Git or workflow providers, inspect remotes or executables, access the network, or create audit,
+cache, instruction, or manifest changes.
+
+```sh
+cerne context
+cerne context --json
+```
 
 ### `cerne doctor`
 
