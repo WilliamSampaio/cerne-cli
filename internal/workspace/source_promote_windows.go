@@ -4,12 +4,12 @@ package workspace
 
 import "golang.org/x/sys/windows"
 
-func promoteSource(staging, source string) error {
+func promoteDirectoryNoReplace(staging, target string) error {
 	from, err := windows.UTF16PtrFromString(staging)
 	if err != nil {
 		return err
 	}
-	to, err := windows.UTF16PtrFromString(source)
+	to, err := windows.UTF16PtrFromString(target)
 	if err != nil {
 		return err
 	}

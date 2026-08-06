@@ -307,7 +307,7 @@ func initWithClonedSource(parent, name string, request SourceInitRequest, defini
 	if err != nil || validateLinkSeparation(result.KnowledgePath, staging, knowledgeFacts, cloneFacts) != nil {
 		return fail("invalid-result")
 	}
-	if err := promoteSource(staging, result.SourcePath); err != nil {
+	if err := promoteDirectoryNoReplace(staging, result.SourcePath); err != nil {
 		return fail("promotion-failed")
 	}
 	staging = ""
