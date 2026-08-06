@@ -3,13 +3,18 @@
 All notable changes to Cerne are documented in this file. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## 0.4.0 - 2026-08-05
+
+### Added
+
+- `--workflow` can be combined with either `--source` or `--clone` during initialization.
+
 ## 0.3.0 - 2026-08-05
 
 ### Added
 
 - `cerne init --source` to atomically link an existing local Git worktree without modifying it.
 - `cerne init --clone` to securely clone allowed local, file, HTTPS, or SSH origins into source.
-- `--workflow` can be combined with either `--source` or `--clone` during initialization.
 - Redacted pre-execution clone audits with private staging and non-replacing promotion.
 
 ### Security
