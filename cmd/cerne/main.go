@@ -44,6 +44,8 @@ Uso:
   cerne init <project-name> --source <caminho>
   cerne init <project-name> --clone <origem>
   cerne init <project-name> --workflow <speckit|openspec>
+  cerne init <project-name> --source <caminho> --workflow <speckit|openspec>
+  cerne init <project-name> --clone <origem> --workflow <speckit|openspec>
 
 Nome:
   1 a 255 caracteres ASCII; começa por letra ou número e continua com
@@ -55,7 +57,8 @@ Source:
   um working tree Git local non-bare, resolvido a partir do diretório atual,
   sem criar source interno nem alterar o repositório informado. --clone aceita
   path local, file, HTTPS ou SSH, inclusive SCP-like, e cria remoto origin.
-  --source, --clone e --workflow são opções exclusivas e ficam após o nome.
+  --source e --clone são exclusivos; --workflow pode acompanhar qualquer modo.
+  As opções ficam após o nome e combinações aceitam qualquer ordem.
 
 Clone:
   HTTP, git://, ext::, helpers desconhecidos, opções, credenciais embutidas,
@@ -92,6 +95,7 @@ Exemplos:
   cerne init exemplo --source ../aplicacao
   cerne init exemplo --clone https://host/organizacao/aplicacao.git
   cerne init exemplo --workflow speckit
+  cerne init exemplo --clone https://host/organizacao/aplicacao.git --workflow speckit
 `
 
 const workflowHelp = `Inicializa o workflow já declarado no manifesto do workspace.
@@ -331,8 +335,14 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 			request.OriginTransport = origin.Transport
 			request.OriginFingerprint = origin.Fingerprint
 		}
-		result, err := workspace.InitWithSource(current, parsed.Name, request, initRepository, adaptLink(inspect), clone)
+		result, workflow, err := workspace.InitWithSourceAndWorkflow(current, parsed.Name, request, definition, initRepository, adaptLink(inspect), clone)
 		if err != nil {
+			var workflowFailure workspace.WorkflowFailure
+			if errors.As(err, &workflowFailure) {
+				fmt.Fprintf(stderr, "erro: não foi possível inicializar workflow %s: %s\n", parsed.Workflow, workflowCause(err))
+				fmt.Fprintf(stderr, "correção: corrija ou atualize %s e execute \"cerne workflow setup\" dentro de %s\n", parsed.Workflow, filepath.Dir(result.KnowledgePath))
+				return 1
+			}
 			renderSourceInitFailure(stderr, err)
 			return 1
 		}
@@ -341,6 +351,13 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "Source vinculado: %s\n", result.SourcePath)
 		} else {
 			fmt.Fprintf(stdout, "Source clonado: %s\n", result.SourcePath)
+		}
+		if parsed.Workflow != "" {
+			fmt.Fprintf(stdout, "Workflow: %s\nSetup: %s\n", parsed.Workflow, map[workspace.WorkflowState]string{workspace.WorkflowConfigured: "concluído", workspace.WorkflowPending: "pendente"}[workflow.State])
+			if workflow.State == workspace.WorkflowPending {
+				fmt.Fprintf(stderr, "aviso: executável %q não encontrado; workflow %s não inicializado\n", definition.Executor, parsed.Workflow)
+				fmt.Fprintf(stderr, "correção: instale %s e execute \"cerne workflow setup\" dentro do workspace\n", parsed.Workflow)
+			}
 		}
 		return 0
 	}
@@ -396,20 +413,36 @@ func parseInitArgs(args []string) (initArguments, bool) {
 	if len(args) == 1 && !strings.HasPrefix(args[0], "--") {
 		return initArguments{Name: args[0]}, true
 	}
-	if len(args) != 3 || strings.HasPrefix(args[0], "--") || args[2] == "" || strings.HasPrefix(args[2], "--") {
+	if (len(args) != 3 && len(args) != 5) || strings.HasPrefix(args[0], "--") {
 		return initArguments{}, false
 	}
-	switch args[1] {
-	case "--workflow":
-		if args[2] == "speckit" || args[2] == "openspec" {
-			return initArguments{Name: args[0], Workflow: args[2]}, true
+	parsed := initArguments{Name: args[0]}
+	for index := 1; index < len(args); index += 2 {
+		value := args[index+1]
+		if value == "" || strings.HasPrefix(value, "--") {
+			return initArguments{}, false
 		}
-	case "--source":
-		return initArguments{Name: args[0], SourceMode: workspace.SourceLocal, SourceValue: args[2]}, true
-	case "--clone":
-		return initArguments{Name: args[0], SourceMode: workspace.SourceClone, SourceValue: args[2]}, true
+		switch args[index] {
+		case "--workflow":
+			if parsed.Workflow != "" || value != "speckit" && value != "openspec" {
+				return initArguments{}, false
+			}
+			parsed.Workflow = value
+		case "--source":
+			if parsed.SourceMode != "" {
+				return initArguments{}, false
+			}
+			parsed.SourceMode, parsed.SourceValue = workspace.SourceLocal, value
+		case "--clone":
+			if parsed.SourceMode != "" {
+				return initArguments{}, false
+			}
+			parsed.SourceMode, parsed.SourceValue = workspace.SourceClone, value
+		default:
+			return initArguments{}, false
+		}
 	}
-	return initArguments{}, false
+	return parsed, true
 }
 
 func renderSourceInitFailure(stderr io.Writer, err error) {
@@ -738,7 +771,7 @@ func symbol(severity workspace.Severity) string {
 
 func initUsageError(stderr io.Writer, cause string) int {
 	fmt.Fprintf(stderr, "erro: %s\n", cause)
-	fmt.Fprintln(stderr, "uso: cerne init <project-name> [--workflow <speckit|openspec> | --source <caminho> | --clone <origem>]")
+	fmt.Fprintln(stderr, "uso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec>]")
 	return 2
 }
 

@@ -70,6 +70,7 @@ preexistentes antes e depois.
 2. **Given** `--source` e `--clone` juntos, repetidos, sem valor, fora da posição documentada ou com argumentos extras, **When** o comando é executado, **Then** retorna erro de uso antes de qualquer efeito.
 3. **Given** uma origem de clone que exige autenticação não disponível, **When** o clone é tentado, **Then** o Cerne desabilita os prompts e a interatividade controláveis pelo Git, não expõe credenciais e informa uma correção segura; helpers externos permanecem sujeitos à limitação documentada.
 4. **Given** qualquer falha, **When** o comando termina, **Then** nenhum arquivo preexistente fora do destino recém-autorizado é alterado ou removido.
+5. **Given** exatamente uma opção de source, **When** ela é combinada com `--workflow` em qualquer ordem depois do nome, **Then** ambas as escolhas são aplicadas sem enfraquecer as garantias do source.
 
 ### Edge Cases
 
@@ -117,6 +118,7 @@ preexistentes antes e depois.
 - **FR-024**: Ajuda e documentação MUST explicar os três modos, exclusividade das flags, resolução de caminhos, rede, autenticação, remotos, rollback, auditoria, streams, status e exemplos.
 - **FR-025**: O comportamento funcional MUST ser equivalente em Linux, Windows e macOS, incluindo paths, aliases, execução sem shell, diagnóstico e rollback.
 - **FR-026**: Testes MUST usar repositórios e origens locais temporários, sem rede, credenciais ou remotos reais, e MUST verificar argumentos, streams, status, efeitos, histórico, remotos, auditoria e preservação byte a byte.
+- **FR-027**: `--workflow` MAY acompanhar `--source` ou `--clone` em qualquer ordem depois do nome; `--source` e `--clone` MUST continuar mutuamente exclusivos e o workflow MUST NOT alterar o source selecionado.
 
 ### Constitutional Requirements *(include when the feature affects these concerns)*
 
