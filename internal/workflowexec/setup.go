@@ -23,14 +23,13 @@ var runProvider = func(executable string, arguments []string, directory string, 
 }
 
 func Resolve(provider string) (workspace.WorkflowDefinition, error) {
-	definition := workspace.WorkflowDefinition{Provider: provider}
+	definition, err := Describe(provider)
+	if err != nil {
+		return workspace.WorkflowDefinition{}, err
+	}
 	var arguments func(string) []string
 	switch provider {
 	case "speckit":
-		definition.Executor = "specify"
-		definition.CanonicalSpecs = "specs"
-		definition.OwnedRoot = ".specify"
-		definition.Marker = ".specify/init-options.json"
 		arguments = func(string) []string {
 			script := "sh"
 			if runtime.GOOS == "windows" {
@@ -39,15 +38,9 @@ func Resolve(provider string) (workspace.WorkflowDefinition, error) {
 			return []string{"init", "--here", "--force", "--integration", "generic", "--integration-options=--commands-dir .specify/commands", "--ignore-agent-tools", "--script", script}
 		}
 	case "openspec":
-		definition.Executor = "openspec"
-		definition.CanonicalSpecs = "openspec/specs"
-		definition.OwnedRoot = "openspec"
-		definition.Marker = "openspec/config.yaml"
 		arguments = func(knowledge string) []string {
 			return []string{"init", knowledge, "--tools", "none", "--profile", "core", "--no-animation"}
 		}
-	default:
-		return workspace.WorkflowDefinition{}, ErrUnknownProvider
 	}
 
 	executable, err := lookPath(definition.Executor)
@@ -66,6 +59,17 @@ func Resolve(provider string) (workspace.WorkflowDefinition, error) {
 		return nil
 	}
 	return definition, nil
+}
+
+func Describe(provider string) (workspace.WorkflowDefinition, error) {
+	switch provider {
+	case "speckit":
+		return workspace.WorkflowDefinition{Provider: provider, Executor: "specify", CanonicalSpecs: "specs", OwnedRoot: ".specify", Marker: ".specify/init-options.json"}, nil
+	case "openspec":
+		return workspace.WorkflowDefinition{Provider: provider, Executor: "openspec", CanonicalSpecs: "openspec/specs", OwnedRoot: "openspec", Marker: "openspec/config.yaml"}, nil
+	default:
+		return workspace.WorkflowDefinition{}, ErrUnknownProvider
+	}
 }
 
 func workflowEnvironment(environment []string, provider string) []string {

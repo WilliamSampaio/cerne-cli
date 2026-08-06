@@ -3,6 +3,19 @@
 All notable changes to Cerne are documented in this file. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## 0.6.0 - 2026-08-06
+
+### Added
+
+- `cerne context` human report and stable `cerne context --json` schema version 1 for structural
+  workspace discovery by people and external skills.
+
+### Security
+
+- Context inspection is strictly read-only and does not read repository content or agent files,
+  execute Git/providers, access the network, expose credentials/remotes, or require workspace
+  migration.
+
 ## 0.5.0 - 2026-08-05
 
 ### Added

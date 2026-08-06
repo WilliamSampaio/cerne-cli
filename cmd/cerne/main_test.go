@@ -29,6 +29,7 @@ Comandos:
   status    Exibe o estado local dos repositórios
   link      Vincula um repositório Git local como source
   workflow  Inicializa o workflow declarado no workspace
+  context   Exibe o contexto estrutural do workspace
 
 Opções:
   --help       Exibe esta ajuda
@@ -105,7 +106,7 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 		expected string
 	}{
 		{"--help", expectedGlobalHelp},
-		{"--version", "cerne 0.5.0\n"},
+		{"--version", "cerne 0.6.0\n"},
 	} {
 		t.Run(test.argument, func(t *testing.T) {
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, test.argument)
@@ -113,6 +114,73 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 				t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 			}
 		})
+	}
+}
+
+func TestCLIContextJSONContract(t *testing.T) {
+	binary := buildCLI(t)
+	root := filepath.Join(t.TempDir(), "example")
+	for _, path := range []string{"knowledge/product", "knowledge/specs", "knowledge/decisions", "knowledge/policies", "knowledge/runs", "source", "source/sub"} {
+		if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(path)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := `{"name":"example","source":"../source","version":1}`
+	if err := os.WriteFile(filepath.Join(root, "knowledge", "cerne.json"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root = canonicalCLIPath(t, root)
+	before := snapshotTree(t, root)
+	status, stdout, stderr := executeCLI(t, binary, filepath.Join(root, "source", "sub"), replaceEnvironment(os.Environ(), "PATH", t.TempDir()), "context", "--json")
+	if status != 0 || stderr != "" || !strings.HasSuffix(stdout, "\n") {
+		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	expected := "{\n  \"schema_version\": 1,\n  \"status\": \"healthy\",\n  \"workspace\": {\n    \"name\": \"example\",\n    \"root\": " + strconv.Quote(root) + "\n  },\n  \"knowledge\": {\n    \"path\": " + strconv.Quote(filepath.Join(root, "knowledge")) + ",\n    \"product_path\": " + strconv.Quote(filepath.Join(root, "knowledge", "product")) + ",\n    \"specs_path\": " + strconv.Quote(filepath.Join(root, "knowledge", "specs")) + ",\n    \"decisions_path\": " + strconv.Quote(filepath.Join(root, "knowledge", "decisions")) + ",\n    \"policies_path\": " + strconv.Quote(filepath.Join(root, "knowledge", "policies")) + "\n  },\n  \"source\": {\n    \"path\": " + strconv.Quote(filepath.Join(root, "source")) + ",\n    \"inside_workspace\": true\n  },\n  \"workflow\": {\n    \"declared\": false,\n    \"state\": \"not-declared\"\n  },\n  \"problems\": []\n}\n"
+	if stdout != expected {
+		t.Fatalf("stdout = %q\nesperado = %q", stdout, expected)
+	}
+	_, repeated, _ := executeCLI(t, binary, root, nil, "context", "--json")
+	if repeated != stdout {
+		t.Fatalf("saída não determinística")
+	}
+	if after := snapshotTree(t, root); !reflect.DeepEqual(before, after) {
+		t.Fatalf("context alterou o workspace\nantes=%#v\ndepois=%#v", before, after)
+	}
+}
+
+func TestCLIContextHumanHelpAndFailures(t *testing.T) {
+	binary := buildCLI(t)
+	root := filepath.Join(t.TempDir(), "example")
+	for _, path := range []string{"knowledge/product", "knowledge/specs", "knowledge/decisions", "knowledge/policies", "knowledge/runs", "source"} {
+		if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(path)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, "knowledge", "cerne.json"), []byte(`{"name":"example","source":"../source","version":1}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root = canonicalCLIPath(t, root)
+	status, stdout, stderr := executeCLI(t, binary, root, nil, "context")
+	expected := "Workspace: example\nStatus: saudável\nRoot: " + root + "\n\nKnowledge: " + filepath.Join(root, "knowledge") + "\nProduct: " + filepath.Join(root, "knowledge", "product") + "\nSpecs: " + filepath.Join(root, "knowledge", "specs") + "\nDecisions: " + filepath.Join(root, "knowledge", "decisions") + "\nPolicies: " + filepath.Join(root, "knowledge", "policies") + "\n\nSource: " + filepath.Join(root, "source") + "\nLocalização: interno ao workspace\n\nWorkflow: não declarado\n"
+	if status != 0 || stdout != expected || stderr != "" {
+		t.Fatalf("status=%d\nstdout=%q\nstderr=%q", status, stdout, stderr)
+	}
+
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), nil, "context", "--help")
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne context --json") || !strings.Contains(stdout, "Leitura estrutural exclusiva") {
+		t.Fatalf("help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+
+	outside := t.TempDir()
+	status, stdout, stderr = executeCLI(t, binary, outside, nil, "context", "--json")
+	expectedJSON := "{\n  \"schema_version\": 1,\n  \"status\": \"invalid\",\n  \"problems\": [\n    {\n      \"code\": \"workspace-not-found\",\n      \"severity\": \"error\",\n      \"component\": \"workspace\"\n    }\n  ]\n}\n"
+	if status != 1 || stdout != expectedJSON || stderr != "" {
+		t.Fatalf("outside: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+
+	status, stdout, stderr = executeCLI(t, binary, outside, nil, "context", "--json", "extra")
+	if status != 2 || stdout != "" || stderr != "erro: argumento inválido\nuso: cerne context [--json]\n" {
+		t.Fatalf("usage: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 }
 
@@ -1129,6 +1197,15 @@ func expectedStatus(root, project string, repositories ...repositoryExpectation)
 	return output.String()
 }
 
+func canonicalCLIPath(t *testing.T, path string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Clean(resolved)
+}
+
 func buildCLI(t *testing.T) string {
 	t.Helper()
 	name := "cerne"
@@ -1163,10 +1240,9 @@ func countReportLines(stdout string) int {
 }
 
 type snapshotEntry struct {
-	Mode    fs.FileMode
-	Size    int64
-	ModTime int64
-	Hash    [32]byte
+	Mode fs.FileMode
+	Size int64
+	Hash [32]byte
 }
 
 func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
@@ -1191,7 +1267,6 @@ func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
 				return err
 			}
 			item.Hash = sha256.Sum256(data)
-			item.ModTime = info.ModTime().UnixNano()
 		}
 		out[relative] = item
 		return nil

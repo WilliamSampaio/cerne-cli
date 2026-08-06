@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,7 +15,7 @@ import (
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
 
-const version = "0.5.0"
+const version = "0.6.0"
 
 const globalHelp = `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
 
@@ -30,12 +31,41 @@ Comandos:
   status    Exibe o estado local dos repositórios
   link      Vincula um repositório Git local como source
   workflow  Inicializa o workflow declarado no workspace
+  context   Exibe o contexto estrutural do workspace
 
 Opções:
   --help       Exibe esta ajuda
   --version    Exibe a versão do Cerne
 
 Use "cerne <comando> --help" para detalhes de um comando.
+`
+
+const contextHelp = `Exibe o contexto estrutural comprovado do workspace Cerne.
+
+Uso:
+  cerne context
+  cerne context --json
+  cerne context --help
+
+Localização:
+  Procura o workspace ancestral mais próximo. Um source externo não realiza
+  descoberta reversa do workspace.
+
+Relatório:
+  Informa workspace, knowledge, coleções, source e workflow sem ler conteúdo.
+  --json usa schema_version 1 estável para automação.
+
+Saídas:
+  Relatórios e ajuda usam stdout. Uso inválido usa stderr.
+  Status 0: saudável, avisos ou ajuda; 1: contexto inválido; 2: uso inválido.
+
+Efeitos:
+  Leitura estrutural exclusiva. Não executa Git, provider ou agente; não acessa
+  rede, ambiente ou credenciais; não cria auditoria, cache ou instruções.
+
+Exemplos:
+  cerne context
+  cerne context --json
 `
 
 const restoreHelp = `Restaura um workspace Cerne a partir de um repositório knowledge.
@@ -293,9 +323,140 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runLink(args[1:], stdout, stderr)
 	case "workflow":
 		return runWorkflow(args[1:], stdout, stderr)
+	case "context":
+		return runContext(args[1:], stdout, stderr)
 	default:
 		return commandUsageError(stderr, "comando desconhecido")
 	}
+}
+
+func runContext(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "--help" {
+		fmt.Fprint(stdout, contextHelp)
+		return 0
+	}
+	jsonOutput := len(args) == 1 && args[0] == "--json"
+	if len(args) != 0 && !jsonOutput {
+		fmt.Fprintln(stderr, "erro: argumento inválido")
+		fmt.Fprintln(stderr, "uso: cerne context [--json]")
+		return 2
+	}
+	current, _ := currentDirectory()
+	report := workspace.Context(current, workflowexec.Describe)
+	if jsonOutput {
+		encoder := json.NewEncoder(stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(report); err != nil {
+			return 1
+		}
+	} else {
+		renderContext(stdout, report)
+	}
+	if report.Status == workspace.Invalid {
+		return 1
+	}
+	return 0
+}
+
+func renderContext(stdout io.Writer, report workspace.ContextReport) {
+	if report.Workspace != nil && report.Workspace.Name != "" {
+		fmt.Fprintf(stdout, "Workspace: %s\n", report.Workspace.Name)
+	}
+	fmt.Fprintf(stdout, "Status: %s\n", contextStatus(report.Status))
+	if report.Workspace != nil {
+		fmt.Fprintf(stdout, "Root: %s\n", report.Workspace.Root)
+	}
+	if report.Knowledge != nil {
+		fmt.Fprintf(stdout, "\nKnowledge: %s\n", report.Knowledge.Path)
+		contextPathLine(stdout, "Product", report.Knowledge.ProductPath)
+		contextPathLine(stdout, "Specs", report.Knowledge.SpecsPath)
+		contextPathLine(stdout, "Decisions", report.Knowledge.DecisionsPath)
+		contextPathLine(stdout, "Policies", report.Knowledge.PoliciesPath)
+	}
+	if report.Source != nil {
+		fmt.Fprintf(stdout, "\nSource: %s\n", report.Source.Path)
+		location := "externo ao workspace"
+		if report.Source.InsideWorkspace {
+			location = "interno ao workspace"
+		}
+		fmt.Fprintf(stdout, "Localização: %s\n", location)
+	}
+	if report.Workflow != nil {
+		fmt.Fprintln(stdout)
+		if !report.Workflow.Declared {
+			fmt.Fprintln(stdout, "Workflow: não declarado")
+		} else {
+			fmt.Fprintf(stdout, "Workflow: %s (%s)\n", report.Workflow.Provider, contextWorkflowState(report.Workflow.State))
+		}
+	}
+	if len(report.Problems) > 0 {
+		fmt.Fprintln(stdout)
+	}
+	for _, problem := range report.Problems {
+		symbol := "✗"
+		if problem.Severity == "warning" {
+			symbol = "!"
+		}
+		fmt.Fprintf(stdout, "%s %s: %s\n", symbol, contextComponent(problem.Component), contextProblemDetail(problem.Code))
+		fmt.Fprintf(stdout, "  Correção: %s\n", contextProblemCorrection(problem.Code))
+	}
+}
+
+func contextPathLine(output io.Writer, label, path string) {
+	if path != "" {
+		fmt.Fprintf(output, "%s: %s\n", label, path)
+	}
+}
+
+func contextStatus(status workspace.Status) string {
+	switch status {
+	case workspace.Invalid:
+		return "inválido"
+	case workspace.Warnings:
+		return "aviso"
+	default:
+		return "saudável"
+	}
+}
+
+func contextWorkflowState(state workspace.ContextWorkflowState) string {
+	switch state {
+	case workspace.ContextWorkflowPending:
+		return "pendente"
+	case workspace.ContextWorkflowReady:
+		return "pronto"
+	case workspace.ContextWorkflowInvalid:
+		return "inválido"
+	default:
+		return "provider desconhecido"
+	}
+}
+
+func contextComponent(component string) string {
+	switch component {
+	case "workspace":
+		return "Workspace"
+	case "manifest":
+		return "Manifesto"
+	case "knowledge":
+		return "Knowledge"
+	case "source":
+		return "Source"
+	case "workflow":
+		return "Workflow"
+	default:
+		return component
+	}
+}
+
+func contextProblemDetail(code string) string {
+	details := map[string]string{"workspace-not-found": "não localizado", "manifest-invalid": "ausente ou inválido", "manifest-version-unsupported": "versão não suportada", "knowledge-invalid": "ausente ou inseguro", "source-invalid": "ausente ou inseguro", "required-directory-invalid": "diretório obrigatório ausente ou inválido", "workflow-pending": "pendente", "workflow-invalid": "estrutura inválida ou parcial", "workflow-unknown-provider": "provider não suportado"}
+	return details[code]
+}
+
+func contextProblemCorrection(code string) string {
+	corrections := map[string]string{"workspace-not-found": "execute o comando dentro de um workspace Cerne", "manifest-invalid": "corrija ou restaure knowledge/cerne.json", "manifest-version-unsupported": "use uma versão compatível do Cerne", "knowledge-invalid": "restaure o diretório knowledge", "source-invalid": "corrija o caminho source no manifesto", "required-directory-invalid": "restaure o diretório indicado pelo componente", "workflow-pending": "execute cerne workflow setup quando o provider estiver disponível", "workflow-invalid": "corrija a estrutura antes de continuar", "workflow-unknown-provider": "use speckit ou openspec no manifesto"}
+	return corrections[code]
 }
 
 type restoreArguments struct {
