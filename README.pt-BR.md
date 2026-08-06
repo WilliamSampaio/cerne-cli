@@ -178,7 +178,7 @@ Com um workflow selecionado, o manifesto também contém `"workflow":{"provider"
 ### Opções globais
 
 - `cerne --help` exibe os comandos disponíveis e as opções globais.
-- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.4.0`.
+- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.5.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
 
@@ -205,6 +205,27 @@ Falhas anteriores ao clone revertem a tentativa. Falhas posteriores preservam kn
 auditoria, removem somente o staging privado do Cerne e informam que o workspace ficou incompleto.
 A promoção nunca substitui um source concorrente; se a auditoria final falhar após a promoção, o
 source válido permanece.
+
+### `cerne restore <origem-knowledge> (--source <caminho> | --clone <origem-source>)`
+
+Clona knowledge, lê o nome do workspace em `cerne.json` e então clona source no caminho portátil do
+manifesto ou vincula a raiz de um Git local não-bare sem modificá-la. O destino deve estar ausente.
+Layouts existentes, concorrentes, sobrepostos, com symlink, parciais, provider desconhecido ou Git
+não independente são recusados sem substituição. Workflow pronto ou pendente é preservado, nunca
+executado.
+
+Cada tentativa válida inicia antes do Git um registro privado e sanitizado em `~/.cerne/audit`.
+Origens, credenciais, saída Git, argumentos, ambiente e paths absolutos dos repositórios são
+excluídos. Autenticação e redirects continuam sob responsabilidade do Git externo. Falhas revertem
+somente artefatos cuja identidade ainda pertença à tentativa; repetir o comando é a retomada
+suportada, sem `--resume`. Sucesso/ajuda usam stdout e status `0`, falhas operacionais stderr/status
+`1` e uso/origem inválida stderr/status `2`. Restore não autoriza workflow, agente, push, merge,
+fetch extra, submódulo, instalação, publicação ou deploy.
+
+```sh
+cerne restore ../knowledge.git --clone ../source.git
+cerne restore git@host:org/knowledge.git --source ../source-existente
+```
 
 ### `cerne workflow setup`
 
@@ -256,11 +277,13 @@ Saídas normais e ajuda usam stdout. Erros de uso e falhas operacionais usam std
 - O clone usa argumentos Git fixos sem shell, allowlist de protocolos, staging privado e promoção
   sem substituição. Origem e saída Git bruta não entram na saída do Cerne, manifesto ou auditoria;
   a autenticação permanece externa e o Git mantém a origem como remoto `origin`.
+- `restore` mantém o audit privado em `~/.cerne/audit`, valida os dois limites Git e usa rollback
+  por identidade com promoção sem substituição.
 - Uma tentativa falha preserva o workspace base e a auditoria, removendo somente uma nova raiz
   pertencente ao provider.
 - A inspeção Git desativa locks opcionais e prompts e remove variáveis `GIT_*` capazes de
   redirecionar os processos filhos.
-- Somente `init --clone` explícito pode acessar uma origem ou usar credenciais configuradas externamente.
+- Somente `init --clone` ou `restore` explícito pode acessar uma origem ou usar credenciais externas.
 - Não coloque tokens, senhas, chaves privadas ou outros segredos nos repositórios administrados.
 
 ## Projeto técnico

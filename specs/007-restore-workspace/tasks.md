@@ -20,7 +20,7 @@ independente.
 
 **Purpose**: Preparar fixtures reutilizáveis sem adicionar dependência ou framework.
 
-- [ ] T001 Criar helpers de repositório Git local, manifesto controlado e home temporária para restore em `internal/workspace/restore_test.go` e `cmd/cerne/main_test.go`
+- [X] T001 Criar helpers de repositório Git local, manifesto controlado e home temporária para restore em `internal/workspace/restore_test.go` e `cmd/cerne/main_test.go`
 
 ---
 
@@ -30,8 +30,8 @@ independente.
 
 **⚠️ CRITICAL**: Nenhuma história começa antes desta fase.
 
-- [ ] T002 Adicionar testes de regressão para promoção de diretório sem substituição e preservação de target concorrente em `internal/workspace/init_test.go`
-- [ ] T003 Generalizar `promoteSource` para promoção de diretório no-replace e atualizar o caller existente em `internal/workspace/source_promote_linux.go`, `internal/workspace/source_promote_darwin.go`, `internal/workspace/source_promote_windows.go` e `internal/workspace/init.go`
+- [X] T002 Adicionar testes de regressão para promoção de diretório sem substituição e preservação de target concorrente em `internal/workspace/init_test.go`
+- [X] T003 Generalizar `promoteSource` para promoção de diretório no-replace e atualizar o caller existente em `internal/workspace/source_promote_linux.go`, `internal/workspace/source_promote_darwin.go`, `internal/workspace/source_promote_windows.go` e `internal/workspace/init.go`
 
 **Checkpoint**: A primitiva multiplataforma mantém `init --clone` compatível e pode promover o root do restore.
 
@@ -49,14 +49,14 @@ histórico, remotos, manifesto, workflow preservado, separação, stdout/stderr,
 
 > Escrever e executar estes testes primeiro; eles devem falhar antes da implementação.
 
-- [ ] T004 [P] [US1] Adicionar testes de domínio para audit anterior ao Git, dois clones, manifesto regular, nome, versão, diretórios obrigatórios, workflow pronto/pendente aceito, workflow parcial/provider desconhecido recusado sem execução, source portátil, independência, promoção e resultado em `internal/workspace/restore_test.go`
-- [ ] T005 [P] [US1] Adicionar testes de integração para help, parsing do modo `--clone`, stdout/stderr/status exatos, ausência de origens e provider não executado em `cmd/cerne/main_test.go`
+- [X] T004 [P] [US1] Adicionar testes de domínio para audit anterior ao Git, dois clones, manifesto regular, nome, versão, diretórios obrigatórios, workflow pronto/pendente aceito, workflow parcial/provider desconhecido recusado sem execução, source portátil, independência, promoção e resultado em `internal/workspace/restore_test.go`
+- [X] T005 [P] [US1] Adicionar testes de integração para help, parsing do modo `--clone`, stdout/stderr/status exatos, ausência de origens e provider não executado em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implementar request/result/failure, registro global da tentativa e transições knowledge/source sem origem ou fingerprint em `internal/workspace/restore.go`
-- [ ] T007 [US1] Implementar staging privado, clone/validação de knowledge, manifesto regular, nome, versão, diretórios obrigatórios, estados de workflow sem executar provider, target clonado, independência, promoção, revalidação e rollback em `internal/workspace/restore.go`
-- [ ] T008 [US1] Adicionar dispatch, parser, help, classificação das duas origens, adaptação Git, renderização e códigos do comando `restore --clone` em `cmd/cerne/main.go`
+- [X] T006 [US1] Implementar request/result/failure, registro global da tentativa e transições knowledge/source sem origem ou fingerprint em `internal/workspace/restore.go`
+- [X] T007 [US1] Implementar staging privado, clone/validação de knowledge, manifesto regular, nome, versão, diretórios obrigatórios, estados de workflow sem executar provider, target clonado, independência, promoção, revalidação e rollback em `internal/workspace/restore.go`
+- [X] T008 [US1] Adicionar dispatch, parser, help, classificação das duas origens, adaptação Git, renderização e códigos do comando `restore --clone` em `cmd/cerne/main.go`
 
 **Checkpoint**: US1 restaura dois repositórios locais controlados e pode ser demonstrada isoladamente.
 
@@ -74,13 +74,13 @@ final e confirmar preservação dos demais campos do manifesto.
 
 > Escrever e executar estes testes primeiro; eles devem falhar antes da implementação.
 
-- [ ] T009 [P] [US2] Adicionar testes de domínio para source local non-bare, snapshot imutável, revalidação concorrente, separação e atualização exclusiva/preservadora do campo `source` em `internal/workspace/restore_test.go`
-- [ ] T010 [P] [US2] Adicionar testes de integração para parsing, sucesso, linha opcional de manifesto atualizado e streams/status do modo `--source` em `cmd/cerne/main_test.go`
+- [X] T009 [P] [US2] Adicionar testes de domínio para source local non-bare, snapshot imutável, revalidação concorrente, separação e atualização exclusiva/preservadora do campo `source` em `internal/workspace/restore_test.go`
+- [X] T010 [P] [US2] Adicionar testes de integração para parsing, sucesso, linha opcional de manifesto atualizado e streams/status do modo `--source` em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Implementar preflight, inspeção/reinspeção, separação futura e escrita atômica da referência local calculada contra o knowledge final em `internal/workspace/restore.go`
-- [ ] T012 [US2] Integrar `--source` ao runner e renderizar source vinculado e mudança de manifesto em `cmd/cerne/main.go`
+- [X] T011 [US2] Implementar preflight, inspeção/reinspeção, separação futura e escrita atômica da referência local calculada contra o knowledge final em `internal/workspace/restore.go`
+- [X] T012 [US2] Integrar `--source` ao runner e renderizar source vinculado e mudança de manifesto em `cmd/cerne/main.go`
 
 **Checkpoint**: US2 funciona isoladamente com source local externo e byte a byte idêntico.
 
@@ -99,17 +99,17 @@ redigido final ou inconclusivo.
 
 > Escrever e executar estes testes primeiro; eles devem falhar antes do hardening.
 
-- [ ] T013 [P] [US3] Adicionar testes de audit para symlinks, ownership/bits POSIX, IDs exclusivos, transições e falhas de persistência em `internal/workspace/restore_audit_test.go`, além de DACL privada e herança permissiva no Windows em `internal/workspace/restore_audit_windows_test.go`
-- [ ] T014 [P] [US3] Adicionar testes negativos e de borda para manifesto/path estrutural symlink, nomes, paths Unix/Windows, traversal, sobreposição, target/destino concorrente, bare/worktree/vazio/subdiretório e duas origens iguais conforme o spec em `internal/workspace/restore_security_test.go`
-- [ ] T015 [P] [US3] Adicionar testes de falha em cada clone/validação/promoção/cleanup, confirmação de identidade, rollback pós-promoção e audit inconclusivo em `internal/workspace/restore_failure_test.go`
-- [ ] T016 [P] [US3] Adicionar testes de integração para uso inválido, allowlist, credenciais/query/fragmento, redaction, ausência de efeitos e erros operacionais seguros em `cmd/cerne/main_test.go`
+- [X] T013 [P] [US3] Adicionar testes de audit para symlinks, ownership/bits POSIX, IDs exclusivos, transições e falhas de persistência em `internal/workspace/restore_audit_test.go`, além de DACL privada e herança permissiva no Windows em `internal/workspace/restore_audit_windows_test.go`
+- [X] T014 [P] [US3] Adicionar testes negativos e de borda para manifesto/path estrutural symlink, nomes, paths Unix/Windows, traversal, sobreposição, target/destino concorrente, bare/worktree/vazio/subdiretório e duas origens iguais conforme o spec em `internal/workspace/restore_security_test.go`
+- [X] T015 [P] [US3] Adicionar testes de falha em cada clone/validação/promoção/cleanup, confirmação de identidade, rollback pós-promoção e audit inconclusivo em `internal/workspace/restore_failure_test.go`
+- [X] T016 [P] [US3] Adicionar testes de integração para uso inválido, allowlist, credenciais/query/fragmento, redaction, ausência de efeitos e erros operacionais seguros em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Endurecer audit com `os.UserHomeDir`, `os.OpenRoot`, criação exclusiva, escrita atômica e permissões verificáveis em `internal/workspace/restore.go`, `internal/workspace/audit_permissions_unix.go` e `internal/workspace/audit_permissions_windows.go`
-- [ ] T018 [US3] Implementar validação lexical portátil de source clonado, manifesto regular, sobreposições e destino obrigatoriamente ausente em `internal/workspace/restore.go`
-- [ ] T019 [US3] Implementar cleanup por pai/prefixo/tipo/identidade, rollback do root promovido e preservação do último audit durável em `internal/workspace/restore.go`
-- [ ] T020 [US3] Completar causas/correções redigidas e garantir status `2` para uso/origem inválida e status `1` para falha operacional em `cmd/cerne/main.go`
+- [X] T017 [US3] Endurecer audit com `os.UserHomeDir`, `os.OpenRoot`, criação exclusiva, escrita atômica e permissões verificáveis em `internal/workspace/restore.go`, `internal/workspace/audit_permissions_unix.go` e `internal/workspace/audit_permissions_windows.go`
+- [X] T018 [US3] Implementar validação lexical portátil de source clonado, manifesto regular, sobreposições e destino obrigatoriamente ausente em `internal/workspace/restore.go`
+- [X] T019 [US3] Implementar cleanup por pai/prefixo/tipo/identidade, rollback do root promovido e preservação do último audit durável em `internal/workspace/restore.go`
+- [X] T020 [US3] Completar causas/correções redigidas e garantir status `2` para uso/origem inválida e status `1` para falha operacional em `cmd/cerne/main.go`
 
 **Checkpoint**: Todas as recusas e falhas mantêm conteúdo preexistente, não vazam entradas e deixam
 somente o audit quando a limpeza comprovadamente segura termina.
@@ -120,12 +120,12 @@ somente o audit quando a limpeza comprovadamente segura termina.
 
 **Purpose**: Documentar o contrato, preservar compatibilidade e validar a release nos três sistemas.
 
-- [ ] T021 [P] Documentar sintaxe, rede, autenticação, autorização, audit, rollback, retomada, streams, status e exemplos em `README.md`
-- [ ] T022 [P] Atualizar a documentação equivalente em português em `README.pt-BR.md`
-- [ ] T023 [P] Atualizar a documentação equivalente em espanhol em `README.es.md`
-- [ ] T024 Adicionar a feature compatível e seus efeitos ao changelog e preparar a versão MINOR `0.5.0` em `CHANGELOG.md` e `cmd/cerne/main.go`
-- [ ] T025 Executar regressão de `init`, `doctor`, `status`, `link` e `workflow`, além de `gofmt`, `go vet ./...`, `go test -count=1 ./...` e `git diff --check`, corrigindo somente arquivos afetados listados em `specs/007-restore-workspace/plan.md`
-- [ ] T026 Validar os cenários end-to-end e registrar resultados Linux/Windows/macOS em `specs/007-restore-workspace/quickstart.md` usando a matriz de `.github/workflows/test.yml`
+- [X] T021 [P] Documentar sintaxe, rede, autenticação, autorização, audit, rollback, retomada, streams, status e exemplos em `README.md`
+- [X] T022 [P] Atualizar a documentação equivalente em português em `README.pt-BR.md`
+- [X] T023 [P] Atualizar a documentação equivalente em espanhol em `README.es.md`
+- [X] T024 Adicionar a feature compatível e seus efeitos ao changelog e preparar a versão MINOR `0.5.0` em `CHANGELOG.md` e `cmd/cerne/main.go`
+- [X] T025 Executar regressão de `init`, `doctor`, `status`, `link` e `workflow`, além de `gofmt`, `go vet ./...`, `go test -count=1 ./...` e `git diff --check`, corrigindo somente arquivos afetados listados em `specs/007-restore-workspace/plan.md`
+- [X] T026 Validar os cenários end-to-end e registrar resultados Linux/Windows/macOS em `specs/007-restore-workspace/quickstart.md` usando a matriz de `.github/workflows/test.yml`
 
 ---
 

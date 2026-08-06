@@ -139,3 +139,17 @@ git diff --check
 
 A CI existente já executa `go test ./...` nos três sistemas; os novos testes devem usar apenas
 homes, repositórios, executáveis e diretórios temporários controlados.
+
+## Validation results — 2026-08-05
+
+| Ambiente | Validação | Resultado |
+| --- | --- | --- |
+| Linux local | `go test -count=1 ./...`, `go vet ./...`, `git diff --check` | aprovado |
+| Windows amd64 | compilação de todos os testes de `internal/workspace`, incluindo DACL | aprovado |
+| macOS amd64 | compilação de todos os testes de `internal/workspace` e promoção no-replace | aprovado |
+| Matriz CI | `.github/workflows/test.yml`: Ubuntu, Windows e macOS executam `go test ./...` | configurada |
+
+Os cenários end-to-end de clone duplo e source local são automatizados com repositórios e homes
+temporários. A execução nativa completa de Windows/macOS ocorre na matriz CI após push; esta
+validação local confirmou previamente que os testes e arquivos com build tags compilam nos dois
+targets, sem afirmar execução nativa fora da CI.
