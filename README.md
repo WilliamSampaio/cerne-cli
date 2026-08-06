@@ -105,14 +105,15 @@ cerne init my-project --clone https://host/organization/application.git
 `--source` links a local non-bare Git worktree, resolves relative paths from the invocation
 directory, and never creates an internal source or changes the external repository. `--clone`
 accepts an existing local path, `file`, HTTPS, or SSH (including SCP-like syntax), performs a full
-standard clone into internal `source`, and keeps the remote named `origin`. These flags and
-`--workflow` are mutually exclusive.
+standard clone into internal `source`, and keeps the remote named `origin`. `--source` and
+`--clone` are mutually exclusive; either one can be combined with `--workflow`.
 
 To bootstrap an optional specification workflow during creation:
 
 ```sh
 cerne init my-project --workflow speckit
 cerne init my-project --workflow openspec
+cerne init my-project --clone https://host/organization/application.git --workflow speckit
 ```
 
 Spec Kit keeps specifications in `knowledge/specs` and owns `knowledge/.specify`. OpenSpec keeps
@@ -179,7 +180,7 @@ With a selected workflow, the manifest also contains `"workflow":{"provider":"sp
 - `cerne --help` prints the available commands and global options.
 - `cerne --version` prints the stable SemVer identifier, currently `cerne 0.3.0`.
 
-### `cerne init <project-name> [--workflow ... | --source ... | --clone ...]`
+### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
 
 Creates a new workspace below the current directory. The destination must not exist or must be an
 empty regular directory; symbolic links and non-empty destinations are rejected. Existing content
@@ -195,7 +196,8 @@ an executed provider failure keeps the base workspace and returns an operational
 HTTP, `git://`, `ext::`, unknown helpers, option-like inputs, embedded credentials, queries, and
 fragments before Git runs. Authentication, redirects, and checkout filters remain Git behavior;
 Cerne disables controllable prompts, but external helpers may still fail or behave outside the
-CLI's portable control. Clone adds no depth, branch, submodule, LFS, push, or extra fetch.
+CLI's portable control. Clone adds no depth, branch, submodule, LFS, push, or extra fetch. Either
+source option can be combined with `--workflow`; source and clone remain mutually exclusive.
 
 Every started clone first creates a redacted `knowledge/runs/source-clone.json`. A pre-clone failure
 rolls back the attempt. A later failure preserves knowledge and the audit, removes only Cerne's
