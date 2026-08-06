@@ -180,7 +180,7 @@ o `"workflow":{"provider":"openspec"}`. El estado de instalación y la versión 
 ### Opciones globales
 
 - `cerne --help` muestra los comandos disponibles y las opciones globales.
-- `cerne --version` muestra el identificador SemVer estable, actualmente `cerne 0.5.0`.
+- `cerne --version` muestra el identificador SemVer estable, actualmente `cerne 0.6.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
 
@@ -235,6 +235,23 @@ cerne restore git@host:org/knowledge.git --source ../source-existente
 Localiza el workspace ancestro más cercano y materializa el provider declarado en el manifiesto.
 No acepta provider, ruta ni opción de fuerza. Cada intento real crea un JSON de auditoría
 sanitizado en `knowledge/runs`; no se auditan un ejecutable ausente ni un layout listo.
+
+### `cerne context [--json]`
+
+Localiza el workspace ancestro más cercano e informa rutas canónicas de workspace, knowledge,
+product, specs, decisions, policies, source y workflow declarado. `--json` emite el schema estable
+versión 1 para skills y scripts. Informes saludables o con advertencias devuelven `0`; informes
+estructuralmente inválidos siguen siendo válidos y devuelven `1`; uso inválido devuelve `2` en
+stderr.
+
+El comando solo lee metadatos estructurales. No lee contenido de repositorios ni archivos de
+agente, ejecuta Git o providers, consulta remotos o ejecutables, accede a la red ni crea auditoría,
+caché, instrucciones o cambios en el manifiesto.
+
+```sh
+cerne context
+cerne context --json
+```
 
 ### `cerne doctor`
 

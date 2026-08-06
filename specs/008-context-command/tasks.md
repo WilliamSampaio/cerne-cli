@@ -20,7 +20,7 @@ a apresentação humana e US3 completa o diagnóstico seguro de estados inválid
 
 **Purpose**: preservar a linha de base e confirmar que a feature não exige infraestrutura nova
 
-- [ ] T001 Executar `go test -count=1 ./...` como baseline e confirmar que nenhuma dependência ou alteração de módulo é necessária em `go.mod`
+- [X] T001 Executar `go test -count=1 ./...` como baseline e confirmar que nenhuma dependência ou alteração de módulo é necessária em `go.mod`
 
 ---
 
@@ -30,8 +30,8 @@ a apresentação humana e US3 completa o diagnóstico seguro de estados inválid
 
 **⚠️ CRITICAL**: Esta fase bloqueia todas as histórias.
 
-- [ ] T002 Criar testes de contrato para descrições estáticas de Spec Kit/OpenSpec, provider desconhecido e ausência de consulta a PATH em `internal/workflowexec/setup_test.go`
-- [ ] T003 Extrair `Describe(provider)` puro e fazer `Resolve(provider)` reutilizá-lo sem mudar setup, environment ou erros existentes em `internal/workflowexec/setup.go`
+- [X] T002 Criar testes de contrato para descrições estáticas de Spec Kit/OpenSpec, provider desconhecido e ausência de consulta a PATH em `internal/workflowexec/setup_test.go`
+- [X] T003 Extrair `Describe(provider)` puro e fazer `Resolve(provider)` reutilizá-lo sem mudar setup, environment ou erros existentes em `internal/workflowexec/setup.go`
 
 **Checkpoint**: providers podem ser descritos sem processo, environment ou disponibilidade local.
 
@@ -50,15 +50,15 @@ confirmar paths canônicos, status 0 e ausência de conteúdo/Git/processos.
 
 > Escrever e observar falha antes da implementação.
 
-- [ ] T004 [P] [US1] Criar testes de domínio para descoberta ancestral saudável, paths canônicos, coleções, source interno/externo, estados not-declared/pending/ready e determinismo em `internal/workspace/context_test.go`
-- [ ] T005 [P] [US1] Criar testes de integração do binário para contrato JSON v1, ordem/indentação/newline, execução em descendentes, repetição byte a byte e stdout/stderr/status em `cmd/cerne/main_test.go`
+- [X] T004 [P] [US1] Criar testes de domínio para descoberta ancestral saudável, paths canônicos, coleções, source interno/externo, estados not-declared/pending/ready e determinismo em `internal/workspace/context_test.go`
+- [X] T005 [P] [US1] Criar testes de integração do binário para contrato JSON v1, ordem/indentação/newline, execução em descendentes, repetição byte a byte e stdout/stderr/status em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implementar structs tipadas `ContextReport`, workspace, knowledge, source, workflow e problems, mais descoberta ancestral e montagem saudável somente filesystem em `internal/workspace/context.go`
-- [ ] T007 [US1] Receber `WorkflowResolver` em `workspace.Context`, usar o resolver injetado para normalizar specs e derivar not-declared/pending/ready sem importar `workflowexec` ou consultar executáveis em `internal/workspace/context.go`
-- [ ] T008 [US1] Adicionar dispatch `context --json`, injetar `workflowexec.Describe` na chamada ao domínio e serializar com `encoding/json` usando status healthy/warning/invalid em `cmd/cerne/main.go`
-- [ ] T009 [US1] Executar os testes focados de JSON/domínio que cobrem `internal/workspace/context_test.go` e `cmd/cerne/main_test.go`
+- [X] T006 [US1] Implementar structs tipadas `ContextReport`, workspace, knowledge, source, workflow e problems, mais descoberta ancestral e montagem saudável somente filesystem em `internal/workspace/context.go`
+- [X] T007 [US1] Receber `WorkflowResolver` em `workspace.Context`, usar o resolver injetado para normalizar specs e derivar not-declared/pending/ready sem importar `workflowexec` ou consultar executáveis em `internal/workspace/context.go`
+- [X] T008 [US1] Adicionar dispatch `context --json`, injetar `workflowexec.Describe` na chamada ao domínio e serializar com `encoding/json` usando status healthy/warning/invalid em `cmd/cerne/main.go`
+- [X] T009 [US1] Executar os testes focados de JSON/domínio que cobrem `internal/workspace/context_test.go` e `cmd/cerne/main_test.go`
 
 **Checkpoint**: uma skill já consegue consumir o contexto saudável e de workflow conhecido pelo
 schema público, sem depender da apresentação humana.
@@ -76,12 +76,12 @@ ausente/pendente/pronto; comparar stdout/status e executar `--help` fora de work
 
 > Escrever e observar falha antes da implementação.
 
-- [ ] T010 [US2] Criar testes de integração para relatório humano saudável, source interno/externo, workflow pendente/pronto e ajuda sem acesso ao filesystem em `cmd/cerne/main_test.go`
+- [X] T010 [US2] Criar testes de integração para relatório humano saudável, source interno/externo, workflow pendente/pronto e ajuda sem acesso ao filesystem em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Implementar renderização humana, correções fixas em português, `context --help` e entrada do comando na ajuda global em `cmd/cerne/main.go`
-- [ ] T012 [US2] Executar os testes focados da apresentação humana e ajuda definidos em `cmd/cerne/main_test.go`
+- [X] T011 [US2] Implementar renderização humana, correções fixas em português, `context --help` e entrada do comando na ajuda global em `cmd/cerne/main.go`
+- [X] T012 [US2] Executar os testes focados da apresentação humana e ajuda definidos em `cmd/cerne/main_test.go`
 
 **Checkpoint**: a inspeção humana funciona sem exigir leitura manual do manifesto e não altera o
 contrato JSON do MVP.
@@ -101,14 +101,14 @@ desconhecido; confirmar catálogo, ordem, omissões, status 0/1/2 e filesystem i
 
 > Escrever e observar falha antes da implementação.
 
-- [ ] T013 [P] [US3] Criar testes de domínio para candidato parcial mais próximo; manifesto ausente, malformado, symlink ou version 2; identidade divergente; source inseguro; `product`, `specs`, `decisions`, `policies` e `runs` inválidos; provider desconhecido; marker inválido; symlink interno; `.git` aninhado; specs ausente após materialização; gating e ordem de problemas; e ausência de leitura de `AGENTS.md`/`CLAUDE.md` inacessíveis ou com sentinelas em `internal/workspace/context_test.go`
-- [ ] T014 [P] [US3] Criar testes de integração para JSON/humano inválidos, catálogo e ordem de problemas, uso inválido, status 1/2, ausência de erros brutos/segredos e snapshot somente leitura em `cmd/cerne/main_test.go`
+- [X] T013 [P] [US3] Criar testes de domínio para candidato parcial mais próximo; manifesto ausente, malformado, symlink ou version 2; identidade divergente; source inseguro; `product`, `specs`, `decisions`, `policies` e `runs` inválidos; provider desconhecido; marker inválido; symlink interno; `.git` aninhado; specs ausente após materialização; gating e ordem de problemas; e ausência de leitura de `AGENTS.md`/`CLAUDE.md` inacessíveis ou com sentinelas em `internal/workspace/context_test.go`
+- [X] T014 [P] [US3] Criar testes de integração para JSON/humano inválidos, catálogo e ordem de problemas, uso inválido, status 1/2, ausência de erros brutos/segredos e snapshot somente leitura em `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] Implementar agregação parcial, dependency gates, validação física de tipos/symlinks/sobreposições, catálogo fechado e ordem determinística de problemas em `internal/workspace/context.go`
-- [ ] T016 [US3] Completar renderização de problemas, saída JSON válida com status 1 e erro de uso exato com stdout vazio/status 2 em `cmd/cerne/main.go`
-- [ ] T017 [US3] Executar os testes focados de segurança e confirmar zero chamadas a Git/provider/processo e zero writes em `internal/workspace/context_test.go` e `cmd/cerne/main_test.go`
+- [X] T015 [US3] Implementar agregação parcial, dependency gates, validação física de tipos/symlinks/sobreposições, catálogo fechado e ordem determinística de problemas em `internal/workspace/context.go`
+- [X] T016 [US3] Completar renderização de problemas, saída JSON válida com status 1 e erro de uso exato com stdout vazio/status 2 em `cmd/cerne/main.go`
+- [X] T017 [US3] Executar os testes focados de segurança e confirmar zero chamadas a Git/provider/processo e zero writes em `internal/workspace/context_test.go` e `cmd/cerne/main_test.go`
 
 **Checkpoint**: todas as histórias funcionam e relatórios parciais nunca inventam paths ou fatos.
 
@@ -118,12 +118,12 @@ desconhecido; confirmar catálogo, ordem, omissões, status 0/1/2 e filesystem i
 
 **Purpose**: documentação pública, release minor, compatibilidade e validação multiplataforma
 
-- [ ] T018 [P] Documentar finalidade, sintaxe, JSON, streams, status, efeitos e exemplos em `README.md`
-- [ ] T019 [P] Documentar finalidade, sintaxe, JSON, streams, status, efeitos e exemplos em `README.pt-BR.md`
-- [ ] T020 [P] Documentar finalidade, sintaxe, JSON, streams, status, efeitos e exemplos em `README.es.md`
-- [ ] T021 [P] Registrar a feature aditiva, schema público e ausência de migração em `CHANGELOG.md`
-- [ ] T022 Atualizar a versão minor do binário para 0.6.0 e verificar que ajuda/versionamento permanecem compatíveis em `cmd/cerne/main.go`
-- [ ] T023 Executar `gofmt`, `go test -count=1 ./...`, `go vet ./...`, build, cenários e protocolo manual SC-008 de `specs/008-context-command/quickstart.md`, confirmando a matriz Linux/Windows/macOS de `.github/workflows/test.yml`
+- [X] T018 [P] Documentar finalidade, sintaxe, JSON, streams, status, efeitos e exemplos em `README.md`
+- [X] T019 [P] Documentar finalidade, sintaxe, JSON, streams, status, efeitos e exemplos em `README.pt-BR.md`
+- [X] T020 [P] Documentar finalidade, sintaxe, JSON, streams, status, efeitos e exemplos em `README.es.md`
+- [X] T021 [P] Registrar a feature aditiva, schema público e ausência de migração em `CHANGELOG.md`
+- [X] T022 Atualizar a versão minor do binário para 0.6.0 e verificar que ajuda/versionamento permanecem compatíveis em `cmd/cerne/main.go`
+- [X] T023 Executar `gofmt`, `go test -count=1 ./...`, `go vet ./...`, build, cenários e protocolo manual SC-008 de `specs/008-context-command/quickstart.md`, confirmando a matriz Linux/Windows/macOS de `.github/workflows/test.yml`
 
 ---
 
