@@ -94,6 +94,12 @@ escrita, verificando stderr, status e preservação dos arquivos.
    instala a skill, **Then** o comando falha antes de sobrescrever e explica a correção segura.
 3. **Given** o pacote requer um schema de contexto não suportado pelo CLI atual, **When** a
    instalação é solicitada, **Then** o comando falha antes de copiar arquivos.
+4. **Given** o pacote companheiro oficial está ausente ou inacessível, **When** o usuário executa
+   `cerne skill install codex`, **Then** o comando falha como erro operacional sem alterar o destino
+   do agente.
+5. **Given** o pacote contém manifesto malformado, arquivo fora do pacote ou link simbólico, **When**
+   a instalação é solicitada, **Then** o comando falha antes de copiar arquivos e preserva qualquer
+   destino existente.
 
 ### Edge Cases
 
@@ -185,7 +191,8 @@ escrita, verificando stderr, status e preservação dos arquivos.
   schema; os destinos oficiais de instalação ficam definidos pelo CLI nesta versão.
 - **Agent Install Target**: Destino oficial no perfil do usuário atual para um agente suportado:
   `~/.codex/skills/cerne-context` para Codex e `~/.claude/skills/cerne-context` para Claude.
-- **Managed Installation**: Instalação cuja origem, versão e arquivos são reconhecidos pelo Cerne.
+- **Managed Installation**: Instalação cuja origem, versão e arquivos são reconhecidos pelo Cerne por
+  marcador privado contendo agente, skill, versão do pacote e lista de paths relativos gerenciados.
 - **Skill Install Attempt**: Registro auditável local de uma tentativa de instalação.
 
 ## Success Criteria *(mandatory)*

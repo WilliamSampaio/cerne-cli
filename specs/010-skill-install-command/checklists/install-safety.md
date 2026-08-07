@@ -9,32 +9,32 @@ consistent and safe before implementation.
 
 ## Requirement Completeness
 
-- [ ] CHK001 Are the official install destinations specified for every supported public agent? [Completeness, Spec §FR-010]
-- [ ] CHK002 Are requirements defined for the absence or inaccessibility of the companion `cerne-skills` package? [Completeness, Spec §FR-007b]
-- [ ] CHK003 Are requirements defined for same-version reinstall and different-version managed upgrade? [Completeness, Spec §FR-013, Spec §FR-014]
-- [ ] CHK004 Are workspace command boundaries documented for all commands that mention workflow or agents? [Completeness, Spec §FR-004, Spec §FR-005]
+- [x] CHK001 Are the official install destinations specified for every supported public agent? [Completeness, Spec §FR-010]
+- [x] CHK002 Are requirements defined for the absence or inaccessibility of the companion `cerne-skills` package? [Completeness, Spec §FR-007b]
+- [x] CHK003 Are requirements defined for same-version reinstall and different-version managed upgrade? [Completeness, Spec §FR-013, Spec §FR-014]
+- [x] CHK004 Are workspace command boundaries documented for all commands that mention workflow or agents? [Completeness, Spec §FR-004, Spec §FR-005]
 
 ## Requirement Clarity
 
-- [ ] CHK005 Is "managed installation" defined with enough evidence to distinguish Cerne-owned files from unknown user content? [Clarity, Spec §Key Entities]
-- [ ] CHK006 Is the no-network rule clear for both real installation and automated validation? [Clarity, Spec §FR-007, Spec §FR-008]
-- [ ] CHK007 Are invalid usage, operational failure and success stream/status contracts unambiguous? [Clarity, Spec §FR-017, Spec §FR-018, Spec §FR-019]
+- [x] CHK005 Is "managed installation" defined with enough evidence to distinguish Cerne-owned files from unknown user content? [Clarity, Spec §Key Entities]
+- [x] CHK006 Is the no-network rule clear for both real installation and automated validation? [Clarity, Spec §FR-007, Spec §FR-008]
+- [x] CHK007 Are invalid usage, operational failure and success stream/status contracts unambiguous? [Clarity, Spec §FR-017, Spec §FR-018, Spec §FR-019]
 
 ## Requirement Consistency
 
-- [ ] CHK008 Are package source requirements consistent between Clarifications, Functional Requirements and Assumptions? [Consistency, Spec §Clarifications, Spec §FR-007]
-- [ ] CHK009 Are destination path requirements consistent between Edge Cases, Functional Requirements and Key Entities? [Consistency, Spec §FR-010]
-- [ ] CHK010 Are upgrade requirements consistent with the rule that unknown destination content must not be overwritten? [Consistency, Spec §FR-012, Spec §FR-014]
+- [x] CHK008 Are package source requirements consistent between Clarifications, Functional Requirements and Assumptions? [Consistency, Spec §Clarifications, Spec §FR-007]
+- [x] CHK009 Are destination path requirements consistent between Edge Cases, Functional Requirements and Key Entities? [Consistency, Spec §FR-010]
+- [x] CHK010 Are upgrade requirements consistent with the rule that unknown destination content must not be overwritten? [Consistency, Spec §FR-012, Spec §FR-014]
 
 ## Edge Case Coverage
 
-- [ ] CHK011 Are unsafe filesystem cases covered, including symlinks, path escapes, regular-file destinations and partial destinations? [Coverage, Spec §Edge Cases]
-- [ ] CHK012 Are failure and rollback requirements defined for interruption before final promotion and audit finalization failure? [Coverage, Spec §FR-015, Spec §FR-016]
+- [x] CHK011 Are unsafe filesystem cases covered, including symlinks, path escapes, regular-file destinations and partial destinations? [Coverage, Spec §Edge Cases]
+- [x] CHK012 Are failure and rollback requirements defined for interruption before final promotion and audit finalization failure? [Coverage, Spec §FR-015, Spec §FR-016]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK013 Can each measurable success criterion be verified without network, credentials or real agent profile directories? [Measurability, Spec §Success Criteria]
-- [ ] CHK014 Do acceptance scenarios cover Codex, Claude, invalid agent, missing package, unsafe package, unknown destination, idempotency, upgrade and workspace non-installation? [Coverage, Spec §User Scenarios]
+- [x] CHK013 Can each measurable success criterion be verified without network, credentials or real agent profile directories? [Measurability, Spec §Success Criteria]
+- [x] CHK014 Do acceptance scenarios cover Codex, Claude, invalid agent, missing package, unsafe package, unknown destination, idempotency, upgrade and workspace non-installation? [Coverage, Spec §User Scenarios]
 
 ## Notes
 
