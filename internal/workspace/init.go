@@ -59,6 +59,10 @@ func InitWithSource(parent, name string, request SourceInitRequest, initReposito
 }
 
 func InitWithSourceAndWorkflow(parent, name string, request SourceInitRequest, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
+	return InitWithSourceAndWorkflowAndAgent(parent, name, request, definition, "", initRepository, inspect, clone)
+}
+
+func InitWithSourceAndWorkflowAndAgent(parent, name string, request SourceInitRequest, definition WorkflowDefinition, agent string, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
 	if definition.Provider != "" {
 		if _, _, err := workflowPaths(filepath.Join(parent, name, "knowledge"), definition); err != nil {
 			return Result{}, WorkflowResult{}, errors.New("workflow inválido")
@@ -68,7 +72,11 @@ func InitWithSourceAndWorkflow(parent, name string, request SourceInitRequest, d
 	if err != nil || definition.Provider == "" {
 		return result, WorkflowResult{}, err
 	}
-	workflow, err := applyWorkflow(result.KnowledgePath, definition, "init", "--workflow")
+	authorization := "--workflow"
+	if agent != "" {
+		authorization += " --agent " + agent
+	}
+	workflow, err := applyWorkflow(result.KnowledgePath, definition, "init", authorization, agent)
 	workflow.ProjectName = name
 	return result, workflow, err
 }
@@ -85,6 +93,10 @@ func initWithSource(parent, name string, request SourceInitRequest, definition W
 }
 
 func InitWithWorkflow(parent, name string, definition WorkflowDefinition, initRepository func(string) error) (Result, WorkflowResult, error) {
+	return InitWithWorkflowAndAgent(parent, name, definition, "", initRepository)
+}
+
+func InitWithWorkflowAndAgent(parent, name string, definition WorkflowDefinition, agent string, initRepository func(string) error) (Result, WorkflowResult, error) {
 	if definition.Provider == "" {
 		return Result{}, WorkflowResult{}, errors.New("workflow inválido")
 	}
@@ -95,7 +107,11 @@ func InitWithWorkflow(parent, name string, definition WorkflowDefinition, initRe
 	if err != nil {
 		return Result{}, WorkflowResult{}, err
 	}
-	workflow, err := applyWorkflow(result.KnowledgePath, definition, "init", "--workflow")
+	authorization := "--workflow"
+	if agent != "" {
+		authorization += " --agent " + agent
+	}
+	workflow, err := applyWorkflow(result.KnowledgePath, definition, "init", authorization, agent)
 	workflow.ProjectName = name
 	return result, workflow, err
 }
