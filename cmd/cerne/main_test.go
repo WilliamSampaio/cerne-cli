@@ -45,6 +45,7 @@ Uso:
   cerne init <project-name> --source <caminho>
   cerne init <project-name> --clone <origem>
   cerne init <project-name> --workflow <speckit|openspec>
+  cerne init <project-name> --workflow speckit --agent <codex|claude>
   cerne init <project-name> --source <caminho> --workflow <speckit|openspec>
   cerne init <project-name> --clone <origem> --workflow <speckit|openspec>
 
@@ -71,8 +72,10 @@ Clone:
 Workflow:
   Sem a opção, mantém o layout padrão em knowledge/specs. Spec Kit também usa
   specs e cria .specify. OpenSpec usa openspec/specs e cria openspec.
-  O Cerne usa somente uma instalação local existente, sem instalar, atualizar,
-  selecionar agente ou fornecer credenciais. Se ausente, o setup fica pendente.
+  --agent codex|claude pode acompanhar somente --workflow speckit. A escolha
+  é local, cria descoberta na raiz do workspace e não entra no manifesto.
+  O Cerne usa somente instalações locais existentes, sem instalar agentes,
+  atualizar providers ou fornecer credenciais. Se ausente, o setup fica pendente.
 
 Efeitos:
   Sempre cria knowledge como Git independente. O destino deve estar ausente ou
@@ -96,6 +99,7 @@ Exemplos:
   cerne init exemplo --source ../aplicacao
   cerne init exemplo --clone https://host/organizacao/aplicacao.git
   cerne init exemplo --workflow speckit
+  cerne init exemplo --workflow speckit --agent codex
   cerne init exemplo --clone https://host/organizacao/aplicacao.git --workflow speckit
 `
 
@@ -238,7 +242,7 @@ func TestCLIStableContractAndPortablePath(t *testing.T) {
 
 	t.Run("missing argument", func(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "init")
-		expected := "erro: argumento inválido\nuso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec>]\n"
+		expected := "erro: argumento inválido\nuso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec> [--agent <codex|claude>]]\n"
 		if status != 2 || stdout != "" || stderr != expected {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
@@ -693,6 +697,105 @@ func TestCLIWorkflowInitPendingResumeIdempotentAndFailure(t *testing.T) {
 	})
 }
 
+func TestCLISpecKitAgentDiscovery(t *testing.T) {
+	binary := buildCLI(t)
+
+	t.Run("init codex creates root bridge and keeps manifest neutral", func(t *testing.T) {
+		tools := buildWorkflowTools(t, "speckit", false)
+		parent := t.TempDir()
+		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "codex-project", "--workflow", "speckit", "--agent", "codex")
+		root := filepath.Join(parent, "codex-project")
+		knowledge := filepath.Join(root, "knowledge")
+		expected := "Workspace \"codex-project\" criado.\nKnowledge: " + displayPath(knowledge) + "\nSource: " + displayPath(filepath.Join(root, "source")) + "\nWorkflow: speckit\nSetup: concluído\nAgent: codex\nDescoberta: pronta\n"
+		if status != 0 || stdout != expected || stderr != "" {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		for _, path := range []string{
+			filepath.Join(knowledge, ".agents", "skills", "speckit-analyze", "SKILL.md"),
+			filepath.Join(root, ".agents", "skills", "speckit-analyze", "SKILL.md"),
+			filepath.Join(knowledge, ".specify", "init-options.json"),
+		} {
+			if _, err := os.Stat(path); err != nil {
+				t.Fatal(err)
+			}
+		}
+		manifest := readFile(t, filepath.Join(knowledge, "cerne.json"))
+		if strings.Contains(manifest, "agent") || !strings.Contains(manifest, `"provider": "speckit"`) {
+			t.Fatalf("manifesto inválido: %s", manifest)
+		}
+		bridge := readFile(t, filepath.Join(root, ".agents", "skills", "speckit-analyze", "SKILL.md"))
+		if !strings.Contains(bridge, "knowledge/.agents/skills/speckit-analyze/SKILL.md") || strings.Contains(bridge, root) {
+			t.Fatalf("ponte inválida: %s", bridge)
+		}
+	})
+
+	t.Run("workflow setup claude refreshes local discovery", func(t *testing.T) {
+		tools := buildWorkflowTools(t, "speckit", false)
+		parent := t.TempDir()
+		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		status, _, stderr := executeCLI(t, binary, parent, environment, "init", "restored", "--workflow", "speckit", "--agent", "codex")
+		if status != 0 || stderr != "" {
+			t.Fatalf("init status=%d stderr=%q", status, stderr)
+		}
+		root := filepath.Join(parent, "restored")
+		sourceBefore := snapshotTree(t, filepath.Join(root, "source"))
+		status, stdout, stderr := executeCLI(t, binary, filepath.Join(root, "knowledge", "product"), environment, "workflow", "setup", "--agent", "claude")
+		expected := "Workflow: speckit\nKnowledge: " + displayPath(filepath.Join(root, "knowledge")) + "\nNenhuma alteração necessária.\nAgent: claude\nDescoberta: pronta\n"
+		if status != 0 || stdout != expected || stderr != "" {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "speckit-analyze", "SKILL.md")); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(sourceBefore, snapshotTree(t, filepath.Join(root, "source"))) {
+			t.Fatal("source alterado")
+		}
+		if strings.Contains(readFile(t, filepath.Join(root, "knowledge", "cerne.json")), "agent") {
+			t.Fatal("agente persistido no manifesto")
+		}
+	})
+
+	t.Run("missing provider creates no fake bridge", func(t *testing.T) {
+		tools := buildWorkflowTools(t, "", false)
+		parent := t.TempDir()
+		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "pending", "--workflow", "speckit", "--agent", "codex")
+		root := filepath.Join(parent, "pending")
+		if status != 0 || !strings.Contains(stdout, "Setup: pendente") || strings.Contains(stdout, "Agent:") ||
+			!strings.Contains(stderr, `cerne workflow setup --agent codex`) {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(root, ".agents")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("ponte falsa criada: %v", err)
+		}
+		status, stdout, stderr = executeCLI(t, binary, root, environment, "workflow", "setup", "--agent", "codex")
+		if status != 1 || stdout != "" || !strings.Contains(stderr, `executável "specify" não encontrado`) {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(root, ".agents")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("ponte falsa criada no setup: %v", err)
+		}
+	})
+
+	t.Run("provider failure with agent creates no fake bridge", func(t *testing.T) {
+		tools := buildWorkflowTools(t, "speckit", true)
+		parent := t.TempDir()
+		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "failed", "--workflow", "speckit", "--agent", "codex")
+		root := filepath.Join(parent, "failed")
+		if status != 1 || stdout != "" || strings.Contains(stderr, "SECRET") || !strings.Contains(stderr, "provider não concluiu") {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(root, ".agents")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("ponte falsa criada: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(root, "source", ".git")); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
 func TestCLIWorkflowUsageAndHelp(t *testing.T) {
 	binary := buildCLI(t)
 	for _, args := range [][]string{
@@ -700,7 +803,14 @@ func TestCLIWorkflowUsageAndHelp(t *testing.T) {
 		{"init", "example", "--workflow", "other"},
 		{"init", "example", "--workflow", "speckit", "extra"},
 		{"init", "--workflow", "speckit", "example"},
+		{"init", "example", "--agent", "codex"},
+		{"init", "example", "--workflow", "openspec", "--agent", "codex"},
+		{"init", "example", "--workflow", "speckit", "--agent", "generic"},
+		{"init", "example", "--workflow", "speckit", "--agent", "codex", "--agent", "claude"},
 		{"workflow", "setup", "extra"},
+		{"workflow", "setup", "--agent"},
+		{"workflow", "setup", "--agent", "generic"},
+		{"workflow", "setup", "--agent", "codex", "extra"},
 	} {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, args...)
 		if status != 2 || stdout != "" || !strings.Contains(stderr, "uso:") {
@@ -708,7 +818,7 @@ func TestCLIWorkflowUsageAndHelp(t *testing.T) {
 		}
 	}
 	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "workflow", "--help")
-	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne workflow setup") {
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne workflow setup --agent <codex|claude>") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 	parent := t.TempDir()
@@ -1311,6 +1421,19 @@ func main() {
   }
   root, marker := ".specify", ".specify/init-options.json"
   if name == "openspec" { root, marker = "openspec", "openspec/config.yaml" }
+  if name == "specify" && len(os.Args) >= 4 && os.Args[1] == "integration" && os.Args[2] == "install" {
+    agentRoot := map[string]string{"codex": ".agents/skills", "claude": ".claude/skills"}[os.Args[3]]
+    if agentRoot == "" { os.Exit(2) }
+    commands := []string{"speckit-analyze","speckit-checklist","speckit-clarify","speckit-constitution","speckit-converge","speckit-implement","speckit-plan","speckit-specify","speckit-tasks","speckit-taskstoissues"}
+    for _, command := range commands {
+      skill := filepath.Join(agentRoot, command, "SKILL.md")
+      if err := os.MkdirAll(filepath.Dir(skill), 0755); err != nil { os.Exit(1) }
+      if err := os.WriteFile(skill, []byte("# "+command+"\n"), 0644); err != nil { os.Exit(1) }
+    }
+    record := strings.Join(os.Args[1:], "\n") + "\n" + strings.Join(os.Environ(), "\n")
+    if err := os.WriteFile(filepath.Join(agentRoot, "record"), []byte(record), 0644); err != nil { os.Exit(1) }
+    return
+  }
   if _, err := os.Stat(filepath.Join(filepath.Dir(executable), "fail")); err == nil {
     _ = os.MkdirAll(root, 0755); fmt.Fprintln(os.Stderr, "SECRET raw provider output"); os.Exit(9)
   }

@@ -105,6 +105,7 @@ Uso:
   cerne init <project-name> --source <caminho>
   cerne init <project-name> --clone <origem>
   cerne init <project-name> --workflow <speckit|openspec>
+  cerne init <project-name> --workflow speckit --agent <codex|claude>
   cerne init <project-name> --source <caminho> --workflow <speckit|openspec>
   cerne init <project-name> --clone <origem> --workflow <speckit|openspec>
 
@@ -131,8 +132,10 @@ Clone:
 Workflow:
   Sem a opção, mantém o layout padrão em knowledge/specs. Spec Kit também usa
   specs e cria .specify. OpenSpec usa openspec/specs e cria openspec.
-  O Cerne usa somente uma instalação local existente, sem instalar, atualizar,
-  selecionar agente ou fornecer credenciais. Se ausente, o setup fica pendente.
+  --agent codex|claude pode acompanhar somente --workflow speckit. A escolha
+  é local, cria descoberta na raiz do workspace e não entra no manifesto.
+  O Cerne usa somente instalações locais existentes, sem instalar agentes,
+  atualizar providers ou fornecer credenciais. Se ausente, o setup fica pendente.
 
 Efeitos:
   Sempre cria knowledge como Git independente. O destino deve estar ausente ou
@@ -156,6 +159,7 @@ Exemplos:
   cerne init exemplo --source ../aplicacao
   cerne init exemplo --clone https://host/organizacao/aplicacao.git
   cerne init exemplo --workflow speckit
+  cerne init exemplo --workflow speckit --agent codex
   cerne init exemplo --clone https://host/organizacao/aplicacao.git --workflow speckit
 `
 
@@ -163,6 +167,7 @@ const workflowHelp = `Inicializa o workflow já declarado no manifesto do worksp
 
 Uso:
   cerne workflow setup
+  cerne workflow setup --agent <codex|claude>
   cerne workflow --help
 
 Localização:
@@ -171,17 +176,20 @@ Localização:
 Comportamento:
   Executa somente o provider declarado e já instalado dentro de knowledge.
   Um layout pronto não é alterado. Um layout parcial é recusado.
+  --agent codex|claude prepara descoberta local para Spec Kit na raiz do
+  workspace sem persistir agente no manifesto.
 
 Saídas:
   Sucesso e ajuda usam stdout. Falhas usam stderr.
   Status 0: concluído, já pronto ou ajuda; 1: falha operacional; 2: uso inválido.
 
 Efeitos:
-  Registra tentativas em knowledge/runs. Não instala ferramentas, não troca o
-  provider, não altera source e não autoriza rede, Git remoto ou agentes.
+  Registra tentativas em knowledge/runs. Não instala agentes externos, não troca
+  o provider, não altera source e não autoriza rede, Git remoto ou credenciais.
 
 Exemplo:
   cerne workflow setup
+  cerne workflow setup --agent claude
 `
 
 const doctorHelp = `Analisa o workspace Cerne atual sem modificar arquivos ou repositórios.
@@ -629,12 +637,12 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 			request.OriginTransport = origin.Transport
 			request.OriginFingerprint = origin.Fingerprint
 		}
-		result, workflow, err := workspace.InitWithSourceAndWorkflow(current, parsed.Name, request, definition, initRepository, adaptLink(inspect), clone)
+		result, workflow, err := workspace.InitWithSourceAndWorkflowAndAgent(current, parsed.Name, request, definition, parsed.Agent, initRepository, adaptLink(inspect), clone)
 		if err != nil {
 			var workflowFailure workspace.WorkflowFailure
 			if errors.As(err, &workflowFailure) {
 				fmt.Fprintf(stderr, "erro: não foi possível inicializar workflow %s: %s\n", parsed.Workflow, workflowCause(err))
-				fmt.Fprintf(stderr, "correção: corrija ou atualize %s e execute \"cerne workflow setup\" dentro de %s\n", parsed.Workflow, filepath.Dir(result.KnowledgePath))
+				fmt.Fprintf(stderr, "correção: corrija ou atualize %s e execute %q dentro de %s\n", parsed.Workflow, workflowSetupCommand(parsed.Agent), filepath.Dir(result.KnowledgePath))
 				return 1
 			}
 			renderSourceInitFailure(stderr, err)
@@ -648,15 +656,18 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		}
 		if parsed.Workflow != "" {
 			fmt.Fprintf(stdout, "Workflow: %s\nSetup: %s\n", parsed.Workflow, map[workspace.WorkflowState]string{workspace.WorkflowConfigured: "concluído", workspace.WorkflowPending: "pendente"}[workflow.State])
+			if parsed.Agent != "" && workflow.State != workspace.WorkflowPending {
+				fmt.Fprintf(stdout, "Agent: %s\nDescoberta: pronta\n", parsed.Agent)
+			}
 			if workflow.State == workspace.WorkflowPending {
 				fmt.Fprintf(stderr, "aviso: executável %q não encontrado; workflow %s não inicializado\n", definition.Executor, parsed.Workflow)
-				fmt.Fprintf(stderr, "correção: instale %s e execute \"cerne workflow setup\" dentro do workspace\n", parsed.Workflow)
+				fmt.Fprintf(stderr, "correção: instale %s e execute %q dentro do workspace\n", parsed.Workflow, workflowSetupCommand(parsed.Agent))
 			}
 		}
 		return 0
 	}
 	if parsed.Workflow != "" {
-		result, workflow, err := workspace.InitWithWorkflow(current, parsed.Name, definition, initRepository)
+		result, workflow, err := workspace.InitWithWorkflowAndAgent(current, parsed.Name, definition, parsed.Agent, initRepository)
 		if err != nil {
 			if result.KnowledgePath == "" {
 				fmt.Fprintf(stderr, "erro: %v\n", err)
@@ -668,14 +679,17 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 				return 1
 			}
 			fmt.Fprintf(stderr, "erro: não foi possível inicializar workflow %s: %s\n", parsed.Workflow, workflowCause(err))
-			fmt.Fprintf(stderr, "correção: corrija ou atualize %s e execute \"cerne workflow setup\" dentro de %s\n", parsed.Workflow, filepath.Dir(result.KnowledgePath))
+			fmt.Fprintf(stderr, "correção: corrija ou atualize %s e execute %q dentro de %s\n", parsed.Workflow, workflowSetupCommand(parsed.Agent), filepath.Dir(result.KnowledgePath))
 			return 1
 		}
 		fmt.Fprintf(stdout, "Workspace %q criado.\nKnowledge: %s\nSource: %s\nWorkflow: %s\nSetup: %s\n",
 			result.Name, result.KnowledgePath, result.SourcePath, parsed.Workflow, map[workspace.WorkflowState]string{workspace.WorkflowConfigured: "concluído", workspace.WorkflowPending: "pendente"}[workflow.State])
+		if parsed.Agent != "" && workflow.State != workspace.WorkflowPending {
+			fmt.Fprintf(stdout, "Agent: %s\nDescoberta: pronta\n", parsed.Agent)
+		}
 		if workflow.State == workspace.WorkflowPending {
 			fmt.Fprintf(stderr, "aviso: executável %q não encontrado; workflow %s não inicializado\n", definition.Executor, parsed.Workflow)
-			fmt.Fprintf(stderr, "correção: instale %s e execute \"cerne workflow setup\" dentro do workspace\n", parsed.Workflow)
+			fmt.Fprintf(stderr, "correção: instale %s e execute %q dentro do workspace\n", parsed.Workflow, workflowSetupCommand(parsed.Agent))
 		}
 		return 0
 	}
@@ -699,6 +713,7 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 type initArguments struct {
 	Name        string
 	Workflow    string
+	Agent       string
 	SourceMode  workspace.SourceMode
 	SourceValue string
 }
@@ -707,7 +722,7 @@ func parseInitArgs(args []string) (initArguments, bool) {
 	if len(args) == 1 && !strings.HasPrefix(args[0], "--") {
 		return initArguments{Name: args[0]}, true
 	}
-	if (len(args) != 3 && len(args) != 5) || strings.HasPrefix(args[0], "--") {
+	if (len(args) != 3 && len(args) != 5 && len(args) != 7) || strings.HasPrefix(args[0], "--") {
 		return initArguments{}, false
 	}
 	parsed := initArguments{Name: args[0]}
@@ -722,6 +737,11 @@ func parseInitArgs(args []string) (initArguments, bool) {
 				return initArguments{}, false
 			}
 			parsed.Workflow = value
+		case "--agent":
+			if parsed.Agent != "" || value != "codex" && value != "claude" {
+				return initArguments{}, false
+			}
+			parsed.Agent = value
 		case "--source":
 			if parsed.SourceMode != "" {
 				return initArguments{}, false
@@ -735,6 +755,9 @@ func parseInitArgs(args []string) (initArguments, bool) {
 		default:
 			return initArguments{}, false
 		}
+	}
+	if parsed.Agent != "" && parsed.Workflow != "speckit" {
+		return initArguments{}, false
 	}
 	return parsed, true
 }
@@ -769,9 +792,10 @@ func runWorkflow(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stdout, workflowHelp)
 		return 0
 	}
-	if len(args) != 1 || args[0] != "setup" {
+	agent, ok := parseWorkflowSetupArgs(args)
+	if !ok {
 		fmt.Fprintln(stderr, "erro: argumento inválido")
-		fmt.Fprintln(stderr, "uso: cerne workflow setup")
+		fmt.Fprintln(stderr, "uso: cerne workflow setup [--agent <codex|claude>]")
 		return 2
 	}
 	current, err := currentDirectory()
@@ -780,7 +804,7 @@ func runWorkflow(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
 		return 1
 	}
-	result, err := workspace.SetupWorkflow(current, workflowexec.Resolve)
+	result, err := workspace.SetupWorkflowWithAgent(current, workflowexec.Resolve, agent)
 	if err != nil {
 		var failure workspace.WorkflowFailure
 		if errors.As(err, &failure) {
@@ -803,7 +827,27 @@ func runWorkflow(args []string, stdout, stderr io.Writer) int {
 	} else {
 		fmt.Fprintln(stdout, "Setup concluído.")
 	}
+	if result.Agent != "" && result.Discovery == workspace.WorkflowDiscoveryReady {
+		fmt.Fprintf(stdout, "Agent: %s\nDescoberta: pronta\n", result.Agent)
+	}
 	return 0
+}
+
+func parseWorkflowSetupArgs(args []string) (string, bool) {
+	if len(args) == 1 && args[0] == "setup" {
+		return "", true
+	}
+	if len(args) == 3 && args[0] == "setup" && args[1] == "--agent" && (args[2] == "codex" || args[2] == "claude") {
+		return args[2], true
+	}
+	return "", false
+}
+
+func workflowSetupCommand(agent string) string {
+	if agent == "" {
+		return "cerne workflow setup"
+	}
+	return "cerne workflow setup --agent " + agent
 }
 
 func workflowCause(err error) string {
@@ -1065,7 +1109,7 @@ func symbol(severity workspace.Severity) string {
 
 func initUsageError(stderr io.Writer, cause string) int {
 	fmt.Fprintf(stderr, "erro: %s\n", cause)
-	fmt.Fprintln(stderr, "uso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec>]")
+	fmt.Fprintln(stderr, "uso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec> [--agent <codex|claude>]]")
 	return 2
 }
 

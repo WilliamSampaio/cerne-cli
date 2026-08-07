@@ -92,6 +92,42 @@ func TestResolveDefinitionsAndExactInvocations(t *testing.T) {
 	}
 }
 
+func TestResolveSpecKitAgentTargetsAndExactInvocations(t *testing.T) {
+	originalLookPath, originalRun := lookPath, runProvider
+	t.Cleanup(func() { lookPath, runProvider = originalLookPath, originalRun })
+	lookPath = func(name string) (string, error) { return filepath.Join(t.TempDir(), name), nil }
+
+	var gotArguments []string
+	runProvider = func(_ string, arguments []string, _ string, _ []string) error {
+		gotArguments = arguments
+		return nil
+	}
+	definition, err := Resolve("speckit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		agent, root string
+		arguments   []string
+	}{
+		{"codex", ".agents/skills", []string{"integration", "install", "codex", "--force", "--integration-options=--skills"}},
+		{"claude", ".claude/skills", []string{"integration", "install", "claude", "--force"}},
+	} {
+		t.Run(test.agent, func(t *testing.T) {
+			target, ok := definition.Agents[test.agent]
+			if !ok || target.Name != test.agent || target.DiscoveryRoot != test.root || target.Setup == nil {
+				t.Fatalf("target=%#v ok=%v", target, ok)
+			}
+			if err := target.Setup(filepath.Join(t.TempDir(), "knowledge")); err != nil {
+				t.Fatal(err)
+			}
+			if strings.Join(gotArguments, "\x00") != strings.Join(test.arguments, "\x00") {
+				t.Fatalf("args=%q esperado=%q", gotArguments, test.arguments)
+			}
+		})
+	}
+}
+
 func TestResolveMissingUnknownAndSanitizesEnvironmentAndFailure(t *testing.T) {
 	originalLookPath, originalRun := lookPath, runProvider
 	t.Cleanup(func() { lookPath, runProvider = originalLookPath, originalRun })
