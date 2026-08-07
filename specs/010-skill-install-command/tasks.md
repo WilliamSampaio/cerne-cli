@@ -20,9 +20,9 @@ operations require negative tests. Releases require applicable checks on Linux, 
 
 **Purpose**: Create the smallest package boundary needed for global skill installation.
 
-- [ ] T001 Create `internal/skillinstall/` with empty package files in `internal/skillinstall/install.go`, `internal/skillinstall/package.go`, `internal/skillinstall/resolver.go`, and `internal/skillinstall/targets.go`
-- [ ] T002 [P] Create test fixture helpers for local `cerne-skills` packages in `internal/skillinstall/package_test.go`
-- [ ] T003 [P] Add CLI test fixture helper for isolated home/cache paths in `cmd/cerne/main_test.go`
+- [X] T001 Create `internal/skillinstall/` with empty package files in `internal/skillinstall/install.go`, `internal/skillinstall/package.go`, `internal/skillinstall/resolver.go`, and `internal/skillinstall/targets.go`
+- [X] T002 [P] Create test fixture helpers for local `cerne-skills` packages in `internal/skillinstall/package_test.go`
+- [X] T003 [P] Add CLI test fixture helper for isolated home/cache paths in `cmd/cerne/main_test.go`
 
 ---
 
@@ -32,18 +32,18 @@ operations require negative tests. Releases require applicable checks on Linux, 
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 [P] Define request, package, manifest, target, managed install, and audit structs in `internal/skillinstall/install.go`
-- [ ] T005 Implement supported-agent validation for exactly `codex` and `claude` in `internal/skillinstall/targets.go`
-- [ ] T006 Implement official target resolution for `~/.codex/skills/cerne-context` and `~/.claude/skills/cerne-context` in `internal/skillinstall/targets.go`
-- [ ] T007 [P] Add target validation tests for supported agents, `generic`, case variants, extra args, and path containment in `internal/skillinstall/targets_test.go`
-- [ ] T008 Implement companion/cache package placement and lookup contract without network access in `internal/skillinstall/resolver.go`
-- [ ] T009 [P] Add resolver tests proving the CLI finds only the managed companion/cache package and never scans sibling checkouts or network locations in `internal/skillinstall/resolver_test.go`
-- [ ] T010 Implement manifest parsing and validation for `cerne-skills`, `cerne-context`, adapter presence, and `contextSchema` v1 in `internal/skillinstall/package.go`
-- [ ] T011 Add manifest validation tests for valid, malformed, missing skill, missing adapter, and incompatible schema in `internal/skillinstall/package_test.go`
-- [ ] T012 Implement safe package walk that rejects symlinks and paths escaping the package root in `internal/skillinstall/package.go`
-- [ ] T013 Add package walk security tests for regular files, directories, symlinks, and path escape entries in `internal/skillinstall/package_test.go`
-- [ ] T014 Implement private global audit creation/finalization for `skill.install` by reusing or minimally extracting restore audit behavior in `internal/skillinstall/install.go`
-- [ ] T015 [P] Add audit privacy tests for no skill content, no environment variables, no remotes, and no raw resolver output in `internal/skillinstall/install_test.go`
+- [X] T004 [P] Define request, package, manifest, target, managed install, and audit structs in `internal/skillinstall/install.go`
+- [X] T005 Implement supported-agent validation for exactly `codex` and `claude` in `internal/skillinstall/targets.go`
+- [X] T006 Implement official target resolution for `~/.codex/skills/cerne-context` and `~/.claude/skills/cerne-context` in `internal/skillinstall/targets.go`
+- [X] T007 [P] Add target validation tests for supported agents, `generic`, case variants, extra args, and path containment in `internal/skillinstall/targets_test.go`
+- [X] T008 Implement companion/cache package placement and lookup contract without network access in `internal/skillinstall/resolver.go`
+- [X] T009 [P] Add resolver tests proving the CLI finds only the managed companion/cache package and never scans sibling checkouts or network locations in `internal/skillinstall/resolver_test.go`
+- [X] T010 Implement manifest parsing and validation for `cerne-skills`, `cerne-context`, adapter presence, and `contextSchema` v1 in `internal/skillinstall/package.go`
+- [X] T011 Add manifest validation tests for valid, malformed, missing skill, missing adapter, and incompatible schema in `internal/skillinstall/package_test.go`
+- [X] T012 Implement safe package walk that rejects symlinks and paths escaping the package root in `internal/skillinstall/package.go`
+- [X] T013 Add package walk security tests for regular files, directories, symlinks, and path escape entries in `internal/skillinstall/package_test.go`
+- [X] T014 Implement private global audit creation/finalization for `skill.install` by reusing or minimally extracting restore audit behavior in `internal/skillinstall/install.go`
+- [X] T015 [P] Add audit privacy tests for no skill content, no environment variables, no remotes, and no raw resolver output in `internal/skillinstall/install_test.go`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin.
 
@@ -59,20 +59,20 @@ operations require negative tests. Releases require applicable checks on Linux, 
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 
-- [ ] T016 [US1] Add CLI help and usage tests for `cerne skill --help` and `cerne skill install --help` in `cmd/cerne/main_test.go`
-- [ ] T017 [US1] Add CLI integration test for successful Codex install stdout, destination, and audit in `cmd/cerne/main_test.go`
-- [ ] T018 [US1] Add CLI integration test for successful Claude install stdout, destination, and audit in `cmd/cerne/main_test.go`
-- [ ] T019 [US1] Add domain test for same-version idempotent reinstall in `internal/skillinstall/install_test.go`
-- [ ] T020 [US1] Add domain test for managed different-version automatic upgrade in `internal/skillinstall/install_test.go`
+- [X] T016 [US1] Add CLI help and usage tests for `cerne skill --help` and `cerne skill install --help` in `cmd/cerne/main_test.go`
+- [X] T017 [US1] Add CLI integration test for successful Codex install stdout, destination, and audit in `cmd/cerne/main_test.go`
+- [X] T018 [US1] Add CLI integration test for successful Claude install stdout, destination, and audit in `cmd/cerne/main_test.go`
+- [X] T019 [US1] Add domain test for same-version idempotent reinstall in `internal/skillinstall/install_test.go`
+- [X] T020 [US1] Add domain test for managed different-version automatic upgrade in `internal/skillinstall/install_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T021 [US1] Implement staging copy and final promotion for absent installs in `internal/skillinstall/install.go`
-- [ ] T022 [US1] Implement managed ownership marker and file list writing in `internal/skillinstall/install.go`
-- [ ] T023 [US1] Implement same-version idempotency without unnecessary rewrites in `internal/skillinstall/install.go`
-- [ ] T024 [US1] Implement automatic upgrade for managed different-version installs in `internal/skillinstall/install.go`
-- [ ] T025 [US1] Add `skill` command parsing, help text, and `install` dispatch in `cmd/cerne/main.go`
-- [ ] T026 [US1] Wire `cmd/cerne/main.go` to `internal/skillinstall` with stdout/status 0 success messages for installed, already installed, and upgraded outcomes
+- [X] T021 [US1] Implement staging copy and final promotion for absent installs in `internal/skillinstall/install.go`
+- [X] T022 [US1] Implement managed ownership marker and file list writing in `internal/skillinstall/install.go`
+- [X] T023 [US1] Implement same-version idempotency without unnecessary rewrites in `internal/skillinstall/install.go`
+- [X] T024 [US1] Implement automatic upgrade for managed different-version installs in `internal/skillinstall/install.go`
+- [X] T025 [US1] Add `skill` command parsing, help text, and `install` dispatch in `cmd/cerne/main.go`
+- [X] T026 [US1] Wire `cmd/cerne/main.go` to `internal/skillinstall` with stdout/status 0 success messages for installed, already installed, and upgraded outcomes
 
 **Checkpoint**: User Story 1 is independently functional for valid Codex and Claude installs.
 
@@ -86,14 +86,14 @@ operations require negative tests. Releases require applicable checks on Linux, 
 
 ### Tests for User Story 2
 
-- [ ] T027 [US2] Add CLI regression test that `cerne init app --workflow speckit --agent codex` does not create `~/.codex/skills/cerne-context` in `cmd/cerne/main_test.go`
-- [ ] T028 [US2] Add CLI regression test that `cerne workflow setup --agent claude` does not create `~/.claude/skills/cerne-context` in `cmd/cerne/main_test.go`
-- [ ] T029 [US2] Add CLI regression test that `cerne restore` does not create Codex or Claude skill destinations in `cmd/cerne/main_test.go`
+- [X] T027 [US2] Add CLI regression test that `cerne init app --workflow speckit --agent codex` does not create `~/.codex/skills/cerne-context` in `cmd/cerne/main_test.go`
+- [X] T028 [US2] Add CLI regression test that `cerne workflow setup --agent claude` does not create `~/.claude/skills/cerne-context` in `cmd/cerne/main_test.go`
+- [X] T029 [US2] Add CLI regression test that `cerne restore` does not create Codex or Claude skill destinations in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T030 [US2] Review and keep `init`, `restore`, and `workflow setup` paths free of calls to `internal/skillinstall` in `cmd/cerne/main.go`
-- [ ] T031 [US2] Add optional guidance text for missing global skill only where existing command contracts allow it in `cmd/cerne/main.go`
+- [X] T030 [US2] Review and keep `init`, `restore`, and `workflow setup` paths free of calls to `internal/skillinstall` in `cmd/cerne/main.go`
+- [X] T031 [US2] Add optional guidance text for missing global skill only where existing command contracts allow it in `cmd/cerne/main.go`
 
 **Checkpoint**: Workspace flows remain independently testable and never perform global skill installation.
 
@@ -107,20 +107,20 @@ operations require negative tests. Releases require applicable checks on Linux, 
 
 ### Tests for User Story 3
 
-- [ ] T032 [P] [US3] Add CLI invalid usage tests for missing agent, `generic`, case variants, repeated agent, and extra args in `cmd/cerne/main_test.go`
-- [ ] T033 [US3] Add domain test for missing companion package returning operational failure without destination mutation in `internal/skillinstall/install_test.go`
-- [ ] T034 [US3] Add domain test for unknown destination content preservation in `internal/skillinstall/install_test.go`
-- [ ] T035 [US3] Add domain test for rollback preserving previous managed install after pre-promotion failure in `internal/skillinstall/install_test.go`
-- [ ] T036 [US3] Add domain test that audit creation failure stops installation before destination mutation in `internal/skillinstall/install_test.go`
-- [ ] T037 [US3] Add domain test that audit finalization failure returns status 1 and reports a safe diagnostic in `internal/skillinstall/install_test.go`
-- [ ] T038 [US3] Add CLI test that operational failures use stderr/status 1 and usage failures use stderr/status 2 with stdout empty in `cmd/cerne/main_test.go`
+- [X] T032 [P] [US3] Add CLI invalid usage tests for missing agent, `generic`, case variants, repeated agent, and extra args in `cmd/cerne/main_test.go`
+- [X] T033 [US3] Add domain test for missing companion package returning operational failure without destination mutation in `internal/skillinstall/install_test.go`
+- [X] T034 [US3] Add domain test for unknown destination content preservation in `internal/skillinstall/install_test.go`
+- [X] T035 [US3] Add domain test for rollback preserving previous managed install after pre-promotion failure in `internal/skillinstall/install_test.go`
+- [X] T036 [US3] Add domain test that audit creation failure stops installation before destination mutation in `internal/skillinstall/install_test.go`
+- [X] T037 [US3] Add domain test that audit finalization failure returns status 1 and reports a safe diagnostic in `internal/skillinstall/install_test.go`
+- [X] T038 [US3] Add CLI test that operational failures use stderr/status 1 and usage failures use stderr/status 2 with stdout empty in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T039 [US3] Implement invalid usage handling without audit or filesystem mutation in `cmd/cerne/main.go`
-- [ ] T040 [US3] Implement unknown destination refusal before overwrite in `internal/skillinstall/install.go`
-- [ ] T041 [US3] Implement rollback cleanup for staging and preservation of previous managed install in `internal/skillinstall/install.go`
-- [ ] T042 [US3] Map operational errors to safe Portuguese stderr causes and corrections in `cmd/cerne/main.go`
+- [X] T039 [US3] Implement invalid usage handling without audit or filesystem mutation in `cmd/cerne/main.go`
+- [X] T040 [US3] Implement unknown destination refusal before overwrite in `internal/skillinstall/install.go`
+- [X] T041 [US3] Implement rollback cleanup for staging and preservation of previous managed install in `internal/skillinstall/install.go`
+- [X] T042 [US3] Map operational errors to safe Portuguese stderr causes and corrections in `cmd/cerne/main.go`
 
 **Checkpoint**: Unsafe and incompatible install attempts fail safely and preserve user data.
 
@@ -130,17 +130,17 @@ operations require negative tests. Releases require applicable checks on Linux, 
 
 **Purpose**: Documentation, compatibility, and release checks across all stories.
 
-- [ ] T043 [P] Document `cerne skill install <codex|claude>` syntax, destinations, authorization, status codes, audit, and no automatic install in `README.pt-BR.md`
-- [ ] T044 [P] Update English command documentation for `cerne skill install <codex|claude>` in `README.md`
-- [ ] T045 [P] Update Spanish command documentation for `cerne skill install <codex|claude>` in `README.es.md`
-- [ ] T046 [P] Add changelog entry for the new explicit skill install command in `CHANGELOG.md`
-- [ ] T047 Add companion `cerne-skills` package distribution validation to `.github/workflows/test.yml`
-- [ ] T048 Add or confirm Linux, Windows, and macOS validation for skill install tests in `.github/workflows/test.yml`
-- [ ] T049 Run `gofmt` on changed Go files in `cmd/cerne/main.go` and `internal/skillinstall/*.go`
-- [ ] T050 Run `go test ./...` from the module rooted at `go.mod`
-- [ ] T051 Run `go vet ./...` from the module rooted at `go.mod`
-- [ ] T052 Validate quickstart scenarios from `specs/010-skill-install-command/quickstart.md`
-- [ ] T053 Review `specs/010-skill-install-command/checklists/install-safety.md` and mark passed requirement-quality items
+- [X] T043 [P] Document `cerne skill install <codex|claude>` syntax, destinations, authorization, status codes, audit, and no automatic install in `README.pt-BR.md`
+- [X] T044 [P] Update English command documentation for `cerne skill install <codex|claude>` in `README.md`
+- [X] T045 [P] Update Spanish command documentation for `cerne skill install <codex|claude>` in `README.es.md`
+- [X] T046 [P] Add changelog entry for the new explicit skill install command in `CHANGELOG.md`
+- [X] T047 Add companion `cerne-skills` package distribution validation to `.github/workflows/test.yml`
+- [X] T048 Add or confirm Linux, Windows, and macOS validation for skill install tests in `.github/workflows/test.yml`
+- [X] T049 Run `gofmt` on changed Go files in `cmd/cerne/main.go` and `internal/skillinstall/*.go`
+- [X] T050 Run `go test ./...` from the module rooted at `go.mod`
+- [X] T051 Run `go vet ./...` from the module rooted at `go.mod`
+- [X] T052 Validate quickstart scenarios from `specs/010-skill-install-command/quickstart.md`
+- [X] T053 Review `specs/010-skill-install-command/checklists/install-safety.md` and mark passed requirement-quality items
 
 ---
 
@@ -222,3 +222,13 @@ Task: "Add domain test for rollback preserving previous managed install after pr
 - Keep `codex` and `claude` as explicit mappings; add a registry only when a third public agent exists.
 - Keep package resolution as one local companion/cache resolver seam; add remote release download only when a feature requires it.
 - Keep tests on `t.TempDir()` homes and local package fixtures; no real agent profiles, network, credentials, or releases.
+
+---
+
+## Phase 7: Convergence
+
+- [X] T054 CRITICAL harden `internal/skillinstall` audit directory/file privacy by reusing or extracting restore-style owner/permission and Windows DACL checks, with tests, per Constitution VI and FR-016 (partial)
+- [X] T055 Preserve validated package version in failed `skill.install` audit finalization after package load, with regression coverage for post-validation failures, per FR-016 and audit contract (partial)
+- [X] T056 Validate existing Cerne ownership marker before idempotency or upgrade, rejecting wrong agent, empty or invalid version, unsafe managed file paths, and malformed ownership evidence, per FR-014 and ManagedInstallation (partial)
+- [X] T057 Validate `cerne-skills` package version as semver during manifest loading, with invalid-version tests, per SkillPackage model and FR-007 (partial)
+- [X] T058 Add package path-escape fixture coverage for manifest `source` escaping the package root, per T013 and SC-005 (partial)

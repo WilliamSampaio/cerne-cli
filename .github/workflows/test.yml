@@ -15,4 +15,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go test ./...
+      - name: Validate skill install package contract
+        run: go test ./internal/skillinstall
+      - name: Run test suite
+        run: go test ./...
