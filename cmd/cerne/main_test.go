@@ -338,7 +338,7 @@ func TestCLIInitWithExistingLocalSource(t *testing.T) {
 	gitOutput(t, source, "commit", "-m", "initial")
 	worktree := filepath.Join(parent, "linked-worktree")
 	gitOutput(t, source, "worktree", "add", "--quiet", worktree)
-	before := snapshotTree(t, source)
+	before := snapshotTreeWithoutGit(t, source)
 	worktreeBefore := snapshotTree(t, worktree)
 	input, err := filepath.Rel(parent, source)
 	if err != nil {
@@ -1394,6 +1394,17 @@ func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
 	return out
 }
 
+func snapshotTreeWithoutGit(t *testing.T, root string) map[string]snapshotEntry {
+	t.Helper()
+	snapshot := snapshotTree(t, root)
+	for path := range snapshot {
+		if path == ".git" || strings.HasPrefix(path, ".git"+string(filepath.Separator)) {
+			delete(snapshot, path)
+		}
+	}
+	return snapshot
+}
+
 func buildWorkflowTools(t *testing.T, provider string, fail bool) string {
 	t.Helper()
 	directory := t.TempDir()
@@ -1647,7 +1658,7 @@ func TestCLIRestoreLocalSourceUpdatesOnlyManifestReference(t *testing.T) {
 		!strings.HasSuffix(stdout, "Manifesto: referência de source atualizada.\n") {
 		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 	}
-	if after := snapshotTree(t, source); !reflect.DeepEqual(before, after) {
+	if after := snapshotTreeWithoutGit(t, source); !reflect.DeepEqual(before, after) {
 		t.Fatal("source local foi alterado")
 	}
 	manifest := readFile(t, filepath.Join(parent, "example", "knowledge", "cerne.json"))
