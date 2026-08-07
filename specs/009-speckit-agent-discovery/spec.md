@@ -46,8 +46,8 @@ workflow.
 agente no manifesto faria uma restauração puxar uma escolha que pode não existir no novo ambiente.
 
 **Independent Test**: Restaurar ou preparar um workspace que declara `workflow.provider=speckit`,
-executar `cerne workflow setup --agent claude` e confirmar que a ponte local muda para Claude sem
-gravar agente em `knowledge/cerne.json`.
+executar `cerne workflow setup --agent claude` e confirmar que a ponte local para Claude é criada
+ou atualizada sem gravar agente em `knowledge/cerne.json`.
 
 **Acceptance Scenarios**:
 

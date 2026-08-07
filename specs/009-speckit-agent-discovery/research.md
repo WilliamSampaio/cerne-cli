@@ -106,3 +106,16 @@ Spec Kit válido. Separar as fases deixa a recuperação explícita.
 **Alternatives considered**: Criar ponte antes do provider, que pode gerar comandos quebrados;
 ignorar falha de ponte como warning, que deixa o problema original invisível; rollback total do
 workspace, que apagaria um workflow válido.
+
+## Decisão 8: Instalação de integração de agente é execução auditável
+
+**Decision**: Qualquer `specify integration install` executado pelo Cerne para preparar `codex` ou
+`claude` em `knowledge` MUST criar e finalizar auditoria em `knowledge/runs`, usando o mesmo modelo
+seguro de workflow setup.
+
+**Rationale**: A constituição exige rastreabilidade para execução automatizada. Embora a escolha do
+agente seja local e não persistida no manifesto, o subprocesso modifica `knowledge` e precisa ser
+reconstruível sem expor saída bruta, ambiente ou segredos.
+
+**Alternatives considered**: Tratar como detalhe da ponte local, que viola auditoria; registrar só
+stdout/stderr, que pode vazar segredo; não usar subprocesso, que duplicaria assets do Spec Kit.
