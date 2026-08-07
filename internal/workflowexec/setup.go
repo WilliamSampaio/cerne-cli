@@ -37,6 +37,7 @@ func Resolve(provider string) (workspace.WorkflowDefinition, error) {
 			}
 			return []string{"init", "--here", "--force", "--integration", "generic", "--integration-options=--commands-dir .specify/commands", "--ignore-agent-tools", "--script", script}
 		}
+		definition.Agents = speckitAgents(nil)
 	case "openspec":
 		arguments = func(knowledge string) []string {
 			return []string{"init", knowledge, "--tools", "none", "--profile", "core", "--no-animation"}
@@ -58,6 +59,14 @@ func Resolve(provider string) (workspace.WorkflowDefinition, error) {
 		}
 		return nil
 	}
+	if provider == "speckit" {
+		definition.Agents = speckitAgents(func(arguments []string, knowledge string) error {
+			if err := runProvider(executable, arguments, knowledge, workflowEnvironment(os.Environ(), provider)); err != nil {
+				return errors.New("provider falhou")
+			}
+			return nil
+		})
+	}
 	return definition, nil
 }
 
@@ -70,6 +79,30 @@ func Describe(provider string) (workspace.WorkflowDefinition, error) {
 	default:
 		return workspace.WorkflowDefinition{}, ErrUnknownProvider
 	}
+}
+
+func speckitAgents(run func([]string, string) error) map[string]workspace.WorkflowAgentTarget {
+	agents := map[string]workspace.WorkflowAgentTarget{
+		"codex":  {Name: "codex", DiscoveryRoot: ".agents/skills"},
+		"claude": {Name: "claude", DiscoveryRoot: ".claude/skills"},
+	}
+	if run != nil {
+		agents["codex"] = workspace.WorkflowAgentTarget{
+			Name:          "codex",
+			DiscoveryRoot: ".agents/skills",
+			Setup: func(knowledge string) error {
+				return run([]string{"integration", "install", "codex", "--force", "--integration-options=--skills"}, knowledge)
+			},
+		}
+		agents["claude"] = workspace.WorkflowAgentTarget{
+			Name:          "claude",
+			DiscoveryRoot: ".claude/skills",
+			Setup: func(knowledge string) error {
+				return run([]string{"integration", "install", "claude", "--force"}, knowledge)
+			},
+		}
+	}
+	return agents
 }
 
 func workflowEnvironment(environment []string, provider string) []string {

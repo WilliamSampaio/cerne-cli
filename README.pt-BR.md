@@ -38,6 +38,8 @@ hospedagem, publica ou realiza deploy. Só acessa uma origem Git com `init --clo
 
 O executável `specify`, do Spec Kit, ou `openspec`, do OpenSpec, é opcional e necessário somente
 quando esse workflow é selecionado. O Cerne nunca instala nem atualiza essas ferramentas.
+Com Spec Kit, `--agent codex|claude` também pode preparar a descoberta local de comandos na raiz do
+workspace; a escolha do agente não é gravada em `knowledge/cerne.json`.
 
 ## Instalação
 
@@ -112,6 +114,7 @@ Para inicializar um workflow opcional de especificação durante a criação:
 
 ```sh
 cerne init meu-projeto --workflow speckit
+cerne init meu-projeto --workflow speckit --agent codex
 cerne init meu-projeto --workflow openspec
 cerne init meu-projeto --clone https://host/organizacao/aplicacao.git --workflow speckit
 ```
@@ -123,6 +126,10 @@ superior `knowledge/specs`. Produto, decisões, políticas e execuções permane
 Se o executável estiver ausente, o `init` ainda conclui, registra a escolha e avisa em stderr.
 Depois de instalar a ferramenta, execute `cerne workflow setup` de qualquer diretório dentro do
 workspace. O setup é idempotente; estruturas parciais ou com Git aninhado são recusadas.
+Quando `--agent codex` ou `--agent claude` é usado com Spec Kit, o Cerne também pede ao Spec Kit
+para criar a integração correspondente dentro de `knowledge` e grava pequenas pontes na raiz do
+workspace em `.agents/skills` ou `.claude/skills`. Essas pontes apontam de volta para `knowledge` e
+não contêm conhecimento privado, remotos, credenciais, dumps de ambiente ou paths absolutos.
 
 ### 2. Valide a estrutura
 
@@ -171,7 +178,8 @@ atualmente é o inteiro JSON `1`. O Cerne armazena um caminho source relativo e 
 que as plataformas e localizações permitirem.
 
 Com um workflow selecionado, o manifesto também contém `"workflow":{"provider":"speckit"}` ou
-`"workflow":{"provider":"openspec"}`. Estado de instalação e versão não são persistidos.
+`"workflow":{"provider":"openspec"}`. Estado de instalação, versão e escolha local de agente não
+são persistidos.
 
 ## Referência dos comandos
 
@@ -180,7 +188,7 @@ Com um workflow selecionado, o manifesto também contém `"workflow":{"provider"
 - `cerne --help` exibe os comandos disponíveis e as opções globais.
 - `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.6.0`.
 
-### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
+### `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--agent ...]]`
 
 Cria um workspace abaixo do diretório atual. O destino deve estar ausente ou ser um diretório
 regular vazio; links simbólicos e destinos não vazios são recusados. Conteúdo existente nunca é
@@ -188,9 +196,10 @@ substituído. Em caso de falha, o Cerne desfaz somente os artefatos criados naqu
 
 O nome usa de 1 a 255 caracteres ASCII, começa com letra ou número e pode continuar com letras,
 números, `.`, `_` ou `-`. Nomes reservados do Windows e nomes terminados em `.` são recusados.
-Sem a opção, o comportamento não muda. Com ela, o Cerne executa o provider instalado somente em
-knowledge, sem interação e sem selecionar agente de IA. Executável ausente gera aviso; falha de um
-provider executado preserva o workspace base e retorna erro operacional.
+Sem `--workflow`, o comportamento não muda. Com ele, o Cerne executa o provider instalado somente
+em knowledge e sem interação. `--agent codex|claude` é aceito somente com `--workflow speckit`;
+ele prepara descoberta local para aquela invocação sem persistir o agente. Executável ausente gera
+aviso; falha de um provider executado preserva o workspace base e retorna erro operacional.
 
 `--source` valida e vincula um working tree local existente sem modificá-lo. `--clone` recusa HTTP,
 `git://`, `ext::`, helpers desconhecidos, valores semelhantes a opções, credenciais embutidas,
@@ -227,11 +236,13 @@ cerne restore ../knowledge.git --clone ../source.git
 cerne restore git@host:org/knowledge.git --source ../source-existente
 ```
 
-### `cerne workflow setup`
+### `cerne workflow setup [--agent codex|claude]`
 
 Localiza o workspace ancestral mais próximo e materializa o provider declarado no manifesto. Não
-aceita provider, caminho nem opção de força. Cada tentativa real cria um JSON de auditoria
-sanitizado em `knowledge/runs`; executável ausente e layout pronto não criam auditoria.
+aceita provider, caminho nem opção de força. Com `--agent`, o workflow declarado deve ser Spec Kit
+e o Cerne prepara ou atualiza a ponte de descoberta na raiz para o agente local escolhido. Cada
+subprocesso real de provider ou integração de agente cria um JSON de auditoria sanitizado em
+`knowledge/runs`; executável ausente e layout pronto sem setup de agente não criam auditoria.
 
 ### `cerne context [--json]`
 
