@@ -186,7 +186,7 @@ not persisted.
 ### Global options
 
 - `cerne --help` prints the available commands and global options.
-- `cerne --version` prints the stable SemVer identifier, currently `cerne 0.6.0`.
+- `cerne --version` prints the stable SemVer identifier, currently `cerne 0.7.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--agent ...]]`
 

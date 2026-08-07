@@ -110,7 +110,7 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 		expected string
 	}{
 		{"--help", expectedGlobalHelp},
-		{"--version", "cerne 0.6.0\n"},
+		{"--version", "cerne 0.7.0\n"},
 	} {
 		t.Run(test.argument, func(t *testing.T) {
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, test.argument)

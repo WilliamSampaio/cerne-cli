@@ -3,6 +3,22 @@
 All notable changes to Cerne are documented in this file. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## 0.7.0 - 2026-08-07
+
+### Added
+
+- `--agent codex|claude` for Spec Kit workspaces during `cerne init` and `cerne workflow setup`,
+  making Spec Kit commands discoverable from the workspace root while keeping `knowledge` as the
+  real Spec Kit project root.
+- Local Codex and Claude discovery bridges through workspace-root `.agents/skills` and
+  `.claude/skills`, with the agent choice kept out of `knowledge/cerne.json`.
+
+### Security
+
+- Agent integration subprocesses are audited in `knowledge/runs`, and bridge files avoid symlinks,
+  absolute paths, provider output, environment dumps, remotes, credentials, and private knowledge
+  content.
+
 ## 0.6.0 - 2026-08-06
 
 ### Added

@@ -188,7 +188,7 @@ agente no se guardan.
 ### Opciones globales
 
 - `cerne --help` muestra los comandos disponibles y las opciones globales.
-- `cerne --version` muestra el identificador SemVer estable, actualmente `cerne 0.6.0`.
+- `cerne --version` muestra el identificador SemVer estable, actualmente `cerne 0.7.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--agent ...]]`
 
