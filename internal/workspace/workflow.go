@@ -22,9 +22,10 @@ type WorkflowDefinition struct {
 }
 
 type WorkflowAgentTarget struct {
-	Name          string
-	DiscoveryRoot string
-	Setup         func(string) error
+	Name             string
+	DiscoveryRoot    string
+	IntegrationRoots []string
+	Setup            func(string) error
 }
 
 type WorkflowResolver func(string) (WorkflowDefinition, error)
@@ -206,7 +207,8 @@ func applyAgentDiscovery(result WorkflowResult, knowledge string, definition Wor
 		}
 		return result, workflowFailure("integração do agente não concluiu", "corrija ou atualize o provider e tente novamente")
 	}
-	if err := validateAgentIntegration(knowledge, target); err != nil {
+	integrationRoot, err := findAgentIntegrationRoot(knowledge, target)
+	if err != nil {
 		if auditErr := finishWorkflowAudit(auditPath, attempt, "failed", "agent-layout-invalid"); auditErr != nil {
 			return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 		}
@@ -215,7 +217,7 @@ func applyAgentDiscovery(result WorkflowResult, knowledge string, definition Wor
 	if err := finishWorkflowAudit(auditPath, attempt, "succeeded", ""); err != nil {
 		return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 	}
-	if err := createAgentBridge(filepath.Dir(knowledge), target); err != nil {
+	if err := createAgentBridge(filepath.Dir(knowledge), target, integrationRoot); err != nil {
 		result.Discovery = WorkflowDiscoveryNotCreated
 		return result, workflowFailure("não foi possível preparar descoberta local do agente", "verifique permissões e artefatos de agente na raiz do workspace")
 	}
@@ -223,8 +225,27 @@ func applyAgentDiscovery(result WorkflowResult, knowledge string, definition Wor
 	return result, nil
 }
 
-func validateAgentIntegration(knowledge string, target WorkflowAgentTarget) error {
-	root, err := safeWorkflowPath(knowledge, target.DiscoveryRoot)
+func findAgentIntegrationRoot(knowledge string, target WorkflowAgentTarget) (string, error) {
+	roots := target.IntegrationRoots
+	if len(roots) == 0 {
+		roots = []string{target.DiscoveryRoot}
+	}
+	var lastErr error
+	for _, relative := range roots {
+		if err := validateAgentIntegration(knowledge, relative); err == nil {
+			return relative, nil
+		} else {
+			lastErr = err
+		}
+	}
+	if lastErr != nil {
+		return "", lastErr
+	}
+	return "", errors.New("skill ausente ou inválida")
+}
+
+func validateAgentIntegration(knowledge, relative string) error {
+	root, err := safeWorkflowPath(knowledge, relative)
 	if err != nil {
 		return err
 	}
@@ -238,7 +259,7 @@ func validateAgentIntegration(knowledge string, target WorkflowAgentTarget) erro
 	return nil
 }
 
-func createAgentBridge(workspaceRoot string, target WorkflowAgentTarget) error {
+func createAgentBridge(workspaceRoot string, target WorkflowAgentTarget, integrationRoot string) error {
 	root, err := safeBridgePath(workspaceRoot, target.DiscoveryRoot)
 	if err != nil {
 		return err
@@ -259,7 +280,7 @@ func createAgentBridge(workspaceRoot string, target WorkflowAgentTarget) error {
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
-		if err := os.WriteFile(skill, []byte(agentBridgeContent(command, target)), 0o644); err != nil {
+		if err := os.WriteFile(skill, []byte(agentBridgeContent(command, integrationRoot)), 0o644); err != nil {
 			return err
 		}
 	}
@@ -295,8 +316,8 @@ func ensureRegularDirectory(path string) error {
 	return nil
 }
 
-func agentBridgeContent(command string, target WorkflowAgentTarget) string {
-	knowledgeSkill := filepath.ToSlash(filepath.Join("knowledge", filepath.FromSlash(target.DiscoveryRoot), command, "SKILL.md"))
+func agentBridgeContent(command, integrationRoot string) string {
+	knowledgeSkill := filepath.ToSlash(filepath.Join("knowledge", filepath.FromSlash(integrationRoot), command, "SKILL.md"))
 	return "# " + command + "\n\n" +
 		"Este arquivo é uma ponte local gerenciada pelo Cerne.\n\n" +
 		"Use `knowledge` como raiz do projeto Spec Kit deste workspace e siga `" + knowledgeSkill + "`.\n"

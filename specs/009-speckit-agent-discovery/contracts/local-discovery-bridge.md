@@ -67,3 +67,5 @@ speckit-taskstoissues
 - Existing user files outside the managed command set MUST remain untouched.
 - A partial or conflicting managed bridge MUST either be made ready for the requested agent or cause
   an operational failure with a safe correction.
+- For Codex, a compatible provider integration under `knowledge/skills/speckit-*` MAY also be used
+  as the bridge target when it contains the complete managed command set.

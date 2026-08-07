@@ -152,6 +152,23 @@ func TestWorkflowAgentBridgeCreationAuditAndManifestNeutrality(t *testing.T) {
 	assertEntries(t, base.SourcePath, []string{".git"})
 }
 
+func TestWorkflowAgentBridgeUsesCompatibleCodexIntegrationRoot(t *testing.T) {
+	definition := readyDefinition("speckit", "specs", ".specify", ".specify/init-options.json")
+	definition.Executor = "specify"
+	definition.Agents = map[string]WorkflowAgentTarget{
+		"codex": readyAgentTarget("codex", ".agents/skills", "skills"),
+	}
+	base, workflow, err := InitWithWorkflowAndAgent(t.TempDir(), "example", definition, "codex", fakeInitRepository)
+	if err != nil || workflow.State != WorkflowConfigured || workflow.Discovery != WorkflowDiscoveryReady {
+		t.Fatalf("base=%#v workflow=%#v erro=%v", base, workflow, err)
+	}
+	assertAgentCommandSet(t, filepath.Join(base.KnowledgePath, "skills"))
+	content := readText(t, filepath.Join(filepath.Dir(base.KnowledgePath), ".agents", "skills", "speckit-analyze", "SKILL.md"))
+	if !containsText(content, "knowledge/skills/speckit-analyze/SKILL.md") {
+		t.Fatalf("ponte não aponta para integração compatível: %s", content)
+	}
+}
+
 func TestWorkflowAgentCanChangeAfterRestoreWithoutTouchingSource(t *testing.T) {
 	definition := readySpecKitDefinitionWithAgents()
 	base, _, err := InitWithWorkflowAndAgent(t.TempDir(), "example", definition, "codex", fakeInitRepository)
@@ -320,13 +337,18 @@ func readySpecKitDefinitionWithAgents() WorkflowDefinition {
 	return definition
 }
 
-func readyAgentTarget(name, root string) WorkflowAgentTarget {
+func readyAgentTarget(name, root string, integrationRoots ...string) WorkflowAgentTarget {
+	roots := integrationRoots
+	if len(roots) == 0 {
+		roots = []string{root}
+	}
 	return WorkflowAgentTarget{
-		Name:          name,
-		DiscoveryRoot: root,
+		Name:             name,
+		DiscoveryRoot:    root,
+		IntegrationRoots: roots,
 		Setup: func(knowledge string) error {
 			for _, command := range specKitBridgeCommands {
-				path := filepath.Join(knowledge, filepath.FromSlash(root), command, "SKILL.md")
+				path := filepath.Join(knowledge, filepath.FromSlash(roots[0]), command, "SKILL.md")
 				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 					return err
 				}
