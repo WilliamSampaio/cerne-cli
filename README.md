@@ -235,6 +235,19 @@ cerne restore ../knowledge.git --clone ../source.git
 cerne restore git@host:org/knowledge.git --source ../existing-source
 ```
 
+### `cerne skill install <codex|claude>`
+
+Explicitly installs the official `cerne-context` skill in the current user's agent profile:
+`~/.codex/skills/cerne-context` for Codex or `~/.claude/skills/cerne-context` for Claude. The
+command uses only the local companion `cerne-skills` package, without network access, validates the
+manifest, adapter, and `cerne.context.v1` schema before copying, and writes a private audit record
+under `~/.cerne/audit`.
+
+Invalid usage, including `generic`, case variants, missing agents, or extra arguments, returns
+status `2` without audit or filesystem mutation. Operational failures return stderr/status `1`.
+Reinstalling the same version is a no-op; different managed versions are upgraded. `init`,
+`restore`, and `workflow setup` never install this skill by implication.
+
 ### `cerne workflow setup [--agent codex|claude]`
 
 Locates the nearest ancestor workspace and materializes the provider declared in its manifest. It
@@ -303,6 +316,8 @@ including blocking findings, use stdout so the full diagnosis remains one stable
   and audit; authentication remains external and Git retains the origin as remote `origin`.
 - `restore` keeps its audit under the user's private `~/.cerne/audit`, validates both repository
   boundaries, and uses identity-checked rollback with non-replacing promotion.
+- `skill install` writes only to the authorized agent profile, validates the local companion package
+  before copying, and refuses unknown destination content.
 - A failed attempt preserves the base workspace and audit, removing only a newly created
   provider-owned root.
 - Git inspection disables optional locks and terminal prompts and removes redirecting `GIT_*`
@@ -320,6 +335,7 @@ internal/workspace/ domain rules and workspace operations
 internal/gitexec/   adapter for the local Git executable
 internal/filecheck/ cross-platform permission checks
 internal/workflowexec/ adapters for optional local workflow executables
+internal/skillinstall/ explicit global installation of official skills
 specs/              feature specifications, plans, contracts, and tasks
 ```
 

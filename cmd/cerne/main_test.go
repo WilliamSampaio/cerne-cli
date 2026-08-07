@@ -30,6 +30,7 @@ Comandos:
   link      Vincula um repositório Git local como source
   workflow  Inicializa o workflow declarado no workspace
   context   Exibe o contexto estrutural do workspace
+  skill     Instala skills Cerne no perfil do agente
 
 Opções:
   --help       Exibe esta ajuda
@@ -76,6 +77,7 @@ Workflow:
   é local, cria descoberta na raiz do workspace e não entra no manifesto.
   O Cerne usa somente instalações locais existentes, sem instalar agentes,
   atualizar providers ou fornecer credenciais. Se ausente, o setup fica pendente.
+  Para instalar a skill global, use cerne skill install <agent>.
 
 Efeitos:
   Sempre cria knowledge como Git independente. O destino deve estar ausente ou
@@ -119,6 +121,112 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSkillInstallCommand(t *testing.T) {
+	binary := buildCLI(t)
+	writeSkillPackage(t, filepath.Join(filepath.Dir(binary), "cerne-skills"), "1.2.3")
+
+	t.Run("help", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "skill", "--help")
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne skill install <codex|claude>") {
+			t.Fatalf("help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		status, stdout, stderr = executeCLI(t, binary, t.TempDir(), nil, "skill", "install", "--help")
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne skill install <codex|claude>") {
+			t.Fatalf("install help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("valid agents", func(t *testing.T) {
+		for _, agent := range []string{"codex", "claude"} {
+			home := t.TempDir()
+			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), "skill", "install", agent)
+			target := map[string]string{
+				"codex":  filepath.Join(home, ".codex", "skills", "cerne-context"),
+				"claude": filepath.Join(home, ".claude", "skills", "cerne-context"),
+			}[agent]
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Skill instalada: cerne-context\n") ||
+				!strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Versão: 1.2.3\n") ||
+				!strings.Contains(stdout, "Destino: "+target+"\n") {
+				t.Fatalf("%s: status=%d stdout=%q stderr=%q", agent, status, stdout, stderr)
+			}
+			if readTestFile(t, filepath.Join(target, "SKILL.md")) != "# Cerne\n" {
+				t.Fatalf("%s skill não instalada", agent)
+			}
+			audits := auditEntries(t, home)
+			if len(audits) != 1 || !strings.Contains(readTestFile(t, filepath.Join(home, ".cerne", "audit", audits[0].Name())), `"status": "succeeded"`) {
+				t.Fatalf("%s audit inválida: %v", agent, audits)
+			}
+		}
+	})
+
+	t.Run("invalid usage", func(t *testing.T) {
+		for _, args := range [][]string{
+			{"skill", "install"},
+			{"skill", "install", "generic"},
+			{"skill", "install", "Codex"},
+			{"skill", "install", "codex", "extra"},
+		} {
+			home := t.TempDir()
+			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), args...)
+			if status != 2 || stdout != "" || stderr != "erro: argumento inválido\nuso: cerne skill install <codex|claude>\n" {
+				t.Fatalf("%v: status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
+			}
+			if _, err := os.Stat(filepath.Join(home, ".cerne", "audit")); !os.IsNotExist(err) {
+				t.Fatalf("%v criou audit em uso inválido: %v", args, err)
+			}
+		}
+	})
+}
+
+func TestSkillInstallOperationalFailureUsesStatusOne(t *testing.T) {
+	binary := buildCLI(t)
+	home := t.TempDir()
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), "skill", "install", "codex")
+	if status != 1 || stdout != "" || !strings.Contains(stderr, "erro: pacote oficial cerne-skills ausente ou inacessível\ncorreção:") {
+		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	if len(auditEntries(t, home)) != 1 {
+		t.Fatal("falha operacional deve auditar")
+	}
+}
+
+func TestWorkspaceCommandsDoNotInstallGlobalSkills(t *testing.T) {
+	binary := buildCLI(t)
+
+	t.Run("init and workflow setup", func(t *testing.T) {
+		parent, home := t.TempDir(), t.TempDir()
+		tools := buildWorkflowTools(t, "speckit", false)
+		env := skillHomeEnvironment(home)
+		env = replaceEnvironment(env, "PATH", tools)
+		status, stdout, stderr := executeCLI(t, binary, parent, env, "init", "app", "--workflow", "speckit", "--agent", "codex")
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "Descoberta: pronta") {
+			t.Fatalf("init: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		assertNoGlobalSkills(t, home)
+
+		status, stdout, stderr = executeCLI(t, binary, filepath.Join(parent, "app"), env, "workflow", "setup", "--agent", "claude")
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "Descoberta: pronta") {
+			t.Fatalf("workflow setup: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		assertNoGlobalSkills(t, home)
+	})
+
+	t.Run("restore", func(t *testing.T) {
+		parent, home := t.TempDir(), t.TempDir()
+		knowledge := createRestoreGitRepository(t, map[string]string{
+			"cerne.json":       `{"name":"example","source":"../source"}`,
+			"product/.gitkeep": "", "specs/.gitkeep": "", "decisions/.gitkeep": "",
+			"policies/.gitkeep": "", "runs/.gitkeep": "",
+		})
+		source := createRestoreGitRepository(t, map[string]string{"README.md": "source\n"})
+		status, stdout, stderr := executeCLI(t, binary, parent, skillHomeEnvironment(home), "restore", knowledge, "--source", source)
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "Source vinculado:") {
+			t.Fatalf("restore: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+		}
+		assertNoGlobalSkills(t, home)
+	})
 }
 
 func TestCLIContextJSONContract(t *testing.T) {
@@ -1341,6 +1449,70 @@ func initWorkspaceWithCLI(t *testing.T, binary, parent, name string) string {
 		t.Fatalf("init status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 	}
 	return filepath.Join(parent, name)
+}
+
+func writeSkillPackage(t *testing.T, root, version string) {
+	t.Helper()
+	manifest := `{
+  "schemaVersion": 1,
+  "name": "cerne-skills",
+  "version": "` + version + `",
+  "skills": [{
+    "id": "cerne-context",
+    "source": "skills/cerne-context",
+    "entrypoint": "SKILL.md",
+    "adapters": {"codex": {}, "claude": {}},
+    "requires": {"contextSchema": "cerne.context.v1"}
+  }]
+}`
+	writeTestFile(t, filepath.Join(root, "cerne-skills.json"), manifest)
+	writeTestFile(t, filepath.Join(root, "skills", "cerne-context", "SKILL.md"), "# Cerne\n")
+	writeTestFile(t, filepath.Join(root, "skills", "cerne-context", "references", "context-contract.md"), "contract\n")
+}
+
+func skillHomeEnvironment(home string) []string {
+	environment := replaceEnvironment(os.Environ(), "HOME", home)
+	return replaceEnvironment(environment, "USERPROFILE", home)
+}
+
+func auditEntries(t *testing.T, home string) []os.DirEntry {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Join(home, ".cerne", "audit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entries
+}
+
+func assertNoGlobalSkills(t *testing.T, home string) {
+	t.Helper()
+	for _, path := range []string{
+		filepath.Join(home, ".codex", "skills", "cerne-context"),
+		filepath.Join(home, ".claude", "skills", "cerne-context"),
+	} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("global skill destination exists: %s (%v)", path, err)
+		}
+	}
+}
+
+func writeTestFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readTestFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }
 
 func countReportLines(stdout string) int {

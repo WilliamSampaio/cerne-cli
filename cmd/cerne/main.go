@@ -11,6 +11,7 @@ import (
 
 	"github.com/WilliamSampaio/cerne-cli/internal/filecheck"
 	"github.com/WilliamSampaio/cerne-cli/internal/gitexec"
+	"github.com/WilliamSampaio/cerne-cli/internal/skillinstall"
 	"github.com/WilliamSampaio/cerne-cli/internal/workflowexec"
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
@@ -32,6 +33,7 @@ Comandos:
   link      Vincula um repositório Git local como source
   workflow  Inicializa o workflow declarado no workspace
   context   Exibe o contexto estrutural do workspace
+  skill     Instala skills Cerne no perfil do agente
 
 Opções:
   --help       Exibe esta ajuda
@@ -66,6 +68,41 @@ Efeitos:
 Exemplos:
   cerne context
   cerne context --json
+`
+
+const skillHelp = `Instala skills oficiais do Cerne no perfil do agente.
+
+Uso:
+  cerne skill install <codex|claude>
+  cerne skill install --help
+  cerne skill --help
+
+Autorização:
+  Este comando é a autorização explícita para modificar somente o perfil do
+  usuário atual do agente informado. init, restore e workflow setup não
+  instalam skills por implicação.
+
+Pacote:
+  Usa o pacote companheiro local cerne-skills entregue pela distribuição do
+  Cerne, sem rede. O manifesto, a skill cerne-context, o adaptador do agente e
+  o schema cerne.context.v1 são validados antes de alterar o destino.
+
+Destinos:
+  codex:  ~/.codex/skills/cerne-context
+  claude: ~/.claude/skills/cerne-context
+
+Saídas:
+  Sucesso e ajuda usam stdout. Falhas usam stderr.
+  Status 0: instalada, já instalada ou atualizada; 1: falha operacional;
+  2: uso inválido.
+
+Efeitos:
+  Cria auditoria privada em ~/.cerne/audit. Recusa destino desconhecido,
+  symlinks e pacote incompatível; reinstalação da mesma versão é no-op.
+
+Exemplos:
+  cerne skill install codex
+  cerne skill install claude
 `
 
 const restoreHelp = `Restaura um workspace Cerne a partir de um repositório knowledge.
@@ -136,6 +173,7 @@ Workflow:
   é local, cria descoberta na raiz do workspace e não entra no manifesto.
   O Cerne usa somente instalações locais existentes, sem instalar agentes,
   atualizar providers ou fornecer credenciais. Se ausente, o setup fica pendente.
+  Para instalar a skill global, use cerne skill install <agent>.
 
 Efeitos:
   Sempre cria knowledge como Git independente. O destino deve estar ausente ou
@@ -186,6 +224,7 @@ Saídas:
 Efeitos:
   Registra tentativas em knowledge/runs. Não instala agentes externos, não troca
   o provider, não altera source e não autoriza rede, Git remoto ou credenciais.
+  Para instalar a skill global, use cerne skill install <agent>.
 
 Exemplo:
   cerne workflow setup
@@ -333,9 +372,44 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runWorkflow(args[1:], stdout, stderr)
 	case "context":
 		return runContext(args[1:], stdout, stderr)
+	case "skill":
+		return runSkill(args[1:], stdout, stderr)
 	default:
 		return commandUsageError(stderr, "comando desconhecido")
 	}
+}
+
+func runSkill(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "--help" || len(args) == 2 && args[0] == "install" && args[1] == "--help" {
+		fmt.Fprint(stdout, skillHelp)
+		return 0
+	}
+	if len(args) != 2 || args[0] != "install" || !skillinstall.SupportedAgent(args[1]) {
+		fmt.Fprintln(stderr, "erro: argumento inválido")
+		fmt.Fprintln(stderr, "uso: cerne skill install <codex|claude>")
+		return 2
+	}
+	result, err := skillinstall.Install(args[1], skillinstall.Options{})
+	if err != nil {
+		var failure skillinstall.Failure
+		if errors.As(err, &failure) {
+			fmt.Fprintf(stderr, "erro: %s\ncorreção: %s\n", failure.Cause, failure.Correction)
+		} else {
+			fmt.Fprintln(stderr, "erro: não foi possível instalar a skill")
+			fmt.Fprintln(stderr, "correção: verifique permissões e tente novamente")
+		}
+		return 1
+	}
+	switch result.Outcome {
+	case "already":
+		fmt.Fprintf(stdout, "Skill já instalada: %s\n", skillinstall.SkillName)
+	case "upgraded":
+		fmt.Fprintf(stdout, "Skill atualizada: %s\n", skillinstall.SkillName)
+	default:
+		fmt.Fprintf(stdout, "Skill instalada: %s\n", skillinstall.SkillName)
+	}
+	fmt.Fprintf(stdout, "Agente: %s\nVersão: %s\nDestino: %s\n", result.Agent, result.Version, result.Destination)
+	return 0
 }
 
 func runContext(args []string, stdout, stderr io.Writer) int {

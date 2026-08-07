@@ -240,6 +240,18 @@ cerne restore ../knowledge.git --clone ../source.git
 cerne restore git@host:org/knowledge.git --source ../source-existente
 ```
 
+### `cerne skill install <codex|claude>`
+
+Instala explícitamente la skill oficial `cerne-context` en el perfil del usuario actual:
+`~/.codex/skills/cerne-context` para Codex o `~/.claude/skills/cerne-context` para Claude. El
+comando usa solo el paquete compañero local `cerne-skills`, sin red, valida manifiesto, adaptador y
+schema `cerne.context.v1` antes de copiar, y registra una auditoría privada en `~/.cerne/audit`.
+
+El uso inválido, incluido `generic`, variantes de mayúsculas, agente ausente o argumentos extra,
+devuelve estado `2` sin auditoría ni cambios de archivos. Los fallos operativos devuelven
+stderr/`1`. Reinstalar la misma versión es no-op; versiones gestionadas distintas se actualizan.
+`init`, `restore` y `workflow setup` nunca instalan esta skill por implicación.
+
 ### `cerne workflow setup [--agent codex|claude]`
 
 Localiza el workspace ancestro más cercano y materializa el provider declarado en el manifiesto.
@@ -313,6 +325,8 @@ un único stream.
   remoto `origin`.
 - `restore` mantiene su auditoría privada en `~/.cerne/audit`, valida ambos límites Git y usa
   rollback por identidad con promoción sin reemplazo.
+- `skill install` escribe solo en el perfil del agente autorizado, valida el paquete compañero local
+  antes de copiar y rechaza contenido desconocido en el destino.
 - Un intento fallido conserva el workspace base y la auditoría, y solo elimina una nueva raíz
   perteneciente al provider.
 - La inspección Git desactiva locks opcionales y prompts y elimina variables `GIT_*` capaces de
@@ -330,6 +344,7 @@ internal/workspace/ reglas de dominio y operaciones del workspace
 internal/gitexec/   adaptador para el ejecutable Git local
 internal/filecheck/ verificaciones multiplataforma de permisos
 internal/workflowexec/ adaptadores para ejecutables locales opcionales de workflow
+internal/skillinstall/ instalación global explícita de las skills oficiales
 specs/              especificaciones, planes, contratos y tareas
 ```
 
