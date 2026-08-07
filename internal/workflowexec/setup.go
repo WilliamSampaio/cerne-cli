@@ -83,13 +83,14 @@ func Describe(provider string) (workspace.WorkflowDefinition, error) {
 
 func speckitAgents(run func([]string, string) error) map[string]workspace.WorkflowAgentTarget {
 	agents := map[string]workspace.WorkflowAgentTarget{
-		"codex":  {Name: "codex", DiscoveryRoot: ".agents/skills"},
+		"codex":  {Name: "codex", DiscoveryRoot: ".agents/skills", IntegrationRoots: []string{".agents/skills", "skills"}},
 		"claude": {Name: "claude", DiscoveryRoot: ".claude/skills"},
 	}
 	if run != nil {
 		agents["codex"] = workspace.WorkflowAgentTarget{
-			Name:          "codex",
-			DiscoveryRoot: ".agents/skills",
+			Name:             "codex",
+			DiscoveryRoot:    ".agents/skills",
+			IntegrationRoots: []string{".agents/skills", "skills"},
 			Setup: func(knowledge string) error {
 				return run([]string{"integration", "install", "codex", "--force", "--integration-options=--skills"}, knowledge)
 			},
