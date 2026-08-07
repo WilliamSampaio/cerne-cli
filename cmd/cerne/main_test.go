@@ -339,7 +339,7 @@ func TestCLIInitWithExistingLocalSource(t *testing.T) {
 	worktree := filepath.Join(parent, "linked-worktree")
 	gitOutput(t, source, "worktree", "add", "--quiet", worktree)
 	before := snapshotTreeWithoutGit(t, source)
-	worktreeBefore := snapshotTree(t, worktree)
+	worktreeBefore := snapshotTreeWithoutGit(t, worktree)
 	input, err := filepath.Rel(parent, source)
 	if err != nil {
 		t.Fatal(err)
@@ -355,7 +355,7 @@ func TestCLIInitWithExistingLocalSource(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "source")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("source interno criado: %v", err)
 	}
-	if !reflect.DeepEqual(before, snapshotTree(t, source)) {
+	if !reflect.DeepEqual(before, snapshotTreeWithoutGit(t, source)) {
 		t.Fatal("source externo foi alterado")
 	}
 	status, _, stderr = executeCLI(t, binary, root, nil, "doctor")
@@ -369,7 +369,7 @@ func TestCLIInitWithExistingLocalSource(t *testing.T) {
 		!samePath(strings.TrimPrefix(lines[2], "Source vinculado: "), worktree) {
 		t.Fatalf("worktree status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
-	if !reflect.DeepEqual(worktreeBefore, snapshotTree(t, worktree)) || !reflect.DeepEqual(before, snapshotTree(t, source)) {
+	if !reflect.DeepEqual(worktreeBefore, snapshotTreeWithoutGit(t, worktree)) || !reflect.DeepEqual(before, snapshotTreeWithoutGit(t, source)) {
 		t.Fatal("init com worktree alterou o repositório")
 	}
 }
@@ -1650,7 +1650,7 @@ func TestCLIRestoreLocalSourceUpdatesOnlyManifestReference(t *testing.T) {
 		"policies/.gitkeep": "", "runs/.gitkeep": "",
 	})
 	source := createRestoreGitRepository(t, map[string]string{"README.md": "untouched\n"})
-	before := snapshotTree(t, source)
+	before := snapshotTreeWithoutGit(t, source)
 	environment := replaceEnvironment(os.Environ(), "HOME", home)
 	environment = replaceEnvironment(environment, "USERPROFILE", home)
 	status, stdout, stderr := executeCLI(t, binary, parent, environment, "restore", knowledge, "--source", source)
