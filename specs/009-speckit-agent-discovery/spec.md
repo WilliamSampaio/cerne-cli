@@ -143,7 +143,6 @@ stdout, stderr, status, manifesto, auditoria e layout com o comportamento compat
 - **FR-019**: O estado pronto reportado para workflow MUST continuar se referindo ao layout do
   provider em `knowledge`; descoberta local de agente é uma capacidade local separada.
 - **FR-020**: O CLI MUST reportar resultados de descoberta de agente em português com stdout,
-  stderr and exit-code behavior.
   stderr e códigos de saída estáveis.
 - **FR-021**: A ajuda de `init` e `workflow` MUST documentar `--agent`, valores suportados,
   limites de compatibilidade, efeitos colaterais e exemplos.
