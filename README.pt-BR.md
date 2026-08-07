@@ -236,6 +236,19 @@ cerne restore ../knowledge.git --clone ../source.git
 cerne restore git@host:org/knowledge.git --source ../source-existente
 ```
 
+### `cerne skill install <codex|claude>`
+
+Instala explicitamente a skill oficial `cerne-context` no perfil do usuário atual:
+`~/.codex/skills/cerne-context` para Codex ou `~/.claude/skills/cerne-context` para Claude. O
+comando usa somente o pacote companheiro local `cerne-skills`, sem rede, valida manifesto,
+adaptador e schema `cerne.context.v1` antes de copiar e registra auditoria privada em
+`~/.cerne/audit`.
+
+Uso inválido, incluindo `generic`, caixa diferente, agente ausente ou argumentos extras, retorna
+status `2` sem criar auditoria nem alterar arquivos. Falhas operacionais retornam status `1` em
+stderr. Reinstalar a mesma versão é no-op; versões gerenciadas diferentes são atualizadas.
+`init`, `restore` e `workflow setup` nunca instalam essa skill por implicação.
+
 ### `cerne workflow setup [--agent codex|claude]`
 
 Localiza o workspace ancestral mais próximo e materializa o provider declarado no manifesto. Não
@@ -306,6 +319,8 @@ Saídas normais e ajuda usam stdout. Erros de uso e falhas operacionais usam std
   a autenticação permanece externa e o Git mantém a origem como remoto `origin`.
 - `restore` mantém o audit privado em `~/.cerne/audit`, valida os dois limites Git e usa rollback
   por identidade com promoção sem substituição.
+- `skill install` escreve somente no perfil do agente autorizado, valida o pacote companheiro local
+  antes da cópia e recusa conteúdo desconhecido no destino.
 - Uma tentativa falha preserva o workspace base e a auditoria, removendo somente uma nova raiz
   pertencente ao provider.
 - A inspeção Git desativa locks opcionais e prompts e remove variáveis `GIT_*` capazes de
@@ -323,6 +338,7 @@ internal/workspace/ regras de domínio e operações do workspace
 internal/gitexec/   adaptador para o executável Git local
 internal/filecheck/ verificações multiplataforma de permissões
 internal/workflowexec/ adaptadores para executáveis locais opcionais de workflow
+internal/skillinstall/ instalação global explícita das skills oficiais
 specs/              especificações, planos, contratos e tarefas
 ```
 

@@ -7,6 +7,8 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ### Added
 
+- `cerne skill install <codex|claude>` to explicitly install the official `cerne-context` skill
+  from the local companion `cerne-skills` package into the current user's agent profile.
 - `--agent codex|claude` for Spec Kit workspaces during `cerne init` and `cerne workflow setup`,
   making Spec Kit commands discoverable from the workspace root while keeping `knowledge` as the
   real Spec Kit project root.
@@ -15,6 +17,9 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ### Security
 
+- Skill installation validates the companion manifest and adapter before copying, refuses unknown
+  destinations, is idempotent for the same managed version, and writes redacted private audit
+  records under `~/.cerne/audit`.
 - Agent integration subprocesses are audited in `knowledge/runs`, and bridge files avoid symlinks,
   absolute paths, provider output, environment dumps, remotes, credentials, and private knowledge
   content.
