@@ -186,7 +186,7 @@ são persistidos.
 ### Opções globais
 
 - `cerne --help` exibe os comandos disponíveis e as opções globais.
-- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.6.0`.
+- `cerne --version` exibe o identificador SemVer estável, atualmente `cerne 0.7.0`.
 
 ### `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--agent ...]]`
 

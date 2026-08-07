@@ -15,7 +15,7 @@ import (
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
 
-const version = "0.6.0"
+const version = "0.7.0"
 
 const globalHelp = `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
 
