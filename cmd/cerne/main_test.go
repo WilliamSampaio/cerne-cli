@@ -1260,7 +1260,10 @@ func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
 		if err != nil {
 			return err
 		}
-		item := snapshotEntry{Mode: info.Mode(), Size: info.Size()}
+		item := snapshotEntry{Mode: info.Mode()}
+		if !info.IsDir() {
+			item.Size = info.Size()
+		}
 		if info.Mode().IsRegular() {
 			data, err := os.ReadFile(path)
 			if err != nil {
