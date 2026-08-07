@@ -707,8 +707,12 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "codex-project", "--workflow", "speckit", "--agent", "codex")
 		root := filepath.Join(parent, "codex-project")
 		knowledge := filepath.Join(root, "knowledge")
-		expected := "Workspace \"codex-project\" criado.\nKnowledge: " + displayPath(knowledge) + "\nSource: " + displayPath(filepath.Join(root, "source")) + "\nWorkflow: speckit\nSetup: concluído\nAgent: codex\nDescoberta: pronta\n"
-		if status != 0 || stdout != expected || stderr != "" {
+		lines := strings.Split(stdout, "\n")
+		if status != 0 || stderr != "" || len(lines) != 8 || lines[0] != `Workspace "codex-project" criado.` ||
+			!samePath(strings.TrimPrefix(lines[1], "Knowledge: "), knowledge) ||
+			!samePath(strings.TrimPrefix(lines[2], "Source: "), filepath.Join(root, "source")) ||
+			lines[3] != "Workflow: speckit" || lines[4] != "Setup: concluído" ||
+			lines[5] != "Agent: codex" || lines[6] != "Descoberta: pronta" || lines[7] != "" {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		for _, path := range []string{
