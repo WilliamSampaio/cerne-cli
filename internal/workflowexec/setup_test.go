@@ -107,15 +107,16 @@ func TestResolveSpecKitAgentTargetsAndExactInvocations(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		agent, root string
-		arguments   []string
+		agent, root      string
+		integrationRoots []string
+		arguments        []string
 	}{
-		{"codex", ".agents/skills", []string{"integration", "install", "codex", "--force", "--integration-options=--skills"}},
-		{"claude", ".claude/skills", []string{"integration", "install", "claude", "--force"}},
+		{"codex", ".agents/skills", []string{".agents/skills", "skills"}, []string{"integration", "install", "codex", "--force", "--integration-options=--skills"}},
+		{"claude", ".claude/skills", nil, []string{"integration", "install", "claude", "--force"}},
 	} {
 		t.Run(test.agent, func(t *testing.T) {
 			target, ok := definition.Agents[test.agent]
-			if !ok || target.Name != test.agent || target.DiscoveryRoot != test.root || target.Setup == nil {
+			if !ok || target.Name != test.agent || target.DiscoveryRoot != test.root || !reflect.DeepEqual(target.IntegrationRoots, test.integrationRoots) || target.Setup == nil {
 				t.Fatalf("target=%#v ok=%v", target, ok)
 			}
 			if err := target.Setup(filepath.Join(t.TempDir(), "knowledge")); err != nil {

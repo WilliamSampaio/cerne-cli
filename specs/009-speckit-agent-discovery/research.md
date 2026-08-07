@@ -56,8 +56,9 @@ pasta de `knowledge`, que é menos portátil e pode confundir versionamento.
 correspondente exista em `knowledge` e então criar a ponte local da raiz para essa integração.
 Para um layout generic já pronto, a pesquisa local confirmou que `specify integration install
 codex --force --integration-options=--skills` cria `knowledge/.agents/skills` mantendo default
-generic, e `specify integration install claude --force` cria `knowledge/.claude/skills` mantendo
-default generic.
+generic. O Cerne também aceita `knowledge/skills` como layout compatível para Codex quando esse
+conjunto completo já existir. `specify integration install claude --force` cria
+`knowledge/.claude/skills` mantendo default generic.
 
 **Rationale**: Reusar a integração oficial mantém o conteúdo das skills alinhado à versão local do
 Spec Kit e evita o Cerne empacotar templates de terceiros. O `--force` é necessário para adicionar

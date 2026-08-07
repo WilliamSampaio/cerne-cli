@@ -9,6 +9,7 @@ Escolha local informada na invocação do CLI.
 | `name` | string | Obrigatório quando `--agent` é usado; valores aceitos nesta versão: `codex`, `claude` |
 | `provider` | string | Deve acompanhar workflow `speckit`; `openspec` e providers desconhecidos recusam agente |
 | `discovery_root` | path relativo | `codex` usa `.agents/skills`; `claude` usa `.claude/skills` |
+| `integration_roots` | lista de paths relativos | Codex aceita `.agents/skills` e `skills`; Claude usa `.claude/skills` |
 | `integration_options` | string opcional | Codex usa `--skills`; Claude não exige opção pública nesta versão |
 
 `generic` não é `Agent Target`; permanece mecanismo interno/legado do Spec Kit.
@@ -43,7 +44,7 @@ Layout real mantido em `knowledge`.
 | Agent | Provider integration in knowledge | Expected managed files |
 | --- | --- | --- |
 | none | `generic` | `knowledge/.specify/commands/speckit.*.md` |
-| `codex` | `codex` beside `generic` | `knowledge/.agents/skills/speckit-*/SKILL.md` |
+| `codex` | `codex` beside `generic` | `knowledge/.agents/skills/speckit-*/SKILL.md`; `knowledge/skills/speckit-*/SKILL.md` é aceito como layout compatível |
 | `claude` | `claude` beside `generic` | `knowledge/.claude/skills/speckit-*/SKILL.md` |
 
 O layout do workflow continua pronto quando `knowledge/.specify/init-options.json` existe e o
