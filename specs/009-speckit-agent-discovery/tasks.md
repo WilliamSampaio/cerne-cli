@@ -22,9 +22,9 @@ macOS.
 
 **Purpose**: Prepare shared contracts and fixtures used by every story.
 
-- [ ] T001 [P] Add CLI regression expectations for `--agent` usage strings in `cmd/cerne/main_test.go`
-- [ ] T002 [P] Add agent target and bridge command-set contract tests in `internal/workflowexec/setup_test.go`
-- [ ] T003 [P] Add local discovery bridge domain test scaffolding in `internal/workspace/workflow_test.go`
+- [X] T001 [P] Add CLI regression expectations for `--agent` usage strings in `cmd/cerne/main_test.go`
+- [X] T002 [P] Add agent target and bridge command-set contract tests in `internal/workflowexec/setup_test.go`
+- [X] T003 [P] Add local discovery bridge domain test scaffolding in `internal/workspace/workflow_test.go`
 
 ---
 
@@ -34,11 +34,11 @@ macOS.
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Extend `initArguments` and `parseInitArgs` to parse optional `--agent <codex|claude>` only with `--workflow speckit` in `cmd/cerne/main.go`
-- [ ] T005 Extend `runWorkflow` parsing to accept `cerne workflow setup --agent <codex|claude>` in `cmd/cerne/main.go`
-- [ ] T006 Add agent target description fields and resolver helpers for Codex and Claude in `internal/workflowexec/setup.go`
-- [ ] T007 Add local discovery request/result types to workflow setup domain flow in `internal/workspace/workflow.go`
-- [ ] T008 Add bridge path validation and managed command-set constants without symlink dependency in `internal/workspace/workflow.go`
+- [X] T004 Extend `initArguments` and `parseInitArgs` to parse optional `--agent <codex|claude>` only with `--workflow speckit` in `cmd/cerne/main.go`
+- [X] T005 Extend `runWorkflow` parsing to accept `cerne workflow setup --agent <codex|claude>` in `cmd/cerne/main.go`
+- [X] T006 Add agent target description fields and resolver helpers for Codex and Claude in `internal/workflowexec/setup.go`
+- [X] T007 Add local discovery request/result types to workflow setup domain flow in `internal/workspace/workflow.go`
+- [X] T008 Add bridge path validation and managed command-set constants without symlink dependency in `internal/workspace/workflow.go`
 
 **Checkpoint**: CLI can parse agent intent and domain/adapter can describe supported local agents.
 
@@ -55,18 +55,18 @@ no agent field in `knowledge/cerne.json`, and documented stdout/stderr/status.
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Add CLI integration test for `init --workflow speckit --agent codex` success in `cmd/cerne/main_test.go`
-- [ ] T010 [P] [US1] Add domain test for Codex root bridge creation and no source mutation in `internal/workspace/workflow_test.go`
-- [ ] T011 [P] [US1] Add adapter invocation test for Spec Kit Codex integration install arguments in `internal/workflowexec/setup_test.go`
-- [ ] T012 [P] [US1] Add manifest regression assertion that `workflow.agent` is never written in `internal/workspace/init_test.go`
+- [X] T009 [P] [US1] Add CLI integration test for `init --workflow speckit --agent codex` success in `cmd/cerne/main_test.go`
+- [X] T010 [P] [US1] Add domain test for Codex root bridge creation and no source mutation in `internal/workspace/workflow_test.go`
+- [X] T011 [P] [US1] Add adapter invocation test for Spec Kit Codex integration install arguments in `internal/workflowexec/setup_test.go`
+- [X] T012 [P] [US1] Add manifest regression assertion that `workflow.agent` is never written in `internal/workspace/init_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Wire `runInit` to pass agent discovery requests through source and no-source workflow paths in `cmd/cerne/main.go`
-- [ ] T014 [US1] Extend workflow execution adapter to prepare Codex integration in `knowledge` using the official Spec Kit integration in `internal/workflowexec/setup.go`
-- [ ] T015 [US1] Implement Codex local bridge creation at workspace root `.agents/skills` in `internal/workspace/workflow.go`
-- [ ] T016 [US1] Render `Agent: codex` and `Descoberta: pronta` success lines and pending correction text in `cmd/cerne/main.go`
-- [ ] T017 [US1] Preserve provider failure, audit, cleanup, and no-fake-bridge behavior for Codex init in `internal/workspace/workflow.go`
+- [X] T013 [US1] Wire `runInit` to pass agent discovery requests through source and no-source workflow paths in `cmd/cerne/main.go`
+- [X] T014 [US1] Extend workflow execution adapter to prepare Codex integration in `knowledge` using the official Spec Kit integration in `internal/workflowexec/setup.go`
+- [X] T015 [US1] Implement Codex local bridge creation at workspace root `.agents/skills` in `internal/workspace/workflow.go`
+- [X] T016 [US1] Render `Agent: codex` and `Descoberta: pronta` success lines and pending correction text in `cmd/cerne/main.go`
+- [X] T017 [US1] Preserve provider failure, audit, cleanup, and no-fake-bridge behavior for Codex init in `internal/workspace/workflow.go`
 
 **Checkpoint**: User Story 1 is fully functional and testable independently.
 
@@ -82,19 +82,19 @@ Claude, and verify root `.claude/skills`, unchanged manifest/source, and correct
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Add CLI integration test for `workflow setup --agent claude` on ready workflow in `cmd/cerne/main_test.go`
-- [ ] T019 [P] [US2] Add domain test for changing local discovery from Codex to Claude without modifying manifest or source in `internal/workspace/workflow_test.go`
-- [ ] T020 [P] [US2] Add adapter invocation test for Claude integration install arguments in `internal/workflowexec/setup_test.go`
-- [ ] T021 [P] [US2] Add audit test for agent integration subprocess records in `internal/workspace/workflow_test.go`
-- [ ] T022 [P] [US2] Add missing-provider test proving setup with agent creates no fake bridge in `cmd/cerne/main_test.go`
+- [X] T018 [P] [US2] Add CLI integration test for `workflow setup --agent claude` on ready workflow in `cmd/cerne/main_test.go`
+- [X] T019 [P] [US2] Add domain test for changing local discovery from Codex to Claude without modifying manifest or source in `internal/workspace/workflow_test.go`
+- [X] T020 [P] [US2] Add adapter invocation test for Claude integration install arguments in `internal/workflowexec/setup_test.go`
+- [X] T021 [P] [US2] Add audit test for agent integration subprocess records in `internal/workspace/workflow_test.go`
+- [X] T022 [P] [US2] Add missing-provider test proving setup with agent creates no fake bridge in `cmd/cerne/main_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Wire `runWorkflow` to pass optional agent discovery requests to `workspace.SetupWorkflow` in `cmd/cerne/main.go`
-- [ ] T024 [US2] Extend workflow setup domain flow to refresh only local discovery when provider layout is already ready in `internal/workspace/workflow.go`
-- [ ] T025 [US2] Extend workflow execution adapter to prepare Claude integration in `knowledge` in `internal/workflowexec/setup.go`
-- [ ] T026 [US2] Implement Claude local bridge creation at workspace root `.claude/skills` in `internal/workspace/workflow.go`
-- [ ] T027 [US2] Render setup agent success and operational failure output for `workflow setup --agent` in `cmd/cerne/main.go`
+- [X] T023 [US2] Wire `runWorkflow` to pass optional agent discovery requests to `workspace.SetupWorkflow` in `cmd/cerne/main.go`
+- [X] T024 [US2] Extend workflow setup domain flow to refresh only local discovery when provider layout is already ready in `internal/workspace/workflow.go`
+- [X] T025 [US2] Extend workflow execution adapter to prepare Claude integration in `knowledge` in `internal/workflowexec/setup.go`
+- [X] T026 [US2] Implement Claude local bridge creation at workspace root `.claude/skills` in `internal/workspace/workflow.go`
+- [X] T027 [US2] Render setup agent success and operational failure output for `workflow setup --agent` in `cmd/cerne/main.go`
 
 **Checkpoint**: User Stories 1 and 2 work independently.
 
@@ -110,15 +110,15 @@ agent bridge appears and existing stdout/stderr/status remain unchanged.
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Add regression test that `init --workflow speckit` creates no root `.agents` or `.claude` bridge in `cmd/cerne/main_test.go`
-- [ ] T029 [P] [US3] Add invalid usage tests for agent without Spec Kit, OpenSpec with agent, unknown agent, repeated agent, and extra workflow args in `cmd/cerne/main_test.go`
-- [ ] T030 [P] [US3] Add domain regression that setup without agent remains provider-only and idempotent in `internal/workspace/workflow_test.go`
+- [X] T028 [P] [US3] Add regression test that `init --workflow speckit` creates no root `.agents` or `.claude` bridge in `cmd/cerne/main_test.go`
+- [X] T029 [P] [US3] Add invalid usage tests for agent without Spec Kit, OpenSpec with agent, unknown agent, repeated agent, and extra workflow args in `cmd/cerne/main_test.go`
+- [X] T030 [P] [US3] Add domain regression that setup without agent remains provider-only and idempotent in `internal/workspace/workflow_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Preserve legacy no-agent setup paths and stdout/stderr contracts in `cmd/cerne/main.go`
-- [ ] T032 [US3] Ensure bridge creation is skipped when agent request is empty in `internal/workspace/workflow.go`
-- [ ] T033 [US3] Keep generic Spec Kit behavior as internal fallback without exposing `generic` as public agent in `internal/workflowexec/setup.go`
+- [X] T031 [US3] Preserve legacy no-agent setup paths and stdout/stderr contracts in `cmd/cerne/main.go`
+- [X] T032 [US3] Ensure bridge creation is skipped when agent request is empty in `internal/workspace/workflow.go`
+- [X] T033 [US3] Keep generic Spec Kit behavior as internal fallback without exposing `generic` as public agent in `internal/workflowexec/setup.go`
 
 **Checkpoint**: All user stories are independently functional.
 
@@ -128,16 +128,16 @@ agent bridge appears and existing stdout/stderr/status remain unchanged.
 
 **Purpose**: Documentation, portability, and final validation.
 
-- [ ] T034 [P] Update `--agent` help, side effects, examples, and compatibility notes in `README.md`
-- [ ] T035 [P] Update Portuguese `--agent` documentation in `README.pt-BR.md`
-- [ ] T036 [P] Update Spanish `--agent` documentation in `README.es.md`
-- [ ] T037 [P] Add bridge content safety test proving no absolute paths, env, remotes, tokens, provider output, or private knowledge content in `internal/workspace/workflow_test.go`
-- [ ] T038 Verify Linux, Windows, and macOS bridge path behavior through existing CI matrix in `.github/workflows/test.yml`
-- [ ] T039 Run `gofmt` on changed Go files
-- [ ] T040 Run `go test ./...`
-- [ ] T041 Run `go vet ./...`
-- [ ] T042 Run `git diff --check`
-- [ ] T043 Validate quickstart scenarios from `specs/009-speckit-agent-discovery/quickstart.md`
+- [X] T034 [P] Update `--agent` help, side effects, examples, and compatibility notes in `README.md`
+- [X] T035 [P] Update Portuguese `--agent` documentation in `README.pt-BR.md`
+- [X] T036 [P] Update Spanish `--agent` documentation in `README.es.md`
+- [X] T037 [P] Add bridge content safety test proving no absolute paths, env, remotes, tokens, provider output, or private knowledge content in `internal/workspace/workflow_test.go`
+- [X] T038 Verify Linux, Windows, and macOS bridge path behavior through existing CI matrix in `.github/workflows/test.yml`
+- [X] T039 Run `gofmt` on changed Go files
+- [X] T040 Run `go test ./...`
+- [X] T041 Run `go vet ./...`
+- [X] T042 Run `git diff --check`
+- [X] T043 Validate quickstart scenarios from `specs/009-speckit-agent-discovery/quickstart.md`
 
 ---
 

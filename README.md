@@ -38,6 +38,8 @@ publish, or deploy. It contacts a Git origin only for an explicit `init --clone`
 
 Spec Kit's `specify` or OpenSpec's `openspec` executable is optional and required only when that
 workflow is selected. Cerne never installs or updates either tool.
+With Spec Kit, `--agent codex|claude` can also prepare local command discovery at the workspace
+root; the agent choice is not stored in `knowledge/cerne.json`.
 
 ## Installation
 
@@ -112,6 +114,7 @@ To bootstrap an optional specification workflow during creation:
 
 ```sh
 cerne init my-project --workflow speckit
+cerne init my-project --workflow speckit --agent codex
 cerne init my-project --workflow openspec
 cerne init my-project --clone https://host/organization/application.git --workflow speckit
 ```
@@ -123,6 +126,10 @@ them in `knowledge/openspec/specs` and owns `knowledge/openspec`; it does not cr
 If the executable is missing, `init` still succeeds, records the choice, and warns on stderr.
 After installing it, run `cerne workflow setup` from anywhere inside the workspace. Setup is
 idempotent; a ready layout is unchanged and a partial or nested-Git layout is refused.
+When `--agent codex` or `--agent claude` is used with Spec Kit, Cerne also asks Spec Kit to create
+the matching integration inside `knowledge` and writes small workspace-root bridge files in
+`.agents/skills` or `.claude/skills`. Those bridge files point back to `knowledge` and contain no
+private knowledge content, remotes, credentials, environment dumps, or absolute paths.
 
 ### 2. Validate it
 
@@ -171,7 +178,8 @@ is the JSON integer `1`. Cerne stores a normalized relative source path whenever
 locations allow it.
 
 With a selected workflow, the manifest also contains `"workflow":{"provider":"speckit"}` or
-`"workflow":{"provider":"openspec"}`. Installation state and tool versions are not persisted.
+`"workflow":{"provider":"openspec"}`. Installation state, tool versions, and local agent choice are
+not persisted.
 
 ## Command reference
 
@@ -180,7 +188,7 @@ With a selected workflow, the manifest also contains `"workflow":{"provider":"sp
 - `cerne --help` prints the available commands and global options.
 - `cerne --version` prints the stable SemVer identifier, currently `cerne 0.6.0`.
 
-### `cerne init <project-name> [--source ... | --clone ...] [--workflow ...]`
+### `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--agent ...]]`
 
 Creates a new workspace below the current directory. The destination must not exist or must be an
 empty regular directory; symbolic links and non-empty destinations are rejected. Existing content
@@ -188,9 +196,11 @@ is never replaced. If creation fails, Cerne rolls back only artifacts created by
 
 Project names use 1–255 ASCII characters, start with a letter or number, and may continue with
 letters, numbers, `.`, `_`, or `-`. Windows reserved names and names ending in `.` are rejected.
-Without the option, behavior is unchanged. With it, Cerne invokes the installed provider only in
-knowledge, non-interactively and without selecting an AI agent. A missing executable is a warning;
-an executed provider failure keeps the base workspace and returns an operational error.
+Without `--workflow`, behavior is unchanged. With it, Cerne invokes the installed provider only in
+knowledge and non-interactively. `--agent codex|claude` is accepted only with `--workflow speckit`;
+it prepares local discovery for that invocation without persisting the agent. A missing executable
+is a warning; an executed provider failure keeps the base workspace and returns an operational
+error.
 
 `--source` validates and links an existing local worktree without modifying it. `--clone` rejects
 HTTP, `git://`, `ext::`, unknown helpers, option-like inputs, embedded credentials, queries, and
@@ -225,11 +235,13 @@ cerne restore ../knowledge.git --clone ../source.git
 cerne restore git@host:org/knowledge.git --source ../existing-source
 ```
 
-### `cerne workflow setup`
+### `cerne workflow setup [--agent codex|claude]`
 
 Locates the nearest ancestor workspace and materializes the provider declared in its manifest. It
-does not accept a provider, path, or force option. Each real attempt creates one redacted JSON audit
-record in `knowledge/runs`; no audit is created for a missing executable or ready layout.
+does not accept a provider, path, or force option. With `--agent`, the declared workflow must be
+Spec Kit and Cerne prepares or refreshes the workspace-root discovery bridge for the selected local
+agent. Each real provider or agent-integration subprocess creates one redacted JSON audit record in
+`knowledge/runs`; no audit is created for a missing executable or ready layout without agent setup.
 
 ### `cerne context [--json]`
 

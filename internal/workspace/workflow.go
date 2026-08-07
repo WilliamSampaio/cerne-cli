@@ -18,6 +18,13 @@ type WorkflowDefinition struct {
 	Marker         string
 	Available      bool
 	Setup          func(string) error
+	Agents         map[string]WorkflowAgentTarget
+}
+
+type WorkflowAgentTarget struct {
+	Name          string
+	DiscoveryRoot string
+	Setup         func(string) error
 }
 
 type WorkflowResolver func(string) (WorkflowDefinition, error)
@@ -37,6 +44,8 @@ type WorkflowResult struct {
 	Executor      string
 	State         WorkflowState
 	AuditPath     string
+	Agent         string
+	Discovery     WorkflowDiscoveryState
 }
 
 type WorkflowFailure struct {
@@ -61,7 +70,32 @@ type workflowAttempt struct {
 
 var replaceWorkflowAudit = atomicReplaceFile
 
+type WorkflowDiscoveryState string
+
+const (
+	WorkflowDiscoveryReady      WorkflowDiscoveryState = "ready"
+	WorkflowDiscoveryUnchanged  WorkflowDiscoveryState = "unchanged"
+	WorkflowDiscoveryNotCreated WorkflowDiscoveryState = "not-created"
+)
+
+var specKitBridgeCommands = []string{
+	"speckit-analyze",
+	"speckit-checklist",
+	"speckit-clarify",
+	"speckit-constitution",
+	"speckit-converge",
+	"speckit-implement",
+	"speckit-plan",
+	"speckit-specify",
+	"speckit-tasks",
+	"speckit-taskstoissues",
+}
+
 func SetupWorkflow(start string, resolve WorkflowResolver) (WorkflowResult, error) {
+	return SetupWorkflowWithAgent(start, resolve, "")
+}
+
+func SetupWorkflowWithAgent(start string, resolve WorkflowResolver, agent string) (WorkflowResult, error) {
 	root, manifestPath, err := locateWorkspace(start)
 	if err != nil {
 		return WorkflowResult{}, workflowFailure("workspace Cerne não localizado", "execute o comando dentro de um workspace Cerne")
@@ -82,12 +116,12 @@ func SetupWorkflow(start string, resolve WorkflowResolver) (WorkflowResult, erro
 	if err != nil {
 		return WorkflowResult{}, workflowFailure("workflow declarado não é suportado", "use speckit ou openspec em um novo workspace")
 	}
-	result, err := applyWorkflow(knowledge, definition, "setup", "workflow setup")
+	result, err := applyWorkflow(knowledge, definition, "setup", "workflow setup", agent)
 	result.ProjectName = data.Name
 	return result, err
 }
 
-func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, authorization string) (WorkflowResult, error) {
+func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, authorization, agent string) (WorkflowResult, error) {
 	result := WorkflowResult{KnowledgePath: canonical(knowledge), Provider: definition.Provider, Executor: definition.Executor}
 	root, marker, err := workflowPaths(knowledge, definition)
 	if err != nil {
@@ -102,7 +136,7 @@ func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, a
 			return result, workflowFailure("estrutura do workflow inválida ou parcial", "restaure o diretório canônico de especificações")
 		}
 		result.State = WorkflowUnchanged
-		return result, nil
+		return applyAgentDiscovery(result, knowledge, definition, agent)
 	}
 	if !definition.Available || definition.Setup == nil {
 		result.State = WorkflowPending
@@ -144,7 +178,128 @@ func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, a
 		return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 	}
 	result.State = WorkflowConfigured
+	return applyAgentDiscovery(result, knowledge, definition, agent)
+}
+
+func applyAgentDiscovery(result WorkflowResult, knowledge string, definition WorkflowDefinition, agent string) (WorkflowResult, error) {
+	if agent == "" {
+		return result, nil
+	}
+	result.Agent = agent
+	target, ok := definition.Agents[agent]
+	if !ok || target.Name != agent || target.DiscoveryRoot == "" {
+		return result, workflowFailure("agente não suportado para o workflow", "use --agent codex ou --agent claude com workflow speckit")
+	}
+	if !definition.Available || target.Setup == nil {
+		result.State = WorkflowPending
+		result.Discovery = WorkflowDiscoveryNotCreated
+		return result, nil
+	}
+	auditPath, attempt, err := startWorkflowAudit(knowledge, definition, "agent-integration", "--agent "+agent)
+	if err != nil {
+		return result, workflowFailure("não foi possível registrar a tentativa de workflow", "verifique as permissões de knowledge/runs")
+	}
+	result.AuditPath = auditPath
+	if err := target.Setup(canonical(knowledge)); err != nil {
+		if auditErr := finishWorkflowAudit(auditPath, attempt, "failed", "agent-integration-failed"); auditErr != nil {
+			return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
+		}
+		return result, workflowFailure("integração do agente não concluiu", "corrija ou atualize o provider e tente novamente")
+	}
+	if err := validateAgentIntegration(knowledge, target); err != nil {
+		if auditErr := finishWorkflowAudit(auditPath, attempt, "failed", "agent-layout-invalid"); auditErr != nil {
+			return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
+		}
+		return result, workflowFailure("integração do agente incompleta", "instale uma versão compatível do provider e tente novamente")
+	}
+	if err := finishWorkflowAudit(auditPath, attempt, "succeeded", ""); err != nil {
+		return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
+	}
+	if err := createAgentBridge(filepath.Dir(knowledge), target); err != nil {
+		result.Discovery = WorkflowDiscoveryNotCreated
+		return result, workflowFailure("não foi possível preparar descoberta local do agente", "verifique permissões e artefatos de agente na raiz do workspace")
+	}
+	result.Discovery = WorkflowDiscoveryReady
 	return result, nil
+}
+
+func validateAgentIntegration(knowledge string, target WorkflowAgentTarget) error {
+	root, err := safeWorkflowPath(knowledge, target.DiscoveryRoot)
+	if err != nil {
+		return err
+	}
+	for _, command := range specKitBridgeCommands {
+		path := filepath.Join(root, command, "SKILL.md")
+		info, err := os.Lstat(path)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() == 0 {
+			return errors.New("skill ausente ou inválida")
+		}
+	}
+	return nil
+}
+
+func createAgentBridge(workspaceRoot string, target WorkflowAgentTarget) error {
+	root, err := safeBridgePath(workspaceRoot, target.DiscoveryRoot)
+	if err != nil {
+		return err
+	}
+	if err := ensureRegularDirectory(root); err != nil {
+		return err
+	}
+	for _, command := range specKitBridgeCommands {
+		directory := filepath.Join(root, command)
+		if err := ensureRegularDirectory(directory); err != nil {
+			return err
+		}
+		skill := filepath.Join(directory, "SKILL.md")
+		if info, err := os.Lstat(skill); err == nil {
+			if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+				return errors.New("skill gerenciada inválida")
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		if err := os.WriteFile(skill, []byte(agentBridgeContent(command, target)), 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func safeBridgePath(workspaceRoot, relative string) (string, error) {
+	if relative == "" || filepath.IsAbs(relative) {
+		return "", errors.New("caminho inválido")
+	}
+	base, err := filepath.Abs(workspaceRoot)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Clean(filepath.Join(base, filepath.FromSlash(relative)))
+	if !lexicallyContains(base, path) {
+		return "", errors.New("caminho fora do workspace")
+	}
+	return path, nil
+}
+
+func ensureRegularDirectory(path string) error {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return os.MkdirAll(path, 0o755)
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return errors.New("diretório inválido")
+	}
+	return nil
+}
+
+func agentBridgeContent(command string, target WorkflowAgentTarget) string {
+	knowledgeSkill := filepath.ToSlash(filepath.Join("knowledge", filepath.FromSlash(target.DiscoveryRoot), command, "SKILL.md"))
+	return "# " + command + "\n\n" +
+		"Este arquivo é uma ponte local gerenciada pelo Cerne.\n\n" +
+		"Use `knowledge` como raiz do projeto Spec Kit deste workspace e siga `" + knowledgeSkill + "`.\n"
 }
 
 func workflowPaths(knowledge string, definition WorkflowDefinition) (string, string, error) {
