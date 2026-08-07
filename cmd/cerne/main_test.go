@@ -1360,17 +1360,31 @@ type snapshotEntry struct {
 }
 
 func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
+	return snapshotTreeFiltered(t, root, false)
+}
+
+func snapshotTreeWithoutGit(t *testing.T, root string) map[string]snapshotEntry {
+	return snapshotTreeFiltered(t, root, true)
+}
+
+func snapshotTreeFiltered(t *testing.T, root string, skipGit bool) map[string]snapshotEntry {
 	t.Helper()
 	out := map[string]snapshotEntry{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		info, err := entry.Info()
+		relative, err := filepath.Rel(root, path)
 		if err != nil {
 			return err
 		}
-		relative, err := filepath.Rel(root, path)
+		if skipGit && (relative == ".git" || strings.HasPrefix(relative, ".git"+string(filepath.Separator))) {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		info, err := entry.Info()
 		if err != nil {
 			return err
 		}
@@ -1392,17 +1406,6 @@ func snapshotTree(t *testing.T, root string) map[string]snapshotEntry {
 		t.Fatal(err)
 	}
 	return out
-}
-
-func snapshotTreeWithoutGit(t *testing.T, root string) map[string]snapshotEntry {
-	t.Helper()
-	snapshot := snapshotTree(t, root)
-	for path := range snapshot {
-		if path == ".git" || strings.HasPrefix(path, ".git"+string(filepath.Separator)) {
-			delete(snapshot, path)
-		}
-	}
-	return snapshot
 }
 
 func buildWorkflowTools(t *testing.T, provider string, fail bool) string {
