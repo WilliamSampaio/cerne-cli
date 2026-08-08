@@ -5,6 +5,8 @@
 
 [English](README.md) · [Português (Brasil)](README.pt-BR.md) · **Español**
 
+[Documentación para usuarios](docs/es/getting-started.md)
+
 Cerne es una CLI open source y multiplataforma, escrita en Go, para administrar espacios de trabajo
 de software formados por dos repositorios Git independientes:
 
