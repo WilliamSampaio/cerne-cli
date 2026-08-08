@@ -97,4 +97,5 @@ Cerne creates a new destination and refuses to replace an existing one.
 
 See the [command reference](commands.md),
 [exit codes](../../README.md#exit-codes-and-streams), and
-[safety and privacy rules](../../README.md#safety-and-privacy).
+[safety and privacy rules](../../README.md#safety-and-privacy). For recovery guidance, see
+[troubleshooting](troubleshooting.md).
