@@ -209,8 +209,8 @@ Saídas normais e ajuda usam stdout. Erros de uso e falhas operacionais usam std
   a autenticação permanece externa e o Git mantém a origem como remoto `origin`.
 - `restore` mantém o audit privado em `~/.cerne/audit`, valida os dois limites Git e usa rollback
   por identidade com promoção sem substituição.
-- `skill install` escreve somente no perfil do agente autorizado, valida o pacote companheiro local
-  antes da cópia e recusa conteúdo desconhecido no destino.
+- `skill install` escreve somente no perfil do agente autorizado, valida o pacote oficial
+  incorporado antes da cópia e recusa conteúdo desconhecido no destino.
 - Uma tentativa falha preserva o workspace base e a auditoria, removendo somente uma nova raiz
   pertencente ao provider.
 - A inspeção Git desativa locks opcionais e prompts e remove variáveis `GIT_*` capazes de

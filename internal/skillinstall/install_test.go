@@ -10,6 +10,21 @@ import (
 	"testing"
 )
 
+func TestInstallUsesEmbeddedPackageByDefault(t *testing.T) {
+	home := t.TempDir()
+	result, err := Install("codex", Options{HomeDir: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Outcome != "installed" || result.Version != "0.1.0" {
+		t.Fatalf("result = %#v", result)
+	}
+	skill := readText(t, filepath.Join(result.Destination, "SKILL.md"))
+	if !strings.Contains(skill, "name: cerne-context") {
+		t.Fatal("embedded skill not installed")
+	}
+}
+
 func TestInstallCreatesDestinationAndPrivateAudit(t *testing.T) {
 	home := t.TempDir()
 	result, err := Install("codex", Options{HomeDir: home, PackageDir: packageFixture(t, "1.0.0")})

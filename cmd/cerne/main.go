@@ -83,9 +83,9 @@ Autorização:
   instalam skills por implicação.
 
 Pacote:
-  Usa o pacote companheiro local cerne-skills entregue pela distribuição do
-  Cerne, sem rede. O manifesto, a skill cerne-context, o adaptador do agente e
-  o schema cerne.context.v1 são validados antes de alterar o destino.
+  Usa o pacote oficial cerne-skills incorporado ao binário, sem rede. O
+  manifesto, a skill cerne-context, o adaptador do agente e o schema
+  cerne.context.v1 são validados antes de alterar o destino.
 
 Destinos:
   codex:  ~/.codex/skills/cerne-context

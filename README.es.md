@@ -213,8 +213,8 @@ un único stream.
   remoto `origin`.
 - `restore` mantiene su auditoría privada en `~/.cerne/audit`, valida ambos límites Git y usa
   rollback por identidad con promoción sin reemplazo.
-- `skill install` escribe solo en el perfil del agente autorizado, valida el paquete compañero local
-  antes de copiar y rechaza contenido desconocido en el destino.
+- `skill install` escribe solo en el perfil del agente autorizado, valida el paquete oficial
+  incorporado antes de copiar y rechaza contenido desconocido en el destino.
 - Un intento fallido conserva el workspace base y la auditoría, y solo elimina una nueva raíz
   perteneciente al provider.
 - La inspección Git desactiva locks opcionales y prompts y elimina variables `GIT_*` capaces de
