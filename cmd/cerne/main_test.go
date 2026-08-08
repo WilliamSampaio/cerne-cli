@@ -125,7 +125,6 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 
 func TestSkillInstallCommand(t *testing.T) {
 	binary := buildCLI(t)
-	writeSkillPackage(t, filepath.Join(filepath.Dir(binary), "cerne-skills"), "1.2.3")
 
 	t.Run("help", func(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "skill", "--help")
@@ -147,12 +146,17 @@ func TestSkillInstallCommand(t *testing.T) {
 				"claude": filepath.Join(home, ".claude", "skills", "cerne-context"),
 			}[agent]
 			if status != 0 || stderr != "" || !strings.Contains(stdout, "Skill instalada: cerne-context\n") ||
-				!strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Versão: 1.2.3\n") ||
+				!strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Versão: 0.1.0\n") ||
 				!strings.Contains(stdout, "Destino: "+target+"\n") {
 				t.Fatalf("%s: status=%d stdout=%q stderr=%q", agent, status, stdout, stderr)
 			}
-			if readTestFile(t, filepath.Join(target, "SKILL.md")) != "# Cerne\n" {
+			if !strings.Contains(readTestFile(t, filepath.Join(target, "SKILL.md")), "name: cerne-context") {
 				t.Fatalf("%s skill não instalada", agent)
+			}
+			for _, relative := range []string{"agents/openai.yaml", "references/context-contract.md"} {
+				if _, err := os.Stat(filepath.Join(target, filepath.FromSlash(relative))); err != nil {
+					t.Fatalf("%s arquivo incorporado ausente: %s: %v", agent, relative, err)
+				}
 			}
 			audits := auditEntries(t, home)
 			if len(audits) != 1 || !strings.Contains(readTestFile(t, filepath.Join(home, ".cerne", "audit", audits[0].Name())), `"status": "succeeded"`) {
@@ -178,18 +182,6 @@ func TestSkillInstallCommand(t *testing.T) {
 			}
 		}
 	})
-}
-
-func TestSkillInstallOperationalFailureUsesStatusOne(t *testing.T) {
-	binary := buildCLI(t)
-	home := t.TempDir()
-	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), "skill", "install", "codex")
-	if status != 1 || stdout != "" || !strings.Contains(stderr, "erro: pacote oficial cerne-skills ausente ou inacessível\ncorreção:") {
-		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
-	}
-	if len(auditEntries(t, home)) != 1 {
-		t.Fatal("falha operacional deve auditar")
-	}
 }
 
 func TestWorkspaceCommandsDoNotInstallGlobalSkills(t *testing.T) {
@@ -1449,25 +1441,6 @@ func initWorkspaceWithCLI(t *testing.T, binary, parent, name string) string {
 		t.Fatalf("init status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 	}
 	return filepath.Join(parent, name)
-}
-
-func writeSkillPackage(t *testing.T, root, version string) {
-	t.Helper()
-	manifest := `{
-  "schemaVersion": 1,
-  "name": "cerne-skills",
-  "version": "` + version + `",
-  "skills": [{
-    "id": "cerne-context",
-    "source": "skills/cerne-context",
-    "entrypoint": "SKILL.md",
-    "adapters": {"codex": {}, "claude": {}},
-    "requires": {"contextSchema": "cerne.context.v1"}
-  }]
-}`
-	writeTestFile(t, filepath.Join(root, "cerne-skills.json"), manifest)
-	writeTestFile(t, filepath.Join(root, "skills", "cerne-context", "SKILL.md"), "# Cerne\n")
-	writeTestFile(t, filepath.Join(root, "skills", "cerne-context", "references", "context-contract.md"), "contract\n")
 }
 
 func skillHomeEnvironment(home string) []string {

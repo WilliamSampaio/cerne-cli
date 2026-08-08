@@ -3,6 +3,13 @@
 All notable changes to Cerne are documented in this file. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- The official `cerne-skills` package is embedded in the CLI binary, so `go install` supports
+  `cerne skill install <codex|claude>` without a separately distributed companion directory.
+
 ## 0.7.0 - 2026-08-07
 
 ### Added
