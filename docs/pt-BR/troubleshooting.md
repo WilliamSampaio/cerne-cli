@@ -96,6 +96,6 @@ durante a recuperação.
 
 ## O pacote da skill do agente não está disponível
 
-`erro: pacote oficial cerne-skills ausente ou inacessível` significa que a instalação do Cerne não
-inclui seu pacote companheiro compatível. Instale uma distribuição completa do Cerne antes de
-repetir `cerne skill install <codex|claude>`.
+`erro: pacote oficial cerne-skills incorporado está inacessível` significa que o pacote incorporado
+não pôde ser materializado ou validado. Verifique o acesso ao diretório temporário do sistema e
+reinstale o Cerne antes de repetir `cerne skill install <codex|claude>`.

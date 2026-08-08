@@ -209,8 +209,8 @@ including blocking findings, use stdout so the full diagnosis remains one stable
   and audit; authentication remains external and Git retains the origin as remote `origin`.
 - `restore` keeps its audit under the user's private `~/.cerne/audit`, validates both repository
   boundaries, and uses identity-checked rollback with non-replacing promotion.
-- `skill install` writes only to the authorized agent profile, validates the local companion package
-  before copying, and refuses unknown destination content.
+- `skill install` writes only to the authorized agent profile, validates the embedded official
+  package before copying, and refuses unknown destination content.
 - A failed attempt preserves the base workspace and audit, removing only a newly created
   provider-owned root.
 - Git inspection disables optional locks and terminal prompts and removes redirecting `GIT_*`
