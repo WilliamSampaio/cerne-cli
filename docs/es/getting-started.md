@@ -96,6 +96,6 @@ Cerne crea un destino nuevo y se niega a reemplazar uno existente.
 
 ## Detalles de los comandos
 
-Consulta la [referencia de comandos](../../README.es.md#referencia-de-comandos), los
+Consulta la [referencia de comandos](commands.md), los
 [códigos de salida](../../README.es.md#códigos-de-salida-y-streams) y las reglas de
 [seguridad y privacidad](../../README.es.md#seguridad-y-privacidad).
