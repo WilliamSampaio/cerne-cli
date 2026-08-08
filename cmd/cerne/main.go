@@ -11,36 +11,13 @@ import (
 
 	"github.com/WilliamSampaio/cerne-cli/internal/filecheck"
 	"github.com/WilliamSampaio/cerne-cli/internal/gitexec"
+	"github.com/WilliamSampaio/cerne-cli/internal/localization"
 	"github.com/WilliamSampaio/cerne-cli/internal/skillinstall"
 	"github.com/WilliamSampaio/cerne-cli/internal/workflowexec"
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
 
 const version = "0.7.0"
-
-const globalHelp = `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
-
-Uso:
-  cerne <comando> [argumentos]
-  cerne --help
-  cerne --version
-
-Comandos:
-  init      Cria um workspace Cerne
-  restore   Restaura um workspace Cerne existente
-  doctor    Valida a estrutura e a segurança do workspace
-  status    Exibe o estado local dos repositórios
-  link      Vincula um repositório Git local como source
-  workflow  Inicializa o workflow declarado no workspace
-  context   Exibe o contexto estrutural do workspace
-  skill     Instala skills Cerne no perfil do agente
-
-Opções:
-  --help       Exibe esta ajuda
-  --version    Exibe a versão do Cerne
-
-Use "cerne <comando> --help" para detalhes de um comando.
-`
 
 const contextHelp = `Exibe o contexto estrutural comprovado do workspace Cerne.
 
@@ -346,8 +323,36 @@ func main() {
 var currentDirectory = os.Getwd
 
 func run(args []string, stdout, stderr io.Writer) int {
+	languageValue, commandArgs, valid := parseGlobalLanguage(args)
+	if !valid {
+		fmt.Fprint(stderr, (localizer{language: localization.Default}).text(messageInvalidGlobalOption))
+		return 2
+	}
+	home, _ := os.UserHomeDir()
+	environment, environmentSet := os.LookupEnv("CERNE_LANG")
+	language, err := localization.Resolve(languageValue, environment, environmentSet, home)
+	if err != nil {
+		selected := localization.Default
+		if parsed, parseErr := localization.Parse(languageValue); parseErr == nil && languageValue != "" {
+			selected = parsed
+		} else if parsed, parseErr := localization.Parse(environment); parseErr == nil && environmentSet {
+			selected = parsed
+		}
+		messages := localizer{language: selected}
+		var invalid localization.InvalidLanguageError
+		if errors.As(err, &invalid) {
+			fmt.Fprint(stderr, messages.text(messageInvalidLanguage, invalid.Value))
+			return 2
+		}
+		renderConfigFailure(stderr, messages, err)
+		return 1
+	}
+	return runLocalized(commandArgs, stdout, stderr, localizer{language: language}, home)
+}
+
+func runLocalized(args []string, stdout, stderr io.Writer, messages localizer, home string) int {
 	if len(args) == 1 && args[0] == "--help" {
-		fmt.Fprint(stdout, globalHelp)
+		fmt.Fprint(stdout, messages.text(messageGlobalHelp))
 		return 0
 	}
 	if len(args) == 1 && args[0] == "--version" {
@@ -355,72 +360,150 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if len(args) == 0 {
-		return commandUsageError(stderr, "informe um comando")
+		return commandUsageError(stderr, messages, "command.missing")
 	}
 	switch args[0] {
 	case "init":
-		return runInit(args[1:], stdout, stderr)
+		return runInit(args[1:], stdout, stderr, messages)
 	case "restore":
-		return runRestore(args[1:], stdout, stderr)
+		return runRestore(args[1:], stdout, stderr, messages)
 	case "doctor":
-		return runDoctor(args[1:], stdout, stderr)
+		return runDoctor(args[1:], stdout, stderr, messages)
 	case "status":
-		return runStatus(args[1:], stdout, stderr)
+		return runStatus(args[1:], stdout, stderr, messages)
 	case "link":
-		return runLink(args[1:], stdout, stderr)
+		return runLink(args[1:], stdout, stderr, messages)
 	case "workflow":
-		return runWorkflow(args[1:], stdout, stderr)
+		return runWorkflow(args[1:], stdout, stderr, messages)
 	case "context":
-		return runContext(args[1:], stdout, stderr)
+		return runContext(args[1:], stdout, stderr, messages)
 	case "skill":
-		return runSkill(args[1:], stdout, stderr)
+		return runSkill(args[1:], stdout, stderr, messages)
+	case "config":
+		return runConfig(args[1:], stdout, stderr, messages, home)
 	default:
-		return commandUsageError(stderr, "comando desconhecido")
+		return commandUsageError(stderr, messages, "command.unknown")
 	}
 }
 
-func runSkill(args []string, stdout, stderr io.Writer) int {
+func parseGlobalLanguage(args []string) (string, []string, bool) {
+	if len(args) == 0 || args[0] != "--lang" {
+		return "", args, true
+	}
+	if len(args) < 2 || args[1] == "" {
+		return "", nil, false
+	}
+	return args[1], args[2:], true
+}
+
+func runConfig(args []string, stdout, stderr io.Writer, messages localizer, home string) int {
+	if len(args) == 1 && args[0] == "--help" {
+		fmt.Fprint(stdout, messages.text(messageConfigHelp))
+		return 0
+	}
+	if home == "" {
+		fmt.Fprint(stderr, messages.text(messageHomeUnavailable))
+		return 1
+	}
+	if len(args) == 3 && args[0] == "set" && args[1] == "language" {
+		language, err := localization.Parse(args[2])
+		if err != nil {
+			fmt.Fprint(stderr, messages.text(messageInvalidLanguage, args[2]))
+			return 2
+		}
+		if err := localization.Set(home, language); err != nil {
+			renderConfigFailure(stderr, messages, err)
+			return 1
+		}
+		fmt.Fprint(stdout, messages.text(messageConfigSet, language))
+		return 0
+	}
+	if len(args) == 2 && args[0] == "get" && args[1] == "language" {
+		config, present, err := localization.Load(home)
+		if err != nil {
+			renderConfigFailure(stderr, messages, err)
+			return 1
+		}
+		if !present {
+			fmt.Fprint(stdout, messages.text(messageConfigGetUnset))
+		} else {
+			fmt.Fprint(stdout, messages.text(messageConfigGet, config.Language))
+		}
+		return 0
+	}
+	if len(args) == 2 && args[0] == "unset" && args[1] == "language" {
+		if err := localization.Unset(home); err != nil {
+			renderConfigFailure(stderr, messages, err)
+			return 1
+		}
+		fmt.Fprint(stdout, messages.text(messageConfigUnset))
+		return 0
+	}
+	fmt.Fprint(stderr, messages.text(messageConfigUsage))
+	return 2
+}
+
+func renderConfigFailure(stderr io.Writer, messages localizer, err error) {
+	var failure localization.ConfigFailure
+	if !errors.As(err, &failure) {
+		fmt.Fprint(stderr, messages.text(messageConfigRead))
+		return
+	}
+	id := map[string]messageID{
+		localization.ConfigUnsafe:  messageConfigUnsafe,
+		localization.ConfigRead:    messageConfigRead,
+		localization.ConfigInvalid: messageConfigInvalid,
+		localization.ConfigWrite:   messageConfigWrite,
+	}[failure.Code]
+	if id == "" {
+		id = messageConfigRead
+	}
+	fmt.Fprint(stderr, messages.text(id))
+}
+
+func runSkill(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if len(args) == 1 && args[0] == "--help" || len(args) == 2 && args[0] == "install" && args[1] == "--help" {
-		fmt.Fprint(stdout, skillHelp)
+		fmt.Fprint(stdout, messages.text(messageSkillHelp))
 		return 0
 	}
 	if len(args) != 2 || args[0] != "install" || !skillinstall.SupportedAgent(args[1]) {
-		fmt.Fprintln(stderr, "erro: argumento inválido")
-		fmt.Fprintln(stderr, "uso: cerne skill install <codex|claude>")
+		fmt.Fprint(stderr, messages.text("skill.usage"))
 		return 2
 	}
 	result, err := skillinstall.Install(args[1], skillinstall.Options{})
 	if err != nil {
 		var failure skillinstall.Failure
 		if errors.As(err, &failure) {
-			fmt.Fprintf(stderr, "erro: %s\ncorreção: %s\n", failure.Cause, failure.Correction)
+			id := messageID("skill.failure." + failure.Code)
+			if _, ok := messages.find(id); !ok {
+				id = "skill.failure.default"
+			}
+			fmt.Fprint(stderr, messages.text(id))
 		} else {
-			fmt.Fprintln(stderr, "erro: não foi possível instalar a skill")
-			fmt.Fprintln(stderr, "correção: verifique permissões e tente novamente")
+			fmt.Fprint(stderr, messages.text("skill.failure.default"))
 		}
 		return 1
 	}
 	switch result.Outcome {
 	case "already":
-		fmt.Fprintf(stdout, "Skill já instalada: %s\n", skillinstall.SkillName)
+		fmt.Fprint(stdout, messages.text("skill.already", skillinstall.SkillName))
 	case "upgraded":
-		fmt.Fprintf(stdout, "Skill atualizada: %s\n", skillinstall.SkillName)
+		fmt.Fprint(stdout, messages.text("skill.upgraded", skillinstall.SkillName))
 	default:
-		fmt.Fprintf(stdout, "Skill instalada: %s\n", skillinstall.SkillName)
+		fmt.Fprint(stdout, messages.text("skill.installed", skillinstall.SkillName))
 	}
-	fmt.Fprintf(stdout, "Agente: %s\nVersão: %s\nDestino: %s\n", result.Agent, result.Version, result.Destination)
+	fmt.Fprint(stdout, messages.text("skill.result", result.Agent, result.Version, result.Destination))
 	return 0
 }
 
-func runContext(args []string, stdout, stderr io.Writer) int {
+func runContext(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if len(args) == 1 && args[0] == "--help" {
-		fmt.Fprint(stdout, contextHelp)
+		fmt.Fprint(stdout, messages.text(messageContextHelp))
 		return 0
 	}
 	jsonOutput := len(args) == 1 && args[0] == "--json"
 	if len(args) != 0 && !jsonOutput {
-		fmt.Fprintln(stderr, "erro: argumento inválido")
-		fmt.Fprintln(stderr, "uso: cerne context [--json]")
+		fmt.Fprint(stderr, messages.text("context.usage"))
 		return 2
 	}
 	current, _ := currentDirectory()
@@ -432,7 +515,7 @@ func runContext(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	} else {
-		renderContext(stdout, report)
+		renderContext(stdout, report, messages)
 	}
 	if report.Status == workspace.Invalid {
 		return 1
@@ -440,35 +523,35 @@ func runContext(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func renderContext(stdout io.Writer, report workspace.ContextReport) {
+func renderContext(stdout io.Writer, report workspace.ContextReport, messages localizer) {
 	if report.Workspace != nil && report.Workspace.Name != "" {
-		fmt.Fprintf(stdout, "Workspace: %s\n", report.Workspace.Name)
+		fmt.Fprint(stdout, messages.text("context.workspace", report.Workspace.Name))
 	}
-	fmt.Fprintf(stdout, "Status: %s\n", contextStatus(report.Status))
+	fmt.Fprint(stdout, messages.text("context.status", contextStatus(messages, report.Status)))
 	if report.Workspace != nil {
-		fmt.Fprintf(stdout, "Root: %s\n", report.Workspace.Root)
+		fmt.Fprint(stdout, messages.text("context.root", report.Workspace.Root))
 	}
 	if report.Knowledge != nil {
-		fmt.Fprintf(stdout, "\nKnowledge: %s\n", report.Knowledge.Path)
-		contextPathLine(stdout, "Product", report.Knowledge.ProductPath)
-		contextPathLine(stdout, "Specs", report.Knowledge.SpecsPath)
-		contextPathLine(stdout, "Decisions", report.Knowledge.DecisionsPath)
-		contextPathLine(stdout, "Policies", report.Knowledge.PoliciesPath)
+		fmt.Fprint(stdout, messages.text("context.knowledge", report.Knowledge.Path))
+		contextPathLine(stdout, messages, "context.label.product", report.Knowledge.ProductPath)
+		contextPathLine(stdout, messages, "context.label.specs", report.Knowledge.SpecsPath)
+		contextPathLine(stdout, messages, "context.label.decisions", report.Knowledge.DecisionsPath)
+		contextPathLine(stdout, messages, "context.label.policies", report.Knowledge.PoliciesPath)
 	}
 	if report.Source != nil {
-		fmt.Fprintf(stdout, "\nSource: %s\n", report.Source.Path)
-		location := "externo ao workspace"
+		fmt.Fprint(stdout, messages.text("context.source", report.Source.Path))
+		location := messages.text("context.location.outside")
 		if report.Source.InsideWorkspace {
-			location = "interno ao workspace"
+			location = messages.text("context.location.inside")
 		}
-		fmt.Fprintf(stdout, "Localização: %s\n", location)
+		fmt.Fprint(stdout, messages.text("context.location", location))
 	}
 	if report.Workflow != nil {
 		fmt.Fprintln(stdout)
 		if !report.Workflow.Declared {
-			fmt.Fprintln(stdout, "Workflow: não declarado")
+			fmt.Fprint(stdout, messages.text("context.workflow.not-declared"))
 		} else {
-			fmt.Fprintf(stdout, "Workflow: %s (%s)\n", report.Workflow.Provider, contextWorkflowState(report.Workflow.State))
+			fmt.Fprint(stdout, messages.text("context.workflow", report.Workflow.Provider, contextWorkflowState(messages, report.Workflow.State)))
 		}
 	}
 	if len(report.Problems) > 0 {
@@ -479,66 +562,38 @@ func renderContext(stdout io.Writer, report workspace.ContextReport) {
 		if problem.Severity == "warning" {
 			symbol = "!"
 		}
-		fmt.Fprintf(stdout, "%s %s: %s\n", symbol, contextComponent(problem.Component), contextProblemDetail(problem.Code))
-		fmt.Fprintf(stdout, "  Correção: %s\n", contextProblemCorrection(problem.Code))
+		fmt.Fprint(stdout, messages.text("context.problem", symbol, contextComponent(messages, problem.Component), contextProblemDetail(messages, problem.Code)))
+		fmt.Fprint(stdout, messages.text("context.correction", contextProblemCorrection(messages, problem.Code)))
 	}
 }
 
-func contextPathLine(output io.Writer, label, path string) {
+func contextPathLine(output io.Writer, messages localizer, label messageID, path string) {
 	if path != "" {
-		fmt.Fprintf(output, "%s: %s\n", label, path)
+		fmt.Fprintf(output, "%s: %s\n", messages.text(label), path)
 	}
 }
 
-func contextStatus(status workspace.Status) string {
-	switch status {
-	case workspace.Invalid:
-		return "inválido"
-	case workspace.Warnings:
-		return "aviso"
-	default:
-		return "saudável"
+func contextStatus(messages localizer, status workspace.Status) string {
+	return messages.text(messageID("context.status." + string(status)))
+}
+
+func contextWorkflowState(messages localizer, state workspace.ContextWorkflowState) string {
+	return messages.text(messageID("context.workflow." + string(state)))
+}
+
+func contextComponent(messages localizer, component string) string {
+	if translated, ok := messages.find(messageID("context.component." + component)); ok {
+		return translated
 	}
+	return component
 }
 
-func contextWorkflowState(state workspace.ContextWorkflowState) string {
-	switch state {
-	case workspace.ContextWorkflowPending:
-		return "pendente"
-	case workspace.ContextWorkflowReady:
-		return "pronto"
-	case workspace.ContextWorkflowInvalid:
-		return "inválido"
-	default:
-		return "provider desconhecido"
-	}
+func contextProblemDetail(messages localizer, code string) string {
+	return messages.text(messageID("context.problem." + code + ".detail"))
 }
 
-func contextComponent(component string) string {
-	switch component {
-	case "workspace":
-		return "Workspace"
-	case "manifest":
-		return "Manifesto"
-	case "knowledge":
-		return "Knowledge"
-	case "source":
-		return "Source"
-	case "workflow":
-		return "Workflow"
-	default:
-		return component
-	}
-}
-
-func contextProblemDetail(code string) string {
-	details := map[string]string{"workspace-not-found": "não localizado", "manifest-invalid": "ausente ou inválido", "manifest-version-unsupported": "versão não suportada", "knowledge-invalid": "ausente ou inseguro", "source-invalid": "ausente ou inseguro", "required-directory-invalid": "diretório obrigatório ausente ou inválido", "workflow-pending": "pendente", "workflow-invalid": "estrutura inválida ou parcial", "workflow-unknown-provider": "provider não suportado"}
-	return details[code]
-}
-
-func contextProblemCorrection(code string) string {
-	corrections := map[string]string{"workspace-not-found": "execute o comando dentro de um workspace Cerne", "manifest-invalid": "corrija ou restaure knowledge/cerne.json", "manifest-version-unsupported": "use uma versão compatível do Cerne", "knowledge-invalid": "restaure o diretório knowledge", "source-invalid": "corrija o caminho source no manifesto", "required-directory-invalid": "restaure o diretório indicado pelo componente", "workflow-pending": "execute cerne workflow setup quando o provider estiver disponível", "workflow-invalid": "corrija a estrutura antes de continuar", "workflow-unknown-provider": "use speckit ou openspec no manifesto"}
-	return corrections[code]
+func contextProblemCorrection(messages localizer, code string) string {
+	return messages.text(messageID("context.problem." + code + ".correction"))
 }
 
 type restoreArguments struct {
@@ -563,51 +618,46 @@ func parseRestoreArgs(args []string) (restoreArguments, bool) {
 	return parsed, true
 }
 
-func runRestore(args []string, stdout, stderr io.Writer) int {
+func runRestore(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if len(args) == 1 && args[0] == "--help" {
-		fmt.Fprint(stdout, restoreHelp)
+		fmt.Fprint(stdout, messages.text(messageRestoreHelp))
 		return 0
 	}
 	parsed, ok := parseRestoreArgs(args)
 	if !ok {
-		fmt.Fprintln(stderr, "erro: argumento inválido")
-		fmt.Fprintln(stderr, "uso: cerne restore <origem-knowledge> (--source <caminho> | --clone <origem-source>)")
+		fmt.Fprint(stderr, messages.text("restore.invalid-argument"), messages.text("restore.usage"))
 		return 2
 	}
 	current, err := currentDirectory()
 	if err != nil {
-		fmt.Fprintln(stderr, "erro: não foi possível obter o diretório atual")
-		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+		fmt.Fprint(stderr, messages.text("common.cwd"))
 		return 1
 	}
 	knowledgeOrigin, err := gitexec.ClassifyCloneOrigin(current, parsed.KnowledgeOrigin)
 	if err != nil {
-		return restoreUsageError(stderr, "origem do knowledge inválida")
+		return restoreUsageError(stderr, messages, "restore.invalid-knowledge-origin")
 	}
 	sourceInput := parsed.SourceValue
 	if parsed.SourceMode == workspace.SourceClone {
 		sourceOrigin, err := gitexec.ClassifyCloneOrigin(current, parsed.SourceValue)
 		if err != nil {
-			return restoreUsageError(stderr, "origem de clone do source inválida")
+			return restoreUsageError(stderr, messages, "restore.invalid-source-origin")
 		}
 		sourceInput = sourceOrigin.Location
 	}
 	clone, err := gitexec.FindClone()
 	if err != nil {
-		fmt.Fprintln(stderr, "erro: Git indisponível")
-		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+		fmt.Fprint(stderr, messages.text("common.git"))
 		return 1
 	}
 	inspect, err := gitexec.FindLinkInspector()
 	if err != nil {
-		fmt.Fprintln(stderr, "erro: Git indisponível")
-		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+		fmt.Fprint(stderr, messages.text("common.git"))
 		return 1
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Fprintln(stderr, "erro: não foi possível localizar o diretório pessoal")
-		fmt.Fprintln(stderr, "correção: configure um diretório pessoal acessível")
+		fmt.Fprint(stderr, messages.text("common.home"))
 		return 1
 	}
 	result, err := workspace.Restore(current, home, workspace.RestoreRequest{
@@ -616,49 +666,47 @@ func runRestore(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		var failure workspace.RestoreFailure
 		if errors.As(err, &failure) {
-			fmt.Fprintf(stderr, "erro: %s\ncorreção: %s\n", failure.Cause, failure.Correction)
+			renderFailure(stderr, messages, "restore", failure.Code, failure.Cause, "", failure.Correction)
 		} else {
-			fmt.Fprintln(stderr, "erro: não foi possível restaurar o workspace")
-			fmt.Fprintln(stderr, "correção: verifique a auditoria e tente novamente")
+			fmt.Fprint(stderr, messages.text("restore.failure.default"))
 		}
 		return 1
 	}
-	fmt.Fprintf(stdout, "Workspace %q restaurado.\nKnowledge: %s\n", result.Name, result.KnowledgePath)
+	fmt.Fprint(stdout, messages.text("restore.result", result.Name, result.KnowledgePath))
 	if result.SourceMode == workspace.SourceClone {
-		fmt.Fprintf(stdout, "Source clonado: %s\n", result.SourcePath)
+		fmt.Fprint(stdout, messages.text("restore.source.cloned", result.SourcePath))
 	} else {
-		fmt.Fprintf(stdout, "Source vinculado: %s\n", result.SourcePath)
+		fmt.Fprint(stdout, messages.text("restore.source.linked", result.SourcePath))
 		if result.ManifestChanged {
-			fmt.Fprintln(stdout, "Manifesto: referência de source atualizada.")
+			fmt.Fprint(stdout, messages.text("restore.manifest.changed"))
 		}
 	}
 	return 0
 }
 
-func restoreUsageError(stderr io.Writer, cause string) int {
-	fmt.Fprintf(stderr, "erro: %s\n", cause)
-	fmt.Fprintln(stderr, "uso: cerne restore <origem-knowledge> (--source <caminho> | --clone <origem-source>)")
+func restoreUsageError(stderr io.Writer, messages localizer, cause messageID) int {
+	fmt.Fprint(stderr, messages.text(cause), messages.text("restore.usage"))
 	return 2
 }
 
-func runInit(args []string, stdout, stderr io.Writer) int {
+func runInit(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if len(args) == 1 && args[0] == "--help" {
-		fmt.Fprint(stdout, initHelp)
+		fmt.Fprint(stdout, messages.text(messageInitHelp))
 		return 0
 	}
 	parsed, ok := parseInitArgs(args)
 	if !ok {
-		return initUsageError(stderr, "argumento inválido")
+		return initUsageError(stderr, messages, "init.invalid-argument")
 	}
 	if err := workspace.ValidateName(parsed.Name); err != nil {
-		return initUsageError(stderr, err.Error())
+		return initUsageError(stderr, messages, "init.invalid-name")
 	}
 	var definition workspace.WorkflowDefinition
 	if parsed.Workflow != "" {
 		var err error
 		definition, err = workflowexec.Resolve(parsed.Workflow)
 		if err != nil {
-			return initUsageError(stderr, "workflow inválido: use speckit ou openspec")
+			return initUsageError(stderr, messages, "init.invalid-workflow")
 		}
 	}
 	var current string
@@ -667,35 +715,31 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 	if parsed.SourceMode == workspace.SourceClone {
 		current, err = currentDirectory()
 		if err != nil {
-			fmt.Fprintln(stderr, "erro: não foi possível obter o diretório atual")
-			fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+			fmt.Fprint(stderr, messages.text("common.cwd"))
 			return 1
 		}
 		origin, err = gitexec.ClassifyCloneOrigin(current, parsed.SourceValue)
 		if err != nil {
-			return initUsageError(stderr, "origem de clone inválida")
+			return initUsageError(stderr, messages, "init.invalid-clone-origin")
 		}
 	}
 
 	initRepository, err := gitexec.Find()
 	if err != nil {
-		fmt.Fprintf(stderr, "erro: %v\n", err)
-		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+		fmt.Fprint(stderr, messages.text("common.git"))
 		return 1
 	}
 	if current == "" {
 		current, err = currentDirectory()
 		if err != nil {
-			fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
-			fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+			fmt.Fprint(stderr, messages.text("common.cwd"))
 			return 1
 		}
 	}
 	if parsed.SourceMode != "" {
 		inspect, inspectErr := gitexec.FindLinkInspector()
 		if inspectErr != nil {
-			fmt.Fprintf(stderr, "erro: %v\n", inspectErr)
-			fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+			fmt.Fprint(stderr, messages.text("common.git"))
 			return 1
 		}
 		request := workspace.SourceInitRequest{Mode: parsed.SourceMode, Input: parsed.SourceValue}
@@ -703,8 +747,7 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		if parsed.SourceMode == workspace.SourceClone {
 			clone, err = gitexec.FindClone()
 			if err != nil {
-				fmt.Fprintf(stderr, "erro: %v\n", err)
-				fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+				fmt.Fprint(stderr, messages.text("common.git"))
 				return 1
 			}
 			request.Input = origin.Location
@@ -715,27 +758,27 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		if err != nil {
 			var workflowFailure workspace.WorkflowFailure
 			if errors.As(err, &workflowFailure) {
-				fmt.Fprintf(stderr, "erro: não foi possível inicializar workflow %s: %s\n", parsed.Workflow, workflowCause(err))
-				fmt.Fprintf(stderr, "correção: corrija ou atualize %s e execute %q dentro de %s\n", parsed.Workflow, workflowSetupCommand(parsed.Agent), filepath.Dir(result.KnowledgePath))
+				fmt.Fprint(stderr, messages.text("init.workflow.failure", parsed.Workflow, workflowCause(messages, err)))
+				fmt.Fprint(stderr, messages.text("init.workflow.correction", parsed.Workflow, workflowSetupCommand(parsed.Agent), filepath.Dir(result.KnowledgePath)))
 				return 1
 			}
-			renderSourceInitFailure(stderr, err)
+			renderSourceInitFailure(stderr, messages, err)
 			return 1
 		}
-		fmt.Fprintf(stdout, "Workspace %q criado.\nKnowledge: %s\n", result.Name, result.KnowledgePath)
+		fmt.Fprint(stdout, messages.text("init.result.knowledge", result.Name, result.KnowledgePath))
 		if result.SourceMode == workspace.SourceLocal {
-			fmt.Fprintf(stdout, "Source vinculado: %s\n", result.SourcePath)
+			fmt.Fprint(stdout, messages.text("init.source.linked", result.SourcePath))
 		} else {
-			fmt.Fprintf(stdout, "Source clonado: %s\n", result.SourcePath)
+			fmt.Fprint(stdout, messages.text("init.source.cloned", result.SourcePath))
 		}
 		if parsed.Workflow != "" {
-			fmt.Fprintf(stdout, "Workflow: %s\nSetup: %s\n", parsed.Workflow, map[workspace.WorkflowState]string{workspace.WorkflowConfigured: "concluído", workspace.WorkflowPending: "pendente"}[workflow.State])
+			fmt.Fprint(stdout, messages.text("init.workflow.result", parsed.Workflow, workflowState(messages, workflow.State)))
 			if parsed.Agent != "" && workflow.State != workspace.WorkflowPending {
-				fmt.Fprintf(stdout, "Agent: %s\nDescoberta: pronta\n", parsed.Agent)
+				fmt.Fprint(stdout, messages.text("agent.discovery", parsed.Agent))
 			}
 			if workflow.State == workspace.WorkflowPending {
-				fmt.Fprintf(stderr, "aviso: executável %q não encontrado; workflow %s não inicializado\n", definition.Executor, parsed.Workflow)
-				fmt.Fprintf(stderr, "correção: instale %s e execute %q dentro do workspace\n", parsed.Workflow, workflowSetupCommand(parsed.Agent))
+				fmt.Fprint(stderr, messages.text("workflow.pending.warning", definition.Executor, parsed.Workflow))
+				fmt.Fprint(stderr, messages.text("workflow.pending.correction", parsed.Workflow, workflowSetupCommand(parsed.Agent)))
 			}
 		}
 		return 0
@@ -744,43 +787,39 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		result, workflow, err := workspace.InitWithWorkflowAndAgent(current, parsed.Name, definition, parsed.Agent, initRepository)
 		if err != nil {
 			if result.KnowledgePath == "" {
-				fmt.Fprintf(stderr, "erro: %v\n", err)
 				if errors.Is(err, workspace.ErrUnsafeDestination) {
-					fmt.Fprintln(stderr, "correção: escolha um destino inexistente ou vazio")
+					fmt.Fprint(stderr, messages.text("init.destination-unsafe"))
 				} else {
-					fmt.Fprintln(stderr, "correção: verifique permissões e tente novamente")
+					fmt.Fprint(stderr, messages.text("init.failure.default"))
 				}
 				return 1
 			}
-			fmt.Fprintf(stderr, "erro: não foi possível inicializar workflow %s: %s\n", parsed.Workflow, workflowCause(err))
-			fmt.Fprintf(stderr, "correção: corrija ou atualize %s e execute %q dentro de %s\n", parsed.Workflow, workflowSetupCommand(parsed.Agent), filepath.Dir(result.KnowledgePath))
+			fmt.Fprint(stderr, messages.text("init.workflow.failure", parsed.Workflow, workflowCause(messages, err)))
+			fmt.Fprint(stderr, messages.text("init.workflow.correction", parsed.Workflow, workflowSetupCommand(parsed.Agent), filepath.Dir(result.KnowledgePath)))
 			return 1
 		}
-		fmt.Fprintf(stdout, "Workspace %q criado.\nKnowledge: %s\nSource: %s\nWorkflow: %s\nSetup: %s\n",
-			result.Name, result.KnowledgePath, result.SourcePath, parsed.Workflow, map[workspace.WorkflowState]string{workspace.WorkflowConfigured: "concluído", workspace.WorkflowPending: "pendente"}[workflow.State])
+		fmt.Fprint(stdout, messages.text("init.result.workflow", result.Name, result.KnowledgePath, result.SourcePath, parsed.Workflow, workflowState(messages, workflow.State)))
 		if parsed.Agent != "" && workflow.State != workspace.WorkflowPending {
-			fmt.Fprintf(stdout, "Agent: %s\nDescoberta: pronta\n", parsed.Agent)
+			fmt.Fprint(stdout, messages.text("agent.discovery", parsed.Agent))
 		}
 		if workflow.State == workspace.WorkflowPending {
-			fmt.Fprintf(stderr, "aviso: executável %q não encontrado; workflow %s não inicializado\n", definition.Executor, parsed.Workflow)
-			fmt.Fprintf(stderr, "correção: instale %s e execute %q dentro do workspace\n", parsed.Workflow, workflowSetupCommand(parsed.Agent))
+			fmt.Fprint(stderr, messages.text("workflow.pending.warning", definition.Executor, parsed.Workflow))
+			fmt.Fprint(stderr, messages.text("workflow.pending.correction", parsed.Workflow, workflowSetupCommand(parsed.Agent)))
 		}
 		return 0
 	}
 
 	result, err := workspace.Init(current, parsed.Name, initRepository)
 	if err != nil {
-		fmt.Fprintf(stderr, "erro: %v\n", err)
 		if errors.Is(err, workspace.ErrUnsafeDestination) {
-			fmt.Fprintln(stderr, "correção: escolha um destino inexistente ou vazio")
+			fmt.Fprint(stderr, messages.text("init.destination-unsafe"))
 		} else {
-			fmt.Fprintln(stderr, "correção: verifique permissões e tente novamente")
+			fmt.Fprint(stderr, messages.text("init.failure.default"))
 		}
 		return 1
 	}
 
-	fmt.Fprintf(stdout, "Workspace %q criado.\nKnowledge: %s\nSource: %s\n",
-		result.Name, result.KnowledgePath, result.SourcePath)
+	fmt.Fprint(stdout, messages.text("init.result", result.Name, result.KnowledgePath, result.SourcePath))
 	return 0
 }
 
@@ -836,73 +875,61 @@ func parseInitArgs(args []string) (initArguments, bool) {
 	return parsed, true
 }
 
-func renderSourceInitFailure(stderr io.Writer, err error) {
+func renderSourceInitFailure(stderr io.Writer, messages localizer, err error) {
 	var cloneFailure workspace.SourceInitFailure
 	if errors.As(err, &cloneFailure) {
-		fmt.Fprintf(stderr, "erro: %s\n", cloneFailure.Cause)
-		fmt.Fprintf(stderr, "correção: %s\n", cloneFailure.Correction)
+		renderFailure(stderr, messages, "source-init", cloneFailure.Code, cloneFailure.Cause, "", cloneFailure.Correction)
 		return
 	}
 	var linkFailure workspace.LinkFailure
 	if errors.As(err, &linkFailure) {
-		if linkFailure.Path == "" {
-			fmt.Fprintf(stderr, "erro: %s\n", linkFailure.Cause)
-		} else {
-			fmt.Fprintf(stderr, "erro: %s: %s\n", linkFailure.Cause, linkFailure.Path)
-		}
-		fmt.Fprintf(stderr, "correção: %s\n", linkFailure.Correction)
+		renderFailure(stderr, messages, "link", linkFailure.Code, linkFailure.Cause, linkFailure.Path, linkFailure.Correction)
 		return
 	}
-	fmt.Fprintf(stderr, "erro: %v\n", err)
 	if errors.Is(err, workspace.ErrUnsafeDestination) {
-		fmt.Fprintln(stderr, "correção: escolha um destino inexistente ou vazio")
+		fmt.Fprint(stderr, messages.text("init.destination-unsafe"))
 	} else {
-		fmt.Fprintln(stderr, "correção: verifique permissões e tente novamente")
+		fmt.Fprint(stderr, messages.text("init.failure.default"))
 	}
 }
 
-func runWorkflow(args []string, stdout, stderr io.Writer) int {
+func runWorkflow(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if len(args) == 1 && args[0] == "--help" {
-		fmt.Fprint(stdout, workflowHelp)
+		fmt.Fprint(stdout, messages.text(messageWorkflowHelp))
 		return 0
 	}
 	agent, ok := parseWorkflowSetupArgs(args)
 	if !ok {
-		fmt.Fprintln(stderr, "erro: argumento inválido")
-		fmt.Fprintln(stderr, "uso: cerne workflow setup [--agent <codex|claude>]")
+		fmt.Fprint(stderr, messages.text("workflow.usage"))
 		return 2
 	}
 	current, err := currentDirectory()
 	if err != nil {
-		fmt.Fprintln(stderr, "erro: não foi possível obter o diretório atual")
-		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+		fmt.Fprint(stderr, messages.text("common.cwd"))
 		return 1
 	}
 	result, err := workspace.SetupWorkflowWithAgent(current, workflowexec.Resolve, agent)
 	if err != nil {
 		var failure workspace.WorkflowFailure
 		if errors.As(err, &failure) {
-			fmt.Fprintf(stderr, "erro: %s\n", failure.Cause)
-			fmt.Fprintf(stderr, "correção: %s\n", failure.Correction)
+			renderFailure(stderr, messages, "workflow", failure.Code, failure.Cause, "", failure.Correction)
 		} else {
-			fmt.Fprintln(stderr, "erro: não foi possível inicializar o workflow")
-			fmt.Fprintln(stderr, "correção: verifique o workspace e tente novamente")
+			fmt.Fprint(stderr, messages.text("workflow.failure.default"))
 		}
 		return 1
 	}
 	if result.State == workspace.WorkflowPending {
-		fmt.Fprintf(stderr, "erro: executável %q não encontrado\n", result.Executor)
-		fmt.Fprintf(stderr, "correção: instale %s e execute novamente\n", result.Provider)
+		fmt.Fprint(stderr, messages.text("workflow.executor.missing", result.Executor, result.Provider))
 		return 1
 	}
-	fmt.Fprintf(stdout, "Workflow: %s\nKnowledge: %s\n", result.Provider, result.KnowledgePath)
+	fmt.Fprint(stdout, messages.text("workflow.result", result.Provider, result.KnowledgePath))
 	if result.State == workspace.WorkflowUnchanged {
-		fmt.Fprintln(stdout, "Nenhuma alteração necessária.")
+		fmt.Fprint(stdout, messages.text("workflow.unchanged"))
 	} else {
-		fmt.Fprintln(stdout, "Setup concluído.")
+		fmt.Fprint(stdout, messages.text("workflow.completed"))
 	}
 	if result.Agent != "" && result.Discovery == workspace.WorkflowDiscoveryReady {
-		fmt.Fprintf(stdout, "Agent: %s\nDescoberta: pronta\n", result.Agent)
+		fmt.Fprint(stdout, messages.text("agent.discovery", result.Agent))
 	}
 	return 0
 }
@@ -924,29 +951,31 @@ func workflowSetupCommand(agent string) string {
 	return "cerne workflow setup --agent " + agent
 }
 
-func workflowCause(err error) string {
-	var failure workspace.WorkflowFailure
-	if errors.As(err, &failure) {
-		return failure.Cause
-	}
-	return "falha operacional"
+func workflowState(messages localizer, state workspace.WorkflowState) string {
+	return messages.text(messageID("workflow.state." + string(state)))
 }
 
-func runDoctor(args []string, stdout, stderr io.Writer) int {
+func workflowCause(messages localizer, err error) string {
+	var failure workspace.WorkflowFailure
+	if errors.As(err, &failure) {
+		return localizedFailureCause(messages, "workflow", failure.Code, failure.Cause)
+	}
+	return messages.text("failure.operational")
+}
+
+func runDoctor(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if len(args) == 1 && args[0] == "--help" {
-		fmt.Fprint(stdout, doctorHelp)
+		fmt.Fprint(stdout, messages.text(messageDoctorHelp))
 		return 0
 	}
 	if len(args) != 0 {
-		fmt.Fprintf(stderr, "erro: argumento inválido\n")
-		fmt.Fprintln(stderr, "uso: cerne doctor")
+		fmt.Fprint(stderr, messages.text("doctor.usage"))
 		return 2
 	}
 
 	current, err := currentDirectory()
 	if err != nil {
-		fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
-		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+		fmt.Fprint(stderr, messages.text("common.cwd"))
 		return 1
 	}
 	inspect, err := gitexec.FindInspector()
@@ -954,101 +983,79 @@ func runDoctor(args []string, stdout, stderr io.Writer) int {
 		inspect = nil
 	}
 	diagnosis := workspace.DoctorWithWorkflow(current, adaptGit(inspect), adaptAccess, workflowexec.Resolve)
-	renderDiagnosis(stdout, diagnosis)
+	renderDiagnosis(stdout, diagnosis, messages)
 	if diagnosis.Status == workspace.Invalid {
 		return 1
 	}
 	return 0
 }
 
-func runStatus(args []string, stdout, stderr io.Writer) int {
+func runStatus(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if len(args) == 1 && args[0] == "--help" {
-		fmt.Fprint(stdout, statusHelp)
+		fmt.Fprint(stdout, messages.text(messageStatusHelp))
 		return 0
 	}
 	if len(args) != 0 {
-		fmt.Fprintf(stderr, "erro: argumento inválido\n")
-		fmt.Fprintln(stderr, "uso: cerne status")
+		fmt.Fprint(stderr, messages.text("status.usage"))
 		return 2
 	}
 
 	current, err := currentDirectory()
 	if err != nil {
-		fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
-		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+		fmt.Fprint(stderr, messages.text("common.cwd"))
 		return 1
 	}
 	collect, err := gitexec.FindStatus()
 	if err != nil {
-		fmt.Fprintf(stderr, "erro: %v\n", err)
-		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+		fmt.Fprint(stderr, messages.text("common.git"))
 		return 1
 	}
 	report, err := workspace.CurrentStatus(current, adaptStatus(collect))
 	if err != nil {
 		var failure workspace.StatusFailure
 		if errors.As(err, &failure) {
-			if failure.Path != "" {
-				fmt.Fprintf(stderr, "erro: %s: %s\n", failure.Cause, failure.Path)
-			} else {
-				fmt.Fprintf(stderr, "erro: %s\n", failure.Cause)
-			}
-			if failure.Correction != "" {
-				fmt.Fprintf(stderr, "correção: %s\n", failure.Correction)
-			}
+			renderFailure(stderr, messages, "status", failure.Code, failure.Cause, failure.Path, failure.Correction)
 		} else {
-			fmt.Fprintf(stderr, "erro: %v\n", err)
-			fmt.Fprintln(stderr, "correção: verifique o workspace e tente novamente")
+			fmt.Fprint(stderr, messages.text("status.failure.default"))
 		}
 		return 1
 	}
-	renderStatus(stdout, report)
+	renderStatus(stdout, report, messages)
 	return 0
 }
 
-func runLink(args []string, stdout, stderr io.Writer) int {
+func runLink(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if len(args) == 1 && args[0] == "--help" {
-		fmt.Fprint(stdout, linkHelp)
+		fmt.Fprint(stdout, messages.text(messageLinkHelp))
 		return 0
 	}
 	source, replace, ok := parseLinkArgs(args)
 	if !ok {
-		fmt.Fprintf(stderr, "erro: argumento inválido\n")
-		fmt.Fprintln(stderr, "uso: cerne link <caminho> [--replace]")
+		fmt.Fprint(stderr, messages.text("link.usage"))
 		return 2
 	}
 
 	current, err := currentDirectory()
 	if err != nil {
-		fmt.Fprintf(stderr, "erro: não foi possível obter o diretório atual: %v\n", err)
-		fmt.Fprintln(stderr, "correção: execute o comando em um diretório acessível")
+		fmt.Fprint(stderr, messages.text("common.cwd"))
 		return 1
 	}
 	inspect, err := gitexec.FindLinkInspector()
 	if err != nil {
-		fmt.Fprintf(stderr, "erro: %v\n", err)
-		fmt.Fprintln(stderr, "correção: instale o Git e disponibilize-o no PATH")
+		fmt.Fprint(stderr, messages.text("common.git"))
 		return 1
 	}
 	result, err := workspace.Link(current, workspace.LinkRequest{SourceInput: source, Replace: replace}, adaptLink(inspect))
 	if err != nil {
 		var failure workspace.LinkFailure
 		if errors.As(err, &failure) {
-			if failure.Path != "" {
-				fmt.Fprintf(stderr, "erro: %s: %s\n", failure.Cause, failure.Path)
-			} else {
-				fmt.Fprintf(stderr, "erro: %s\n", failure.Cause)
-			}
-			if failure.Correction != "" {
-				fmt.Fprintf(stderr, "correção: %s\n", failure.Correction)
-			}
+			renderFailure(stderr, messages, "link", failure.Code, failure.Cause, failure.Path, failure.Correction)
 		} else {
-			fmt.Fprintf(stderr, "erro: %v\n", err)
-			fmt.Fprintln(stderr, "correção: verifique o workspace e tente novamente")
+			fmt.Fprint(stderr, messages.text("link.failure.default"))
 		}
 		return 1
 	}
-	renderLink(stdout, result)
+	renderLink(stdout, result, messages)
 	return 0
 }
 
@@ -1113,61 +1120,63 @@ func adaptAccess(path string) workspace.AccessResult {
 	}
 }
 
-func renderDiagnosis(stdout io.Writer, diagnosis workspace.Diagnosis) {
+func renderDiagnosis(stdout io.Writer, diagnosis workspace.Diagnosis, messages localizer) {
 	for _, check := range diagnosis.Checks {
-		fmt.Fprintf(stdout, "%s %s: %s", symbol(check.Severity), check.Label, check.Detail)
+		label, detail, correction := localizedCheck(messages, check)
+		fmt.Fprint(stdout, messages.text("diagnosis.line", symbol(check.Severity), label, detail))
 		if check.Correction != "" {
-			fmt.Fprintf(stdout, "; correção: %s", check.Correction)
+			fmt.Fprint(stdout, messages.text("diagnosis.correction", correction))
 		}
 		fmt.Fprintln(stdout)
 	}
 	switch diagnosis.Status {
 	case workspace.Invalid:
-		fmt.Fprintln(stdout, "Workspace inválido")
+		fmt.Fprint(stdout, messages.text("diagnosis.invalid"))
 	case workspace.Warnings:
-		fmt.Fprintln(stdout, "Workspace com avisos")
+		fmt.Fprint(stdout, messages.text("diagnosis.warning"))
 	default:
-		fmt.Fprintln(stdout, "Workspace saudável")
+		fmt.Fprint(stdout, messages.text("diagnosis.healthy"))
 	}
 }
 
-func renderStatus(stdout io.Writer, report workspace.WorkspaceReport) {
-	fmt.Fprintf(stdout, "Projeto: %s\n", report.ProjectName)
-	fmt.Fprintf(stdout, "Workspace: %s\n\n", report.Root)
+func renderStatus(stdout io.Writer, report workspace.WorkspaceReport, messages localizer) {
+	fmt.Fprint(stdout, messages.text("status.project", report.ProjectName))
+	fmt.Fprint(stdout, messages.text("status.workspace", report.Root))
 	for index, repository := range report.Repositories {
 		if index > 0 {
 			fmt.Fprintln(stdout)
 		}
-		fmt.Fprintf(stdout, "%s\n", repositoryTitle(repository.Name))
-		fmt.Fprintf(stdout, "  Caminho: %s\n", repository.Path)
-		fmt.Fprintf(stdout, "  Branch: %s\n", repository.Branch)
-		fmt.Fprintf(stdout, "  Commit: %s\n", repository.Commit)
-		fmt.Fprintf(stdout, "  Estado: %s\n", repository.State)
-		fmt.Fprintf(stdout, "  Modificados: %d\n", repository.ModifiedCount)
-		fmt.Fprintf(stdout, "  Em stage: %d\n", repository.StagedCount)
-		fmt.Fprintf(stdout, "  Não rastreados: %d\n", repository.UntrackedCount)
+		fmt.Fprintln(stdout, messages.text(messageID("status.repository."+repository.Name)))
+		fmt.Fprint(stdout, messages.text("status.path", repository.Path))
+		branch := repository.Branch
+		if branch == gitexec.DetachedHEAD {
+			branch = messages.text("status.branch.detached-head")
+		}
+		commit := repository.Commit
+		if commit == gitexec.NoCommits {
+			commit = messages.text("status.commit.no-commits")
+		}
+		fmt.Fprint(stdout, messages.text("status.branch", branch))
+		fmt.Fprint(stdout, messages.text("status.commit", commit))
+		fmt.Fprint(stdout, messages.text("status.state", messages.text(messageID("status.state."+repository.State))))
+		fmt.Fprint(stdout, messages.text("status.modified", repository.ModifiedCount))
+		fmt.Fprint(stdout, messages.text("status.staged", repository.StagedCount))
+		fmt.Fprint(stdout, messages.text("status.untracked", repository.UntrackedCount))
 	}
 }
 
-func renderLink(stdout io.Writer, result workspace.LinkResult) {
-	fmt.Fprintf(stdout, "Projeto: %s\n", result.ProjectName)
+func renderLink(stdout io.Writer, result workspace.LinkResult, messages localizer) {
+	fmt.Fprint(stdout, messages.text("link.project", result.ProjectName))
 	if !result.Changed {
-		fmt.Fprintf(stdout, "Source atual: %s\n", result.NewSource)
-		fmt.Fprintln(stdout, "Nenhuma alteração necessária.")
+		fmt.Fprint(stdout, messages.text("link.current", result.NewSource))
+		fmt.Fprint(stdout, messages.text("link.unchanged"))
 		return
 	}
 	if result.PreviousSource != "" {
-		fmt.Fprintf(stdout, "Source anterior: %s\n", result.PreviousSource)
+		fmt.Fprint(stdout, messages.text("link.previous", result.PreviousSource))
 	}
-	fmt.Fprintf(stdout, "Novo source: %s\n", result.NewSource)
-	fmt.Fprintln(stdout, "Manifesto atualizado.")
-}
-
-func repositoryTitle(name string) string {
-	if name == "source" {
-		return "Source"
-	}
-	return "Knowledge"
+	fmt.Fprint(stdout, messages.text("link.new", result.NewSource))
+	fmt.Fprint(stdout, messages.text("link.updated"))
 }
 
 func symbol(severity workspace.Severity) string {
@@ -1181,14 +1190,12 @@ func symbol(severity workspace.Severity) string {
 	}
 }
 
-func initUsageError(stderr io.Writer, cause string) int {
-	fmt.Fprintf(stderr, "erro: %s\n", cause)
-	fmt.Fprintln(stderr, "uso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec> [--agent <codex|claude>]]")
+func initUsageError(stderr io.Writer, messages localizer, cause messageID) int {
+	fmt.Fprint(stderr, messages.text(cause), messages.text("init.usage"))
 	return 2
 }
 
-func commandUsageError(stderr io.Writer, cause string) int {
-	fmt.Fprintf(stderr, "erro: %s\n", cause)
-	fmt.Fprintln(stderr, "uso: cerne <init|doctor|status|link|workflow>")
+func commandUsageError(stderr io.Writer, messages localizer, id messageID) int {
+	fmt.Fprint(stderr, messages.text(id))
 	return 2
 }

@@ -37,8 +37,8 @@ func TestCurrentStatusClassifiesPendingDetachedHeadAndNoCommits(t *testing.T) {
 	source := filepath.Join(root, "source")
 	overrides := map[string]GitRepositoryStatus{
 		source: {
-			Branch:         "detached HEAD",
-			Commit:         "sem commits",
+			Branch:         "detached-head",
+			Commit:         "no-commits",
 			ModifiedCount:  2,
 			StagedCount:    1,
 			UntrackedCount: 3,
@@ -50,8 +50,8 @@ func TestCurrentStatusClassifiesPendingDetachedHeadAndNoCommits(t *testing.T) {
 		t.Fatal(err)
 	}
 	sourceReport := got.Repositories[1]
-	if sourceReport.State != RepositoryPending || sourceReport.Branch != "detached HEAD" ||
-		sourceReport.Commit != "sem commits" || sourceReport.ModifiedCount != 2 ||
+	if sourceReport.State != RepositoryPending || sourceReport.Branch != "detached-head" ||
+		sourceReport.Commit != "no-commits" || sourceReport.ModifiedCount != 2 ||
 		sourceReport.StagedCount != 1 || sourceReport.UntrackedCount != 3 {
 		t.Fatalf("source pendente = %#v", sourceReport)
 	}

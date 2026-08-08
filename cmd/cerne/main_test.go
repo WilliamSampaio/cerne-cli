@@ -13,12 +13,14 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/WilliamSampaio/cerne-cli/internal/localization"
 )
 
 const expectedGlobalHelp = `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
 
 Uso:
-  cerne <comando> [argumentos]
+  cerne [--lang <en|pt-BR>] <comando> [argumentos]
   cerne --help
   cerne --version
 
@@ -31,10 +33,16 @@ Comandos:
   workflow  Inicializa o workflow declarado no workspace
   context   Exibe o contexto estrutural do workspace
   skill     Instala skills Cerne no perfil do agente
+  config    Administra preferências do usuário
 
 Opções:
+  --lang       Usa en ou pt-BR somente nesta execução
   --help       Exibe esta ajuda
   --version    Exibe a versão do Cerne
+
+Idioma:
+  CERNE_LANG seleciona temporariamente o idioma. A ordem é --lang, CERNE_LANG,
+  preferência salva e pt-BR. Use "cerne config --help" para persistir a escolha.
 
 Use "cerne <comando> --help" para detalhes de um comando.
 `
@@ -120,6 +128,177 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 				t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 			}
 		})
+	}
+}
+
+func TestCLIConfigLanguage(t *testing.T) {
+	binary := buildCLI(t)
+	home := t.TempDir()
+	environment := skillHomeEnvironment(home)
+
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), environment, "config", "set", "language", "en")
+	if status != 0 || stdout != "Idioma salvo: en\n" || stderr != "" {
+		t.Fatalf("set: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	if got := readTestFile(t, filepath.Join(home, ".cerne", "config.json")); got != "{\n  \"language\": \"en\"\n}\n" {
+		t.Fatalf("config = %q", got)
+	}
+
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), environment, "config", "get", "language")
+	if status != 0 || stdout != "Saved language: en\n" || stderr != "" {
+		t.Fatalf("get: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), environment, "--help")
+	if status != 0 || !strings.HasPrefix(stdout, "Cerne manages workspaces") || stderr != "" {
+		t.Fatalf("english help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), environment, "config", "unset", "language")
+	if status != 0 || stdout != "Language preference removed.\n" || stderr != "" {
+		t.Fatalf("unset: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), environment, "config", "get", "language")
+	if status != 0 || stdout != "Idioma não definido. Padrão atual: pt-BR\n" || stderr != "" {
+		t.Fatalf("get unset: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+}
+
+func TestCLILanguagePrecedenceDoesNotChangePreference(t *testing.T) {
+	binary := buildCLI(t)
+	home := t.TempDir()
+	environment := skillHomeEnvironment(home)
+	status, _, stderr := executeCLI(t, binary, t.TempDir(), environment, "config", "set", "language", "pt-BR")
+	if status != 0 || stderr != "" {
+		t.Fatalf("set: status=%d stderr=%q", status, stderr)
+	}
+
+	englishEnvironment := replaceEnvironment(environment, "CERNE_LANG", "en")
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), englishEnvironment, "--help")
+	if status != 0 || !strings.HasPrefix(stdout, "Cerne manages workspaces") || stderr != "" {
+		t.Fatalf("environment: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), englishEnvironment, "--lang", "pt-BR", "--help")
+	if status != 0 || !strings.HasPrefix(stdout, "Cerne administra workspaces") || stderr != "" {
+		t.Fatalf("flag: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), environment, "config", "get", "language")
+	if status != 0 || stdout != "Idioma salvo: pt-BR\n" || stderr != "" {
+		t.Fatalf("saved: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+}
+
+func TestCLIRejectsInvalidLanguageWithoutChangingConfig(t *testing.T) {
+	binary := buildCLI(t)
+	home := t.TempDir()
+	environment := skillHomeEnvironment(home)
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), environment, "config", "set", "language", "es")
+	if status != 2 || stdout != "" || stderr != "erro: idioma inválido: \"es\"\ncorreção: use en ou pt-BR\n" {
+		t.Fatalf("set: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".cerne")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("uso inválido criou configuração: %v", err)
+	}
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), environment, "--lang", "es", "--help")
+	if status != 2 || stdout != "" || stderr != "erro: idioma inválido: \"es\"\ncorreção: use en ou pt-BR\n" {
+		t.Fatalf("flag: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+}
+
+func TestCLIEnglishHelpForEveryCommand(t *testing.T) {
+	binary := buildCLI(t)
+	environment := skillHomeEnvironment(t.TempDir())
+	commands := [][]string{
+		{"--help"},
+		{"init", "--help"},
+		{"restore", "--help"},
+		{"doctor", "--help"},
+		{"status", "--help"},
+		{"link", "--help"},
+		{"workflow", "--help"},
+		{"context", "--help"},
+		{"skill", "--help"},
+		{"config", "--help"},
+	}
+	for _, args := range commands {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			arguments := append([]string{"--lang", "en"}, args...)
+			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), environment, arguments...)
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Usage:") {
+				t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+			}
+			for _, portuguese := range []string{"Uso:", "Saídas:", "Efeitos:", "Exemplo:", "correção:"} {
+				if strings.Contains(stdout, portuguese) {
+					t.Fatalf("help contém português %q: %q", portuguese, stdout)
+				}
+			}
+		})
+	}
+}
+
+func TestCLIEnglishReportsAndJSONInvariance(t *testing.T) {
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	home := t.TempDir()
+	environment := skillHomeEnvironment(home)
+
+	status, stdout, stderr := executeCLI(t, binary, parent, environment, "--lang", "en", "init", "example")
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "Created workspace \"example\".") {
+		t.Fatalf("init: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	root := filepath.Join(parent, "example")
+
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{args: []string{"doctor"}, want: "Healthy workspace\n"},
+		{args: []string{"status"}, want: "Project: example\n"},
+		{args: []string{"context"}, want: "Status: healthy\n"},
+		{args: []string{"link", "source"}, want: "No changes required.\n"},
+	} {
+		arguments := append([]string{"--lang", "en"}, test.args...)
+		status, stdout, stderr = executeCLI(t, binary, root, environment, arguments...)
+		if status != 0 || stderr != "" || !strings.Contains(stdout, test.want) {
+			t.Fatalf("%v: status=%d stdout=%q stderr=%q", test.args, status, stdout, stderr)
+		}
+		for _, portuguese := range []string{"Projeto:", "Caminho:", "Estado:", "saudável", "Nenhuma alteração"} {
+			if strings.Contains(stdout, portuguese) {
+				t.Fatalf("%v contém português %q: %q", test.args, portuguese, stdout)
+			}
+		}
+	}
+
+	statusEN, jsonEN, stderrEN := executeCLI(t, binary, root, environment, "--lang", "en", "context", "--json")
+	statusPT, jsonPT, stderrPT := executeCLI(t, binary, root, environment, "--lang", "pt-BR", "context", "--json")
+	if statusEN != statusPT || jsonEN != jsonPT || stderrEN != stderrPT {
+		t.Fatalf("JSON varia por idioma:\nen=%d %q %q\npt=%d %q %q", statusEN, jsonEN, stderrEN, statusPT, jsonPT, stderrPT)
+	}
+}
+
+func TestCLIEnglishFailuresAndNeutralVersion(t *testing.T) {
+	binary := buildCLI(t)
+	environment := skillHomeEnvironment(t.TempDir())
+	for _, test := range []struct {
+		args   []string
+		status int
+		want   string
+	}{
+		{args: []string{"unknown"}, status: 2, want: "error: unknown command\n"},
+		{args: []string{"status", "extra"}, status: 2, want: "error: invalid argument\n"},
+		{args: []string{"workflow", "setup"}, status: 1, want: "error: Cerne workspace not found"},
+	} {
+		arguments := append([]string{"--lang", "en"}, test.args...)
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), environment, arguments...)
+		if status != test.status || stdout != "" || !strings.Contains(stderr, test.want) {
+			t.Fatalf("%v: status=%d stdout=%q stderr=%q", test.args, status, stdout, stderr)
+		}
+		if strings.Contains(stderr, "erro:") || strings.Contains(stderr, "correção:") {
+			t.Fatalf("%v contém português: %q", test.args, stderr)
+		}
+	}
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), environment, "--lang", "en", "--version")
+	if status != 0 || stdout != "cerne 0.7.0\n" || stderr != "" {
+		t.Fatalf("version: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 }
 
@@ -1038,7 +1217,7 @@ func TestCLIDoctorPreReportFailure(t *testing.T) {
 	t.Cleanup(func() { currentDirectory = original })
 
 	var stdout, stderr strings.Builder
-	status := runDoctor(nil, &stdout, &stderr)
+	status := runDoctor(nil, &stdout, &stderr, localizer{language: localization.Default})
 	if status != 1 || stdout.String() != "" ||
 		!strings.Contains(stderr.String(), "correção: execute o comando em um diretório acessível") ||
 		strings.Contains(stderr.String(), "Workspace ") {
@@ -1213,7 +1392,7 @@ func TestCLIStatusPreReportFailure(t *testing.T) {
 	t.Cleanup(func() { currentDirectory = original })
 
 	var stdout, stderr strings.Builder
-	status := runStatus(nil, &stdout, &stderr)
+	status := runStatus(nil, &stdout, &stderr, localizer{language: localization.Default})
 	if status != 1 || stdout.String() != "" ||
 		!strings.Contains(stderr.String(), "correção: execute o comando em um diretório acessível") {
 		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout.String(), stderr.String())
@@ -1360,7 +1539,7 @@ func TestCLILinkPreReportFailure(t *testing.T) {
 	t.Cleanup(func() { currentDirectory = original })
 
 	var stdout, stderr strings.Builder
-	status := runLink([]string{"."}, &stdout, &stderr)
+	status := runLink([]string{"."}, &stdout, &stderr, localizer{language: localization.Default})
 	if status != 1 || stdout.String() != "" ||
 		!strings.Contains(stderr.String(), "correção: execute o comando em um diretório acessível") {
 		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout.String(), stderr.String())
