@@ -17,7 +17,7 @@ import (
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
 
-const version = "0.7.0"
+const version = "0.8.0"
 
 const contextHelp = `Exibe o contexto estrutural comprovado do workspace Cerne.
 
