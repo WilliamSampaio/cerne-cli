@@ -5,10 +5,20 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+### Added
+
+- English and Brazilian Portuguese human-readable CLI output, selectable for one invocation with
+  `--lang` or `CERNE_LANG`.
+- `cerne config set|get|unset language` to manage the current user's preference in
+  `~/.cerne/config.json`.
+
 ### Changed
 
 - The official `cerne-skills` package is embedded in the CLI binary, so `go install` supports
   `cerne skill install <codex|claude>` without a separately distributed companion directory.
+- Brazilian Portuguese remains the compatibility default until 1.0, when English becomes the
+  default. Commands, flags, structured output, identifiers, exit statuses, and version output are
+  unchanged by language selection.
 
 ## 0.7.0 - 2026-08-07
 

@@ -67,6 +67,21 @@ go build -o cerne ./cmd/cerne
 
 On Windows, the generated binary is `cerne.exe`.
 
+## Language
+
+Human-readable CLI output is available in English and Brazilian Portuguese. Save a preference or
+override it for one invocation:
+
+```sh
+cerne config set language en
+cerne --lang pt-BR doctor
+CERNE_LANG=en cerne status
+```
+
+Precedence is `--lang`, `CERNE_LANG`, the saved preference, then `pt-BR`. The current default
+remains `pt-BR` for compatibility and will change to `en` in 1.0. Structured output, commands,
+flags, identifiers, exit statuses, and version output are language-neutral.
+
 ## Quick start
 
 ### 1. Create a workspace

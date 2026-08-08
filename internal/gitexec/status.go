@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	DetachedHEAD = "detached HEAD"
-	NoCommits    = "sem commits"
+	DetachedHEAD = "detached-head"
+	NoCommits    = "no-commits"
 )
 
 type RepositoryStatus struct {

@@ -42,6 +42,7 @@ type SourceInitRequest struct {
 type CloneSource func(string, string) error
 
 type SourceInitFailure struct {
+	Code       string
 	Cause      string
 	Correction string
 	Incomplete bool
@@ -226,7 +227,7 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 
 func initWithLocalSource(parent, name, input string, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect) (Result, error) {
 	if inspect == nil {
-		return Result{}, sourceInitFailure("Git indisponível", "instale o Git e disponibilize-o no PATH", false)
+		return Result{}, sourceInitFailure("git-unavailable", "Git indisponível", "instale o Git e disponibilize-o no PATH", false)
 	}
 	candidate, err := resolveLinkPath(parent, input)
 	if err != nil {
@@ -239,7 +240,7 @@ func initWithLocalSource(parent, name, input string, definition WorkflowDefiniti
 	root := filepath.Join(canonical(parent), name)
 	knowledge := filepath.Join(root, "knowledge")
 	if samePath(candidate, knowledge) || containsPath(candidate, knowledge) || containsPath(knowledge, candidate) {
-		return Result{}, linkFailure("sobreposição perigosa entre knowledge e source", candidate, "mantenha os repositórios em diretórios separados")
+		return Result{}, linkFailure("repositories-overlap", "sobreposição perigosa entre knowledge e source", candidate, "mantenha os repositórios em diretórios separados")
 	}
 	rootExisted := pathExists(root)
 	manifestSource := manifestLinkSource(knowledge, candidate)
@@ -255,11 +256,11 @@ func initWithLocalSource(parent, name, input string, definition WorkflowDefiniti
 	}
 	after, err := validLinkRepository(inspect, candidate)
 	if err != nil || !sameRepositoryFacts(before, after) {
-		return rollback(sourceInitFailure("source local mudou durante a inicialização", "verifique o repositório e tente novamente", false))
+		return rollback(sourceInitFailure("source-changed", "source local mudou durante a inicialização", "verifique o repositório e tente novamente", false))
 	}
 	knowledgeFacts, err := validLinkRepository(inspect, result.KnowledgePath)
 	if err != nil {
-		return rollback(sourceInitFailure("repositório knowledge inválido", "verifique o Git e tente novamente", false))
+		return rollback(sourceInitFailure("knowledge-invalid", "repositório knowledge inválido", "verifique o Git e tente novamente", false))
 	}
 	if err := validateLinkSeparation(result.KnowledgePath, candidate, knowledgeFacts, after); err != nil {
 		return rollback(err)
@@ -276,7 +277,7 @@ func sameRepositoryFacts(left, right LinkRepositoryFacts) bool {
 
 func initWithClonedSource(parent, name string, request SourceInitRequest, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
 	if inspect == nil || clone == nil || request.Input == "" || request.OriginTransport == "" || request.OriginFingerprint == "" {
-		return Result{}, sourceInitFailure("clone do source indisponível", "instale o Git e tente novamente", false)
+		return Result{}, sourceInitFailure("source-clone-unavailable", "clone do source indisponível", "instale o Git e tente novamente", false)
 	}
 	root := filepath.Join(canonical(parent), name)
 	rootExisted := pathExists(root)
@@ -290,7 +291,7 @@ func initWithClonedSource(parent, name string, request SourceInitRequest, defini
 		if rollbackErr := rollbackInitializedWorkspace(result, rootExisted); rollbackErr != nil {
 			err = fmt.Errorf("%w; falha no rollback: %v", err, rollbackErr)
 		}
-		return Result{}, sourceInitFailure("não foi possível registrar a tentativa de clone", "verifique as permissões de knowledge/runs", false)
+		return Result{}, sourceInitFailure("source-clone-audit-failed", "não foi possível registrar a tentativa de clone", "verifique as permissões de knowledge/runs", false)
 	}
 	result.AuditPath = auditPath
 	staging, err := os.MkdirTemp(root, ".source-clone-")
@@ -421,12 +422,12 @@ func pathExists(path string) bool {
 	return err == nil
 }
 
-func sourceInitFailure(cause, correction string, incomplete bool) SourceInitFailure {
-	return SourceInitFailure{Cause: cause, Correction: correction, Incomplete: incomplete}
+func sourceInitFailure(code, cause, correction string, incomplete bool) SourceInitFailure {
+	return SourceInitFailure{Code: code, Cause: cause, Correction: correction, Incomplete: incomplete}
 }
 
 func incompleteCloneFailure() SourceInitFailure {
-	return sourceInitFailure("não foi possível concluir o clone do source", "inspecione knowledge/runs/source-clone.json e associe um source válido ou remova o workspace incompleto antes de repetir o init", true)
+	return sourceInitFailure("source-clone-incomplete", "não foi possível concluir o clone do source", "inspecione knowledge/runs/source-clone.json e associe um source válido ou remova o workspace incompleto antes de repetir o init", true)
 }
 
 func ValidateName(name string) error {

@@ -4,8 +4,8 @@
 
 [Primeros pasos](getting-started.md) · [Solución de problemas](troubleshooting.md)
 
-Los mensajes de la CLI se muestran actualmente en portugués. Ejecuta `cerne <comando> --help` para
-consultar el contrato completo implementado por tu versión instalada.
+La CLI admite inglés y portugués de Brasil para los mensajes dirigidos a personas. Ejecuta
+`cerne <comando> --help` para consultar el contrato completo implementado por tu versión instalada.
 
 <!-- AUTO-GENERATED: mantener sincronizado con cmd/cerne/main.go y los contratos de la CLI. -->
 
@@ -13,6 +13,26 @@ consultar el contrato completo implementado por tu versión instalada.
 
 - `cerne --help` muestra los comandos disponibles y las opciones globales.
 - `cerne --version` muestra la versión instalada como identificador SemVer estable.
+- `cerne --lang <en|pt-BR> ...` selecciona el idioma para una sola ejecución sin guardarlo.
+
+`CERNE_LANG` ofrece la misma sustitución temporal. La precedencia es `--lang`, `CERNE_LANG`, la
+preferencia guardada y, por último, `pt-BR`. El valor predeterminado actual sigue siendo `pt-BR`
+por compatibilidad y cambiará a `en` en la versión 1.0. La selección solo modifica mensajes para
+personas; comandos, flags, campos JSON, identificadores, códigos de salida y `--version` permanecen
+estables.
+
+## `cerne config <set language <en|pt-BR>|get language|unset language>`
+
+Administra la preferencia de idioma del usuario actual en `~/.cerne/config.json`. `set` guarda un
+idioma compatible, `get` muestra el valor guardado y `unset` elimina la preferencia para volver al
+valor predeterminado de compatibilidad. Para reparar una configuración normal inválida, usa una
+selección temporal, por ejemplo:
+
+```sh
+cerne --lang en config set language en
+```
+
+Cerne rechaza enlaces simbólicos y rutas de configuración inseguras en lugar de seguirlos.
 
 ## `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--agent ...]]`
 
