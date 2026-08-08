@@ -5,6 +5,8 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+## 0.8.0 - 2026-08-08
+
 ### Added
 
 - English and Brazilian Portuguese human-readable CLI output, selectable for one invocation with
