@@ -28,6 +28,7 @@ type RestoreResult struct {
 }
 
 type RestoreFailure struct {
+	Code       string
 	Cause      string
 	Correction string
 }
@@ -66,10 +67,10 @@ func Restore(parent, home string, request RestoreRequest, inspect LinkGitInspect
 	parent = canonical(parent)
 	if request.KnowledgeOrigin == "" || request.SourceInput == "" || clone == nil || inspect == nil ||
 		request.SourceMode != SourceClone && request.SourceMode != SourceLocal {
-		return result, restoreFailure("restauração indisponível", "instale o Git e informe uma origem e um source válidos")
+		return result, restoreFailure("restore-unavailable", "restauração indisponível", "instale o Git e informe uma origem e um source válidos")
 	}
 	if err := regularDir(parent); err != nil {
-		return result, restoreFailure("destino da restauração é inválido", "execute o comando em um diretório regular e acessível")
+		return result, restoreFailure("destination-invalid", "destino da restauração é inválido", "execute o comando em um diretório regular e acessível")
 	}
 
 	localSource := ""
@@ -82,7 +83,7 @@ func Restore(parent, home string, request RestoreRequest, inspect LinkGitInspect
 
 	audit, attempt, err := startRestoreAudit(home, request.SourceMode)
 	if err != nil {
-		return result, restoreFailure("não foi possível registrar a tentativa de restauração", "verifique a segurança e as permissões de ~/.cerne/audit")
+		return result, restoreFailure("audit-start-failed", "não foi possível registrar a tentativa de restauração", "verifique a segurança e as permissões de ~/.cerne/audit")
 	}
 	result.AuditPath = audit.path
 	defer audit.root.Close()
@@ -113,7 +114,7 @@ func Restore(parent, home string, request RestoreRequest, inspect LinkGitInspect
 			cause = "restauração falhou e a limpeza não pôde ser confirmada"
 			correction = "preserve o alvo concorrente e inspecione ~/.cerne/audit antes de agir manualmente"
 		}
-		return result, restoreFailure(cause, correction)
+		return result, restoreFailure(category, cause, correction)
 	}
 
 	staging, err = os.MkdirTemp(parent, ".cerne-restore-")
@@ -302,12 +303,12 @@ func portableRestoreSource(source string) (string, error) {
 func resolveRestoreLocalSource(parent, home, input string) (string, error) {
 	source, err := resolveLinkPath(parent, input)
 	if err != nil {
-		return "", restoreFailure("source local inválido", "informe a raiz de um repositório Git local existente")
+		return "", restoreFailure("source-local-invalid", "source local inválido", "informe a raiz de um repositório Git local existente")
 	}
 	auditRoot := filepath.Join(canonical(home), ".cerne")
 	if samePath(source, parent) || containsPath(source, parent) || containsPath(parent, source) ||
 		samePath(source, auditRoot) || containsPath(source, auditRoot) || containsPath(auditRoot, source) {
-		return "", restoreFailure("source local sobrepõe área protegida", "use um repositório fora do destino e de ~/.cerne")
+		return "", restoreFailure("source-overlaps-protected-area", "source local sobrepõe área protegida", "use um repositório fora do destino e de ~/.cerne")
 	}
 	return source, nil
 }
@@ -463,6 +464,6 @@ func restorePathIdentity(path string) (os.FileInfo, error) {
 	return file.Stat()
 }
 
-func restoreFailure(cause, correction string) RestoreFailure {
-	return RestoreFailure{Cause: cause, Correction: correction}
+func restoreFailure(code, cause, correction string) RestoreFailure {
+	return RestoreFailure{Code: code, Cause: cause, Correction: correction}
 }

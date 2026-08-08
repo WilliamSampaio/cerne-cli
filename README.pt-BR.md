@@ -67,6 +67,21 @@ go build -o cerne ./cmd/cerne
 
 No Windows, o binário gerado é `cerne.exe`.
 
+## Idioma
+
+As mensagens do CLI estão disponíveis em inglês e português do Brasil. Salve uma preferência ou
+substitua-a somente em uma execução:
+
+```sh
+cerne config set language pt-BR
+cerne --lang en doctor
+CERNE_LANG=en cerne status
+```
+
+A precedência é `--lang`, `CERNE_LANG`, preferência salva e, por fim, `pt-BR`. O padrão atual
+permanece `pt-BR` por compatibilidade e mudará para `en` na versão 1.0. Saídas estruturadas,
+comandos, flags, identificadores, códigos de saída e a versão são neutros quanto ao idioma.
+
 ## Início rápido
 
 ### 1. Crie um workspace

@@ -50,6 +50,7 @@ type WorkflowResult struct {
 }
 
 type WorkflowFailure struct {
+	Code       string
 	Cause      string
 	Correction string
 }
@@ -99,23 +100,23 @@ func SetupWorkflow(start string, resolve WorkflowResolver) (WorkflowResult, erro
 func SetupWorkflowWithAgent(start string, resolve WorkflowResolver, agent string) (WorkflowResult, error) {
 	root, manifestPath, err := locateWorkspace(start)
 	if err != nil {
-		return WorkflowResult{}, workflowFailure("workspace Cerne não localizado", "execute o comando dentro de um workspace Cerne")
+		return WorkflowResult{}, workflowFailure("workspace-not-found", "workspace Cerne não localizado", "execute o comando dentro de um workspace Cerne")
 	}
 	data, err := readManifest(manifestPath)
 	if err != nil || data.VersionErr != nil || data.WorkflowErr != nil {
-		return WorkflowResult{}, workflowFailure("manifesto ausente ou inválido", "corrija ou restaure knowledge/cerne.json")
+		return WorkflowResult{}, workflowFailure("manifest-invalid", "manifesto ausente ou inválido", "corrija ou restaure knowledge/cerne.json")
 	}
 	if !data.WorkflowDeclared {
-		return WorkflowResult{}, workflowFailure("workflow não configurado no manifesto", "crie um novo workspace com \"cerne init <project-name> --workflow <speckit|openspec>\"")
+		return WorkflowResult{}, workflowFailure("workflow-not-configured", "workflow não configurado no manifesto", "crie um novo workspace com \"cerne init <project-name> --workflow <speckit|openspec>\"")
 	}
 	knowledge := filepath.Join(root, "knowledge")
 	source, sourceErr := validateSourcePath(knowledge, data.Source)
 	if regularDir(knowledge) != nil || sourceErr != nil || regularDir(source) != nil || samePath(knowledge, source) || containsPath(knowledge, source) || containsPath(source, knowledge) {
-		return WorkflowResult{}, workflowFailure("workspace Cerne inválido", "execute cerne doctor e corrija o workspace antes do setup")
+		return WorkflowResult{}, workflowFailure("workspace-invalid", "workspace Cerne inválido", "execute cerne doctor e corrija o workspace antes do setup")
 	}
 	definition, err := resolve(data.WorkflowProvider)
 	if err != nil {
-		return WorkflowResult{}, workflowFailure("workflow declarado não é suportado", "use speckit ou openspec em um novo workspace")
+		return WorkflowResult{}, workflowFailure("workflow-unsupported", "workflow declarado não é suportado", "use speckit ou openspec em um novo workspace")
 	}
 	result, err := applyWorkflow(knowledge, definition, "setup", "workflow setup", agent)
 	result.ProjectName = data.Name
@@ -126,15 +127,15 @@ func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, a
 	result := WorkflowResult{KnowledgePath: canonical(knowledge), Provider: definition.Provider, Executor: definition.Executor}
 	root, marker, err := workflowPaths(knowledge, definition)
 	if err != nil {
-		return result, workflowFailure("definição de workflow inválida", "atualize o Cerne e tente novamente")
+		return result, workflowFailure("workflow-definition-invalid", "definição de workflow inválida", "atualize o Cerne e tente novamente")
 	}
 	state, err := workflowLayout(root, marker)
 	if err != nil {
-		return result, workflowFailure("estrutura do workflow inválida ou parcial", "resolva manualmente a estrutura parcial antes de tentar novamente")
+		return result, workflowFailure("workflow-layout-invalid", "estrutura do workflow inválida ou parcial", "resolva manualmente a estrutura parcial antes de tentar novamente")
 	}
 	if state == WorkflowUnchanged {
 		if !workflowSpecsValid(knowledge, root, definition) {
-			return result, workflowFailure("estrutura do workflow inválida ou parcial", "restaure o diretório canônico de especificações")
+			return result, workflowFailure("workflow-specs-missing", "estrutura do workflow inválida ou parcial", "restaure o diretório canônico de especificações")
 		}
 		result.State = WorkflowUnchanged
 		return applyAgentDiscovery(result, knowledge, definition, agent)
@@ -146,7 +147,7 @@ func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, a
 
 	auditPath, attempt, err := startWorkflowAudit(knowledge, definition, operation, authorization)
 	if err != nil {
-		return result, workflowFailure("não foi possível registrar a tentativa de workflow", "verifique as permissões de knowledge/runs")
+		return result, workflowFailure("workflow-audit-start-failed", "não foi possível registrar a tentativa de workflow", "verifique as permissões de knowledge/runs")
 	}
 	result.AuditPath = auditPath
 	fail := func(category, cause, correction string) (WorkflowResult, error) {
@@ -158,11 +159,11 @@ func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, a
 		}
 		if err := finishWorkflowAudit(auditPath, attempt, "failed", category); err != nil {
 			if cleanupErr != nil {
-				return result, workflowFailure("auditoria e limpeza do workflow falharam", "remova manualmente a raiz parcial do provider e verifique knowledge/runs")
+				return result, workflowFailure("workflow-cleanup-failed", "auditoria e limpeza do workflow falharam", "remova manualmente a raiz parcial do provider e verifique knowledge/runs")
 			}
-			return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
+			return result, workflowFailure("workflow-audit-finalization-failed", "não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 		}
-		return result, workflowFailure(cause, correction)
+		return result, workflowFailure(category, cause, correction)
 	}
 
 	if err := definition.Setup(canonical(knowledge)); err != nil {
@@ -174,9 +175,9 @@ func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, a
 	}
 	if err := finishWorkflowAudit(auditPath, attempt, "succeeded", ""); err != nil {
 		if cleanupErr := os.RemoveAll(root); cleanupErr != nil {
-			return result, workflowFailure("auditoria e limpeza do workflow falharam", "remova manualmente a raiz parcial do provider e verifique knowledge/runs")
+			return result, workflowFailure("workflow-cleanup-failed", "auditoria e limpeza do workflow falharam", "remova manualmente a raiz parcial do provider e verifique knowledge/runs")
 		}
-		return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
+		return result, workflowFailure("workflow-audit-finalization-failed", "não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 	}
 	result.State = WorkflowConfigured
 	return applyAgentDiscovery(result, knowledge, definition, agent)
@@ -189,7 +190,7 @@ func applyAgentDiscovery(result WorkflowResult, knowledge string, definition Wor
 	result.Agent = agent
 	target, ok := definition.Agents[agent]
 	if !ok || target.Name != agent || target.DiscoveryRoot == "" {
-		return result, workflowFailure("agente não suportado para o workflow", "use --agent codex ou --agent claude com workflow speckit")
+		return result, workflowFailure("agent-unsupported", "agente não suportado para o workflow", "use --agent codex ou --agent claude com workflow speckit")
 	}
 	if !definition.Available || target.Setup == nil {
 		result.State = WorkflowPending
@@ -198,28 +199,28 @@ func applyAgentDiscovery(result WorkflowResult, knowledge string, definition Wor
 	}
 	auditPath, attempt, err := startWorkflowAudit(knowledge, definition, "agent-integration", "--agent "+agent)
 	if err != nil {
-		return result, workflowFailure("não foi possível registrar a tentativa de workflow", "verifique as permissões de knowledge/runs")
+		return result, workflowFailure("workflow-audit-start-failed", "não foi possível registrar a tentativa de workflow", "verifique as permissões de knowledge/runs")
 	}
 	result.AuditPath = auditPath
 	if err := target.Setup(canonical(knowledge)); err != nil {
 		if auditErr := finishWorkflowAudit(auditPath, attempt, "failed", "agent-integration-failed"); auditErr != nil {
-			return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
+			return result, workflowFailure("workflow-audit-finalization-failed", "não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 		}
-		return result, workflowFailure("integração do agente não concluiu", "corrija ou atualize o provider e tente novamente")
+		return result, workflowFailure("agent-integration-failed", "integração do agente não concluiu", "corrija ou atualize o provider e tente novamente")
 	}
 	integrationRoot, err := findAgentIntegrationRoot(knowledge, target)
 	if err != nil {
 		if auditErr := finishWorkflowAudit(auditPath, attempt, "failed", "agent-layout-invalid"); auditErr != nil {
-			return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
+			return result, workflowFailure("workflow-audit-finalization-failed", "não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 		}
-		return result, workflowFailure("integração do agente incompleta", "instale uma versão compatível do provider e tente novamente")
+		return result, workflowFailure("agent-integration-incomplete", "integração do agente incompleta", "instale uma versão compatível do provider e tente novamente")
 	}
 	if err := finishWorkflowAudit(auditPath, attempt, "succeeded", ""); err != nil {
-		return result, workflowFailure("não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
+		return result, workflowFailure("workflow-audit-finalization-failed", "não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 	}
 	if err := createAgentBridge(filepath.Dir(knowledge), target, integrationRoot); err != nil {
 		result.Discovery = WorkflowDiscoveryNotCreated
-		return result, workflowFailure("não foi possível preparar descoberta local do agente", "verifique permissões e artefatos de agente na raiz do workspace")
+		return result, workflowFailure("agent-discovery-failed", "não foi possível preparar descoberta local do agente", "verifique permissões e artefatos de agente na raiz do workspace")
 	}
 	result.Discovery = WorkflowDiscoveryReady
 	return result, nil
@@ -459,6 +460,6 @@ func writeAttempt(file *os.File, attempt workflowAttempt) error {
 	return file.Sync()
 }
 
-func workflowFailure(cause, correction string) WorkflowFailure {
-	return WorkflowFailure{Cause: cause, Correction: correction}
+func workflowFailure(code, cause, correction string) WorkflowFailure {
+	return WorkflowFailure{Code: code, Cause: cause, Correction: correction}
 }
