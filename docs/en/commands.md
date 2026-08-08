@@ -2,7 +2,7 @@
 
 **English** · [Português (Brasil)](../pt-BR/commands.md) · [Español](../es/commands.md)
 
-[Getting started](getting-started.md)
+[Getting started](getting-started.md) · [Troubleshooting](troubleshooting.md)
 
 The CLI output is currently in Portuguese. Run `cerne <command> --help` for the complete contract
 implemented by your installed version.

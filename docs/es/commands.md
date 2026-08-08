@@ -2,7 +2,7 @@
 
 [English](../en/commands.md) · [Português (Brasil)](../pt-BR/commands.md) · **Español**
 
-[Primeros pasos](getting-started.md)
+[Primeros pasos](getting-started.md) · [Solución de problemas](troubleshooting.md)
 
 Los mensajes de la CLI se muestran actualmente en portugués. Ejecuta `cerne <comando> --help` para
 consultar el contrato completo implementado por tu versión instalada.

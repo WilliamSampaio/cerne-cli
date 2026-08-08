@@ -2,7 +2,7 @@
 
 [English](../en/commands.md) · **Português (Brasil)** · [Español](../es/commands.md)
 
-[Começando](getting-started.md)
+[Começando](getting-started.md) · [Solução de problemas](troubleshooting.md)
 
 Execute `cerne <comando> --help` para consultar o contrato completo implementado pela sua versão
 instalada.
