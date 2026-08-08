@@ -66,7 +66,7 @@ cerne restore git@host:org/knowledge.git --source ../source-existente
 
 Instala explicitamente a skill oficial `cerne-context` no perfil do usuário atual:
 `~/.codex/skills/cerne-context` para Codex ou `~/.claude/skills/cerne-context` para Claude. O
-comando usa somente o pacote companheiro local `cerne-skills`, sem rede, valida manifesto,
+comando usa o pacote oficial `cerne-skills` incorporado ao binário, sem rede, valida manifesto,
 adaptador e schema `cerne.context.v1` antes de copiar e registra auditoria privada em
 `~/.cerne/audit`.
 

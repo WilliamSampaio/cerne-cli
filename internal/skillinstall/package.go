@@ -40,24 +40,24 @@ type manifestSkill struct {
 func LoadPackage(root, agent string) (Package, error) {
 	data, err := os.ReadFile(filepath.Join(root, manifestFile))
 	if err != nil {
-		return Package{}, failure("package-unavailable", "pacote oficial cerne-skills ausente ou inacessível", "instale uma distribuição do Cerne com o pacote cerne-skills compatível")
+		return Package{}, failure("package-unavailable", "pacote oficial cerne-skills incorporado está inacessível", "verifique o diretório temporário e reinstale o Cerne")
 	}
 	var doc manifest
 	if err := json.Unmarshal(data, &doc); err != nil {
-		return Package{}, failure("manifest-invalid", "manifesto do pacote cerne-skills inválido", "instale uma versão compatível do pacote cerne-skills")
+		return Package{}, failure("manifest-invalid", "manifesto do pacote cerne-skills inválido", "reinstale o Cerne")
 	}
 	if doc.SchemaVersion != 1 || doc.Name != PackageName || !validSemver(doc.Version) {
-		return Package{}, failure("manifest-incompatible", "manifesto do pacote cerne-skills incompatível", "instale uma versão compatível do pacote cerne-skills")
+		return Package{}, failure("manifest-incompatible", "manifesto do pacote cerne-skills incompatível", "atualize ou reinstale o Cerne")
 	}
 	for _, skill := range doc.Skills {
 		if skill.ID != SkillName {
 			continue
 		}
 		if skill.Source == "" || skill.Requires.ContextSchema != "cerne.context.v1" {
-			return Package{}, failure("manifest-incompatible", "skill cerne-context incompatível", "instale uma versão compatível do pacote cerne-skills")
+			return Package{}, failure("manifest-incompatible", "skill cerne-context incompatível", "atualize ou reinstale o Cerne")
 		}
 		if _, ok := skill.Adapters[agent]; !ok {
-			return Package{}, failure("adapter-missing", "adaptador do agente ausente no pacote cerne-skills", "instale uma versão do pacote que suporte codex e claude")
+			return Package{}, failure("adapter-missing", "adaptador do agente ausente no pacote cerne-skills", "atualize ou reinstale o Cerne")
 		}
 		files, err := safeWalk(root, skill.Source)
 		if err != nil {
@@ -65,12 +65,12 @@ func LoadPackage(root, agent string) (Package, error) {
 		}
 		return Package{Root: root, Version: doc.Version, Skill: filepath.Clean(skill.Source), Files: files}, nil
 	}
-	return Package{}, failure("skill-missing", "skill cerne-context ausente no pacote cerne-skills", "instale uma versão compatível do pacote cerne-skills")
+	return Package{}, failure("skill-missing", "skill cerne-context ausente no pacote cerne-skills", "atualize ou reinstale o Cerne")
 }
 
 func safeWalk(root, relative string) ([]string, error) {
 	if unsafeRelative(relative) {
-		return nil, failure("unsafe-package", "pacote cerne-skills contém caminho inseguro", "reinstale o pacote oficial cerne-skills")
+		return nil, failure("unsafe-package", "pacote cerne-skills contém caminho inseguro", "reinstale o Cerne")
 	}
 	sourceRoot := filepath.Join(root, filepath.Clean(relative))
 	var files []string
@@ -99,7 +99,7 @@ func safeWalk(root, relative string) ([]string, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, failure("unsafe-package", "pacote cerne-skills contém entradas inseguras", "reinstale o pacote oficial cerne-skills")
+		return nil, failure("unsafe-package", "pacote cerne-skills contém entradas inseguras", "reinstale o Cerne")
 	}
 	return files, nil
 }

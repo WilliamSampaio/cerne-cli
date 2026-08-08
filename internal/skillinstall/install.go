@@ -102,10 +102,11 @@ func Install(agent string, options Options) (Result, error) {
 
 	packageDir := options.PackageDir
 	if packageDir == "" {
-		packageDir, err = DefaultPackageDir()
+		packageDir, err = materializeEmbeddedPackage()
 		if err != nil {
-			return fail(failure("package-unavailable", "pacote oficial cerne-skills ausente ou inacessível", "instale uma distribuição do Cerne com o pacote cerne-skills compatível"))
+			return fail(failure("package-unavailable", "pacote oficial cerne-skills incorporado está inacessível", "verifique o diretório temporário e reinstale o Cerne"))
 		}
+		defer os.RemoveAll(packageDir)
 	}
 	pkg, err := LoadPackage(packageDir, agent)
 	if err != nil {
@@ -164,7 +165,7 @@ func stagePackage(pkg Package, destination, agent string) (string, error) {
 	for _, rel := range pkg.Files {
 		if unsafeRelative(rel) {
 			os.RemoveAll(staging)
-			return "", failure("unsafe-package", "pacote cerne-skills contém caminho inseguro", "reinstale o pacote oficial cerne-skills")
+			return "", failure("unsafe-package", "pacote cerne-skills contém caminho inseguro", "reinstale o Cerne")
 		}
 		src := filepath.Join(pkg.Root, pkg.Skill, rel)
 		dst := filepath.Join(staging, rel)
@@ -306,7 +307,7 @@ func fileSet(files []string) map[string]bool {
 func copyFile(source, destination string) error {
 	src, err := os.Open(source)
 	if err != nil {
-		return failure("unsafe-package", "pacote cerne-skills contém arquivo inacessível", "reinstale o pacote oficial cerne-skills")
+		return failure("unsafe-package", "pacote cerne-skills contém arquivo inacessível", "reinstale o Cerne")
 	}
 	defer src.Close()
 	dst, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)

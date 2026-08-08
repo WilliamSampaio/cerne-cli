@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cerne Context"
+  short_description: "Load Cerne workspace context safely"
+  default_prompt: "Use $cerne-context before changing a Cerne workspace."

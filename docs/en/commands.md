@@ -65,9 +65,9 @@ cerne restore git@host:org/knowledge.git --source ../existing-source
 
 Explicitly installs the official `cerne-context` skill in the current user's agent profile:
 `~/.codex/skills/cerne-context` for Codex or `~/.claude/skills/cerne-context` for Claude. The
-command uses only the local companion `cerne-skills` package, without network access, validates the
-manifest, adapter, and `cerne.context.v1` schema before copying, and writes a private audit record
-under `~/.cerne/audit`.
+command uses the official `cerne-skills` package embedded in the binary, without network access,
+validates the manifest, adapter, and `cerne.context.v1` schema before copying, and writes a private
+audit record under `~/.cerne/audit`.
 
 Invalid usage, including `generic`, case variants, missing agents, or extra arguments, returns
 status `2` without audit or filesystem mutation. Operational failures return stderr/status `1`.
