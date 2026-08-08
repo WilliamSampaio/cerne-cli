@@ -28,6 +28,7 @@ const (
 
 type CheckResult struct {
 	ID         string
+	Code       string
 	Label      string
 	Severity   Severity
 	Detail     string
@@ -190,66 +191,66 @@ func decodeString(raw map[string]json.RawMessage, key string, target *string) er
 
 func manifestCheck(root string, data manifest, err error) CheckResult {
 	if err != nil {
-		return check("manifest", "Manifesto", Error, "inválido ou ilegível", "corrija knowledge/cerne.json")
+		return check("manifest", "invalid", "Manifesto", Error, "inválido ou ilegível", "corrija knowledge/cerne.json")
 	}
 	if data.Name != filepath.Base(root) {
-		return check("manifest", "Manifesto", Warning, "name válido difere do nome da raiz", "alinhe o manifesto ou renomeie o workspace")
+		return check("manifest", "name-mismatch", "Manifesto", Warning, "name válido difere do nome da raiz", "alinhe o manifesto ou renomeie o workspace")
 	}
-	return check("manifest", "Manifesto", Pass, "legível", "")
+	return check("manifest", "readable", "Manifesto", Pass, "legível", "")
 }
 
 func dirCheck(id, label string, ok bool) CheckResult {
 	if !ok {
-		return check(id, label, Error, "não encontrado como diretório regular", "crie ou restaure o diretório esperado")
+		return check(id, "missing", label, Error, "não encontrado como diretório regular", "crie ou restaure o diretório esperado")
 	}
-	return check(id, label, Pass, "encontrado", "")
+	return check(id, "found", label, Pass, "encontrado", "")
 }
 
 func gitIndependenceCheck(inspect GitInspect, knowledge, source string, k RepositoryFacts, s RepositoryFacts, kerr, serr error) CheckResult {
 	if inspect == nil {
-		return check("git-independence", "Independência Git", Error, "Git indisponível", "instale o Git e disponibilize-o no PATH")
+		return check("git-independence", "git-unavailable", "Independência Git", Error, "Git indisponível", "instale o Git e disponibilize-o no PATH")
 	}
 	if kerr != nil || serr != nil || !samePath(k.WorktreeRoot, knowledge) || !samePath(s.WorktreeRoot, source) {
-		return check("git-independence", "Independência Git", Error, "raízes Git próprias não confirmadas", "inicialize knowledge e source como repositórios Git independentes")
+		return check("git-independence", "roots-unconfirmed", "Independência Git", Error, "raízes Git próprias não confirmadas", "inicialize knowledge e source como repositórios Git independentes")
 	}
 	if samePath(k.CommonDir, s.CommonDir) {
-		return check("git-independence", "Independência Git", Error, "histórico Git compartilhado", "use repositórios Git independentes")
+		return check("git-independence", "history-shared", "Independência Git", Error, "histórico Git compartilhado", "use repositórios Git independentes")
 	}
-	return check("git-independence", "Independência Git", Pass, "raízes e históricos distintos", "")
+	return check("git-independence", "independent", "Independência Git", Pass, "raízes e históricos distintos", "")
 }
 
 func versioningIsolationCheck(inspect GitInspect, knowledge, source string, k RepositoryFacts, s RepositoryFacts, kerr, serr error) CheckResult {
 	if inspect == nil {
-		return check("versioning-isolation", "Isolamento de versionamento", Error, "Git indisponível", "instale o Git e disponibilize-o no PATH")
+		return check("versioning-isolation", "git-unavailable", "Isolamento de versionamento", Error, "Git indisponível", "instale o Git e disponibilize-o no PATH")
 	}
 	if containsPath(knowledge, source) || containsPath(source, knowledge) {
-		return check("versioning-isolation", "Isolamento de versionamento", Error, "um repositório contém o outro", "mantenha knowledge e source como diretórios irmãos")
+		return check("versioning-isolation", "repository-contained", "Isolamento de versionamento", Error, "um repositório contém o outro", "mantenha knowledge e source como diretórios irmãos")
 	}
 	if kerr != nil || serr != nil {
-		return check("versioning-isolation", "Isolamento de versionamento", Error, "limites Git não confirmados", "corrija os repositórios Git locais")
+		return check("versioning-isolation", "boundaries-unconfirmed", "Isolamento de versionamento", Error, "limites Git não confirmados", "corrija os repositórios Git locais")
 	}
 	if containsPath(k.WorktreeRoot, s.WorktreeRoot) || containsPath(s.WorktreeRoot, k.WorktreeRoot) {
-		return check("versioning-isolation", "Isolamento de versionamento", Error, "um worktree contém o outro", "separe os repositórios Git")
+		return check("versioning-isolation", "worktree-contained", "Isolamento de versionamento", Error, "um worktree contém o outro", "separe os repositórios Git")
 	}
-	return check("versioning-isolation", "Isolamento de versionamento", Pass, "nenhum repositório contém o outro", "")
+	return check("versioning-isolation", "isolated", "Isolamento de versionamento", Pass, "nenhum repositório contém o outro", "")
 }
 
 func manifestPathsCheck(manifestErr, sourceErr error, sourceOK bool) CheckResult {
 	if manifestErr != nil {
-		return check("manifest-paths", "Caminhos do manifesto", Error, "manifesto inválido impede resolver caminhos", "corrija knowledge/cerne.json")
+		return check("manifest-paths", "manifest-invalid", "Caminhos do manifesto", Error, "manifesto inválido impede resolver caminhos", "corrija knowledge/cerne.json")
 	}
 	if sourceErr != nil {
-		return check("manifest-paths", "Caminhos do manifesto", Error, "source inválido", "configure um caminho source existente e seguro")
+		return check("manifest-paths", "source-invalid", "Caminhos do manifesto", Error, "source inválido", "configure um caminho source existente e seguro")
 	}
 	if !sourceOK {
-		return check("manifest-paths", "Caminhos do manifesto", Error, "source não existe como diretório regular", "restaure o diretório de código-fonte")
+		return check("manifest-paths", "source-missing", "Caminhos do manifesto", Error, "source não existe como diretório regular", "restaure o diretório de código-fonte")
 	}
-	return check("manifest-paths", "Caminhos do manifesto", Pass, "válidos", "")
+	return check("manifest-paths", "valid", "Caminhos do manifesto", Pass, "válidos", "")
 }
 
 func knowledgeDirectoriesCheck(knowledge string, knowledgeOK, workflowDeclared bool) CheckResult {
 	if !knowledgeOK {
-		return check("knowledge-directories", "Diretórios obrigatórios", Error, "knowledge indisponível", "restaure o repositório de conhecimento")
+		return check("knowledge-directories", "knowledge-unavailable", "Diretórios obrigatórios", Error, "knowledge indisponível", "restaure o repositório de conhecimento")
 	}
 	directories := commonKnowledgeDirectories(knowledge)
 	if !workflowDeclared {
@@ -257,59 +258,59 @@ func knowledgeDirectoriesCheck(knowledge string, knowledgeOK, workflowDeclared b
 	}
 	for _, dir := range directories {
 		if err := regularDir(dir); err != nil {
-			return check("knowledge-directories", "Diretórios obrigatórios", Error, "diretório obrigatório ausente ou inválido", "restaure product, specs, decisions, policies e runs")
+			return check("knowledge-directories", "required-missing", "Diretórios obrigatórios", Error, "diretório obrigatório ausente ou inválido", "restaure product, specs, decisions, policies e runs")
 		}
 	}
 	if workflowDeclared {
-		return check("knowledge-directories", "Diretórios obrigatórios", Pass, "product, decisions, policies e runs encontrados", "")
+		return check("knowledge-directories", "found-without-specs", "Diretórios obrigatórios", Pass, "product, decisions, policies e runs encontrados", "")
 	}
-	return check("knowledge-directories", "Diretórios obrigatórios", Pass, "product, specs, decisions, policies e runs encontrados", "")
+	return check("knowledge-directories", "found", "Diretórios obrigatórios", Pass, "product, specs, decisions, policies e runs encontrados", "")
 }
 
 func workflowCheck(knowledge string, data manifest, resolve WorkflowResolver) CheckResult {
 	if data.WorkflowErr != nil {
-		return check("workflow", "Workflow", Error, "configuração inválida", "corrija o objeto workflow.provider no manifesto")
+		return check("workflow", "config-invalid", "Workflow", Error, "configuração inválida", "corrija o objeto workflow.provider no manifesto")
 	}
 	if resolve == nil {
-		return check("workflow", "Workflow", Error, "provider não pôde ser resolvido", "execute doctor com uma versão atualizada do Cerne")
+		return check("workflow", "resolve-failed", "Workflow", Error, "provider não pôde ser resolvido", "execute doctor com uma versão atualizada do Cerne")
 	}
 	definition, err := resolve(data.WorkflowProvider)
 	if err != nil {
-		return check("workflow", "Workflow", Error, "provider desconhecido", "use speckit ou openspec em um novo workspace")
+		return check("workflow", "unknown-provider", "Workflow", Error, "provider desconhecido", "use speckit ou openspec em um novo workspace")
 	}
 	root, marker, err := workflowPaths(knowledge, definition)
 	if err != nil {
-		return check("workflow", "Workflow", Error, "definição inválida", "atualize o Cerne")
+		return check("workflow", "definition-invalid", "Workflow", Error, "definição inválida", "atualize o Cerne")
 	}
 	state, err := workflowLayout(root, marker)
 	if err != nil {
-		return check("workflow", "Workflow", Error, "estrutura inválida ou parcial", "resolva a estrutura do provider antes de executar setup")
+		return check("workflow", "layout-invalid", "Workflow", Error, "estrutura inválida ou parcial", "resolva a estrutura do provider antes de executar setup")
 	}
 	if state == WorkflowPending {
 		if definition.Available {
-			return check("workflow", "Workflow", Warning, "configurado, mas pendente", "execute cerne workflow setup")
+			return check("workflow", "configured-pending", "Workflow", Warning, "configurado, mas pendente", "execute cerne workflow setup")
 		}
-		return check("workflow", "Workflow", Warning, "executável ausente; workflow pendente", "instale o provider e execute cerne workflow setup")
+		return check("workflow", "executable-missing", "Workflow", Warning, "executável ausente; workflow pendente", "instale o provider e execute cerne workflow setup")
 	}
 	if !workflowSpecsValid(knowledge, root, definition) {
-		return check("workflow", "Workflow", Error, "diretório canônico de especificações ausente", "restaure a estrutura do provider")
+		return check("workflow", "specs-missing", "Workflow", Error, "diretório canônico de especificações ausente", "restaure a estrutura do provider")
 	}
 	if !definition.Available {
-		return check("workflow", "Workflow", Warning, "materializado; executável ausente", "instale o provider para executar comandos do workflow")
+		return check("workflow", "materialized-executable-missing", "Workflow", Warning, "materializado; executável ausente", "instale o provider para executar comandos do workflow")
 	}
-	return check("workflow", "Workflow", Pass, "materializado e disponível", "")
+	return check("workflow", "ready", "Workflow", Pass, "materializado e disponível", "")
 }
 
 func gitAvailableCheck(inspect GitInspect) CheckResult {
 	if inspect == nil {
-		return check("git-available", "Git", Error, "indisponível", "instale o Git e disponibilize-o no PATH")
+		return check("git-available", "unavailable", "Git", Error, "indisponível", "instale o Git e disponibilize-o no PATH")
 	}
-	return check("git-available", "Git", Pass, "disponível", "")
+	return check("git-available", "available", "Git", Pass, "disponível", "")
 }
 
 func permissionsCheck(access AccessCheck, manifestPath, knowledge, source string, knowledgeOK, sourceOK, workflowDeclared bool) CheckResult {
 	if access == nil {
-		return check("permissions", "Permissões", Warning, "não foi possível confirmar permissões", "verifique leitura e escrita manualmente")
+		return check("permissions", "unconfirmed", "Permissões", Warning, "não foi possível confirmar permissões", "verifique leitura e escrita manualmente")
 	}
 	paths := []string{manifestPath}
 	if knowledgeOK {
@@ -327,24 +328,24 @@ func permissionsCheck(access AccessCheck, manifestPath, knowledge, source string
 	for _, path := range paths {
 		result := access(path)
 		if result.Read == AccessDenied || result.Write == AccessDenied {
-			return check("permissions", "Permissões", Error, "leitura ou escrita negada", "ajuste permissões do workspace")
+			return check("permissions", "denied", "Permissões", Error, "leitura ou escrita negada", "ajuste permissões do workspace")
 		}
 		unknown = unknown || result.Read == AccessUnknown || result.Write == AccessUnknown
 	}
 	if unknown {
-		return check("permissions", "Permissões", Warning, "não foi possível confirmar leitura e escrita", "verifique permissões do workspace")
+		return check("permissions", "read-write-unconfirmed", "Permissões", Warning, "não foi possível confirmar leitura e escrita", "verifique permissões do workspace")
 	}
-	return check("permissions", "Permissões", Pass, "leitura e escrita confirmadas", "")
+	return check("permissions", "confirmed", "Permissões", Pass, "leitura e escrita confirmadas", "")
 }
 
 func manifestVersionCheck(state string, err error) CheckResult {
 	if err != nil || state == "invalid" {
-		return check("manifest-version", "Versão do manifesto", Error, "versão não suportada", "use version como inteiro JSON 1 ou remova o campo")
+		return check("manifest-version", "unsupported", "Versão do manifesto", Error, "versão não suportada", "use version como inteiro JSON 1 ou remova o campo")
 	}
 	if state == "explicit" {
-		return check("manifest-version", "Versão do manifesto", Pass, "versão 1 suportada", "")
+		return check("manifest-version", "explicit-v1", "Versão do manifesto", Pass, "versão 1 suportada", "")
 	}
-	return check("manifest-version", "Versão do manifesto", Pass, "versão 1 implícita e suportada", "")
+	return check("manifest-version", "implicit-v1", "Versão do manifesto", Pass, "versão 1 implícita e suportada", "")
 }
 
 func validateSourcePath(knowledge, source string) (string, error) {
@@ -384,8 +385,8 @@ func inspectRepository(inspect GitInspect, path string) (RepositoryFacts, error)
 	return inspect(path)
 }
 
-func check(id, label string, severity Severity, detail, correction string) CheckResult {
-	return CheckResult{ID: id, Label: label, Severity: severity, Detail: detail, Correction: correction}
+func check(id, code, label string, severity Severity, detail, correction string) CheckResult {
+	return CheckResult{ID: id, Code: code, Label: label, Severity: severity, Detail: detail, Correction: correction}
 }
 
 func canonical(path string) string {

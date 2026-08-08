@@ -4,8 +4,8 @@
 
 [Getting started](getting-started.md) · [Troubleshooting](troubleshooting.md)
 
-The CLI output is currently in Portuguese. Run `cerne <command> --help` for the complete contract
-implemented by your installed version.
+Cerne supports English and Brazilian Portuguese for human-readable output. Run
+`cerne <command> --help` for the complete contract implemented by your installed version.
 
 <!-- AUTO-GENERATED: keep synchronized with cmd/cerne/main.go and the CLI contracts. -->
 
@@ -13,6 +13,25 @@ implemented by your installed version.
 
 - `cerne --help` prints the available commands and global options.
 - `cerne --version` prints the installed version as a stable SemVer identifier.
+- `cerne --lang <en|pt-BR> ...` selects the language for one invocation without saving it.
+
+`CERNE_LANG` provides the same temporary override. Language precedence is `--lang`,
+`CERNE_LANG`, the saved preference, then `pt-BR`. The current default remains `pt-BR` for
+compatibility and will change to `en` in 1.0. Language selection changes only human-readable text;
+commands, flags, JSON fields, identifiers, exit statuses, and `--version` remain stable.
+
+## `cerne config <set language <en|pt-BR>|get language|unset language>`
+
+Manages the language preference stored in `~/.cerne/config.json` for the current user.
+`set` persists a supported language, `get` prints the saved value, and `unset` removes the
+preference so the compatibility default applies. Use a temporary override to repair an invalid
+regular configuration, for example:
+
+```sh
+cerne --lang en config set language en
+```
+
+Cerne refuses symbolic links and unsafe configuration paths instead of following them.
 
 ## `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--agent ...]]`
 

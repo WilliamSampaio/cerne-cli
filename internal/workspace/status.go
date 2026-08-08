@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	RepositoryClean   = "limpo"
-	RepositoryPending = "alterações pendentes"
+	RepositoryClean   = "clean"
+	RepositoryPending = "pending"
 )
 
 type GitRepositoryStatus struct {
@@ -40,6 +40,7 @@ type WorkspaceReport struct {
 type GitStatus func(string) (GitRepositoryStatus, error)
 
 type StatusFailure struct {
+	Code       string
 	Cause      string
 	Path       string
 	Correction string
@@ -59,28 +60,28 @@ func CurrentStatus(start string, collect GitStatus) (WorkspaceReport, error) {
 	}
 	data, err := readManifest(manifestPath)
 	if err != nil {
-		return WorkspaceReport{}, statusFailure("manifesto ausente ou inválido", manifestPath, "corrija ou restaure knowledge/cerne.json")
+		return WorkspaceReport{}, statusFailure("manifest-invalid", "manifesto ausente ou inválido", manifestPath, "corrija ou restaure knowledge/cerne.json")
 	}
 	if data.VersionErr != nil {
-		return WorkspaceReport{}, statusFailure("versão do manifesto não suportada", manifestPath, "use version como inteiro JSON 1 ou remova o campo")
+		return WorkspaceReport{}, statusFailure("manifest-version-unsupported", "versão do manifesto não suportada", manifestPath, "use version como inteiro JSON 1 ou remova o campo")
 	}
 	if data.WorkflowErr != nil {
-		return WorkspaceReport{}, statusFailure("workflow inválido no manifesto", manifestPath, "corrija o objeto workflow.provider")
+		return WorkspaceReport{}, statusFailure("workflow-invalid", "workflow inválido no manifesto", manifestPath, "corrija o objeto workflow.provider")
 	}
 
 	knowledge := filepath.Join(root, "knowledge")
 	source, err := validateSourcePath(knowledge, data.Source)
 	if err != nil {
-		return WorkspaceReport{}, statusFailure("caminho source inválido no manifesto", manifestSourcePath(knowledge, data.Source), "configure um caminho source existente e seguro")
+		return WorkspaceReport{}, statusFailure("source-invalid", "caminho source inválido no manifesto", manifestSourcePath(knowledge, data.Source), "configure um caminho source existente e seguro")
 	}
 	if err := regularDir(knowledge); err != nil {
-		return WorkspaceReport{}, statusFailure("repositório de conhecimento não encontrado", knowledge, "restaure o diretório knowledge")
+		return WorkspaceReport{}, statusFailure("knowledge-missing", "repositório de conhecimento não encontrado", knowledge, "restaure o diretório knowledge")
 	}
 	if err := regularDir(source); err != nil {
-		return WorkspaceReport{}, statusFailure("repositório de código-fonte não encontrado", source, "restaure o diretório source")
+		return WorkspaceReport{}, statusFailure("source-missing", "repositório de código-fonte não encontrado", source, "restaure o diretório source")
 	}
 	if collect == nil {
-		return WorkspaceReport{}, statusFailure("Git indisponível", "", "instale o Git e disponibilize-o no PATH")
+		return WorkspaceReport{}, statusFailure("git-unavailable", "Git indisponível", "", "instale o Git e disponibilize-o no PATH")
 	}
 
 	reports := make([]RepositoryReport, 0, 2)
@@ -93,7 +94,7 @@ func CurrentStatus(start string, collect GitStatus) (WorkspaceReport, error) {
 	} {
 		status, err := collect(repository.path)
 		if err != nil {
-			return WorkspaceReport{}, statusFailure("não foi possível consultar o repositório Git", repository.path, "verifique se o diretório é um repositório Git local válido")
+			return WorkspaceReport{}, statusFailure("git-status-failed", "não foi possível consultar o repositório Git", repository.path, "verifique se o diretório é um repositório Git local válido")
 		}
 		reports = append(reports, repositoryReport(repository.name, repository.path, status))
 	}
@@ -103,7 +104,7 @@ func CurrentStatus(start string, collect GitStatus) (WorkspaceReport, error) {
 func locateWorkspace(start string) (string, string, error) {
 	current, err := filepath.Abs(start)
 	if err != nil {
-		return "", "", statusFailure("workspace Cerne não localizado", start, "execute o comando dentro de um workspace Cerne")
+		return "", "", statusFailure("workspace-not-found", "workspace Cerne não localizado", start, "execute o comando dentro de um workspace Cerne")
 	}
 	if info, err := os.Stat(current); err == nil && !info.IsDir() {
 		current = filepath.Dir(current)
@@ -126,9 +127,9 @@ func locateWorkspace(start string) (string, string, error) {
 	}
 	if candidate != "" {
 		path := filepath.Join(candidate, "knowledge", "cerne.json")
-		return "", "", statusFailure("manifesto Cerne ausente", path, "restaure knowledge/cerne.json ou execute em outro workspace")
+		return "", "", statusFailure("manifest-missing", "manifesto Cerne ausente", path, "restaure knowledge/cerne.json ou execute em outro workspace")
 	}
-	return "", "", statusFailure("workspace Cerne não localizado", start, "execute o comando dentro de um workspace Cerne")
+	return "", "", statusFailure("workspace-not-found", "workspace Cerne não localizado", start, "execute o comando dentro de um workspace Cerne")
 }
 
 func looksLikeWorkspace(root string) bool {
@@ -159,9 +160,9 @@ func manifestSourcePath(knowledge, source string) string {
 	return filepath.Join(knowledge, source)
 }
 
-func statusFailure(cause, path, correction string) StatusFailure {
+func statusFailure(code, cause, path, correction string) StatusFailure {
 	if path != "" {
 		path = filepath.Clean(path)
 	}
-	return StatusFailure{Cause: cause, Path: path, Correction: correction}
+	return StatusFailure{Code: code, Cause: cause, Path: path, Correction: correction}
 }

@@ -13,6 +13,25 @@ instalada.
 
 - `cerne --help` exibe os comandos disponíveis e as opções globais.
 - `cerne --version` exibe a versão instalada como identificador SemVer estável.
+- `cerne --lang <en|pt-BR> ...` seleciona o idioma somente naquela execução, sem salvá-lo.
+
+`CERNE_LANG` oferece a mesma substituição temporária. A precedência é `--lang`, `CERNE_LANG`,
+preferência salva e, por fim, `pt-BR`. O padrão atual permanece `pt-BR` por compatibilidade e
+mudará para `en` na versão 1.0. A seleção altera apenas textos destinados a pessoas; comandos,
+flags, campos JSON, identificadores, códigos de saída e `--version` permanecem estáveis.
+
+## `cerne config <set language <en|pt-BR>|get language|unset language>`
+
+Administra a preferência de idioma do usuário atual em `~/.cerne/config.json`. `set` persiste um
+idioma suportado, `get` exibe o valor salvo e `unset` remove a preferência para voltar ao padrão de
+compatibilidade. Para reparar uma configuração regular inválida, use uma seleção temporária, por
+exemplo:
+
+```sh
+cerne --lang pt-BR config set language pt-BR
+```
+
+O Cerne recusa links simbólicos e caminhos de configuração inseguros em vez de segui-los.
 
 ## `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--agent ...]]`
 
