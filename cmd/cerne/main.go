@@ -50,7 +50,8 @@ Exemplos:
 const skillHelp = `Instala skills oficiais do Cerne no perfil do agente.
 
 Uso:
-  cerne skill install <codex|claude>
+  cerne skill install <codex|claude|gemini>
+  cerne skill install <codex|claude|gemini> <cerne-context|cerne-git-workflow>
   cerne skill install --help
   cerne skill --help
 
@@ -61,12 +62,15 @@ Autorização:
 
 Pacote:
   Usa o pacote oficial cerne-skills incorporado ao binário, sem rede. O
-  manifesto, a skill cerne-context, o adaptador do agente e o schema
+  manifesto, a skill solicitada, o adaptador do agente e o schema
   cerne.context.v1 são validados antes de alterar o destino.
 
 Destinos:
   codex:  ~/.codex/skills/cerne-context
   claude: ~/.claude/skills/cerne-context
+  codex:  ~/.codex/skills/cerne-git-workflow
+  claude: ~/.claude/skills/cerne-git-workflow
+  gemini: ~/.gemini/skills/cerne-git-workflow
 
 Saídas:
   Sucesso e ajuda usam stdout. Falhas usam stderr.
@@ -79,7 +83,7 @@ Efeitos:
 
 Exemplos:
   cerne skill install codex
-  cerne skill install claude
+  cerne skill install gemini cerne-git-workflow
 `
 
 const restoreHelp = `Restaura um workspace Cerne a partir de um repositório knowledge.
@@ -379,6 +383,8 @@ func runLocalized(args []string, stdout, stderr io.Writer, messages localizer, h
 		return runContext(args[1:], stdout, stderr, messages)
 	case "skill":
 		return runSkill(args[1:], stdout, stderr, messages)
+	case "git":
+		return runGit(args[1:], stdout, stderr, messages, home)
 	case "config":
 		return runConfig(args[1:], stdout, stderr, messages, home)
 	default:
@@ -466,33 +472,47 @@ func runSkill(args []string, stdout, stderr io.Writer, messages localizer) int {
 		fmt.Fprint(stdout, messages.text(messageSkillHelp))
 		return 0
 	}
-	if len(args) != 2 || args[0] != "install" || !skillinstall.SupportedAgent(args[1]) {
+	if (len(args) != 2 && len(args) != 3) || args[0] != "install" || !skillinstall.SupportedAgent(args[1]) {
 		fmt.Fprint(stderr, messages.text("skill.usage"))
 		return 2
 	}
-	result, err := skillinstall.Install(args[1], skillinstall.Options{})
-	if err != nil {
-		var failure skillinstall.Failure
-		if errors.As(err, &failure) {
-			id := messageID("skill.failure." + failure.Code)
-			if _, ok := messages.find(id); !ok {
-				id = "skill.failure.default"
+	skill := skillinstall.SkillName
+	if len(args) == 3 {
+		skill = args[2]
+	}
+	if len(args) == 3 && (!skillinstall.SupportedSkill(skill) || args[1] == "gemini" && skill == skillinstall.SkillName) {
+		fmt.Fprint(stderr, messages.text("skill.usage"))
+		return 2
+	}
+	skills := []string{skill}
+	if len(args) == 2 {
+		skills = skillinstall.SupportedSkills(args[1])
+	}
+	for _, skill := range skills {
+		result, err := skillinstall.Install(args[1], skillinstall.Options{Skill: skill})
+		if err != nil {
+			var failure skillinstall.Failure
+			if errors.As(err, &failure) {
+				id := messageID("skill.failure." + failure.Code)
+				if _, ok := messages.find(id); !ok {
+					id = "skill.failure.default"
+				}
+				fmt.Fprint(stderr, messages.text(id))
+			} else {
+				fmt.Fprint(stderr, messages.text("skill.failure.default"))
 			}
-			fmt.Fprint(stderr, messages.text(id))
-		} else {
-			fmt.Fprint(stderr, messages.text("skill.failure.default"))
+			return 1
 		}
-		return 1
+		switch result.Outcome {
+		case "already":
+			fmt.Fprint(stdout, messages.text("skill.already", result.Skill))
+		case "upgraded":
+			fmt.Fprint(stdout, messages.text("skill.upgraded", result.Skill))
+		default:
+			fmt.Fprint(stdout, messages.text("skill.installed", result.Skill))
+		}
+		fmt.Fprint(stdout, messages.text("skill.result", result.Agent, result.Version, result.Destination))
 	}
-	switch result.Outcome {
-	case "already":
-		fmt.Fprint(stdout, messages.text("skill.already", skillinstall.SkillName))
-	case "upgraded":
-		fmt.Fprint(stdout, messages.text("skill.upgraded", skillinstall.SkillName))
-	default:
-		fmt.Fprint(stdout, messages.text("skill.installed", skillinstall.SkillName))
-	}
-	fmt.Fprint(stdout, messages.text("skill.result", result.Agent, result.Version, result.Destination))
 	return 0
 }
 

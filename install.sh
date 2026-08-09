@@ -8,7 +8,7 @@ agent=""
 usage() {
 	cat <<'EOF'
 Usage:
-  install.sh [--version <version>] [--agent <codex|claude>]
+  install.sh [--version <version>] [--agent <codex|claude|gemini>]
   install.sh --help
 
 Installs cerne to ~/.local/bin/cerne without sudo.
@@ -40,7 +40,7 @@ while test "$#" -gt 0; do
 			need_value "$@"
 			agent=$2
 			case "$agent" in
-				codex|claude) ;;
+				codex|claude|gemini) ;;
 				*) fail "unsupported agent: $agent" ;;
 			esac
 			shift 2

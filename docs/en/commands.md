@@ -92,18 +92,49 @@ cerne restore ../knowledge.git --clone ../source.git
 cerne restore git@host:org/knowledge.git --source ../existing-source
 ```
 
-## `cerne skill install <codex|claude>`
+## `cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]`
 
-Explicitly installs the official `cerne-context` skill in the current user's agent profile:
-`~/.codex/skills/cerne-context` for Codex or `~/.claude/skills/cerne-context` for Claude. The
-command uses the official `cerne-skills` package embedded in the binary, without network access,
-validates the manifest, adapter, and `cerne.context.v1` schema before copying, and writes a private
-audit record under `~/.cerne/audit`.
+Without a skill argument, installs every compatible official skill for the current user's agent
+profile. Codex and Claude receive `cerne-context` and `cerne-git-workflow`; Gemini receives
+`cerne-git-workflow` only. With a skill argument, installs exactly that skill. Destinations are
+`~/.codex/skills/<skill>`, `~/.claude/skills/<skill>`, or `~/.gemini/skills/cerne-git-workflow`.
+
+The command uses the official `cerne-skills` package embedded in the binary, without network access,
+validates the manifest, adapter, entrypoint, and `cerne.context.v1` schema before copying, and writes
+a private audit record under `~/.cerne/audit` for each installed skill.
 
 Invalid usage, including `generic`, case variants, missing agents, or extra arguments, returns
 status `2` without audit or filesystem mutation. Operational failures return stderr/status `1`.
 Reinstalling the same version is a no-op; different managed versions are upgraded. `init`,
-`restore`, and `workflow setup` never install this skill by implication.
+`restore`, and `workflow setup` never install skills by implication.
+
+## `cerne git inspect|branch|commit|push|pr`
+
+Coordinates the safe Git surface used by `cerne-git-workflow`. Every command is explicit and
+allowlisted; unsupported Git operations such as merge, rebase, reset, stash, clean, amend, branch
+deletion, force push, remote mutation, and PR merge/close are refused.
+
+```sh
+cerne git inspect --agent codex --task task-1 --json
+cerne git branch create --name feat/example --base knowledge=main --base source=main --state <state-id> --confirm --agent codex --task task-1 --json
+cerne git commit source --message "feat: example" --include path/to/file.go --state <state-id> --confirm --agent codex --task task-1 --json
+cerne git push source --remote origin --branch feat/example --state <state-id> --confirm --agent codex --task task-1 --json
+cerne git pr create source --remote origin --base main --head feat/example --title "feat: example" --body-file pr.md --state <state-id> --confirm --agent codex --task task-1 --json
+```
+
+`inspect` is read-only and returns schema version 1 with a deterministic `state_id`, sanitized
+remotes, local branches, changed literal paths, and a private audit id. Every mutation requires
+`--state`, `--confirm`, `--agent`, and `--task`; Cerne reinspects before the effect and blocks stale
+state. Branch creation validates all participants before the first `git switch --create`. Commit
+operates on one repository and only explicit relative changed paths. Push constructs a non-force
+refspec for one local remote and branch. Pull Request creation supports GitHub.com only, reads the
+token from `GH_TOKEN` or `GITHUB_TOKEN`, and never stores credentials.
+
+JSON success returns stdout/status `0`; blocked, failed, or partial reports return stdout/status
+`1`; invalid usage returns stderr/status `2`. Private audit records live under `~/.cerne/audit` and
+exclude conversations, Git output, remote URLs, tokens, file contents, PR body, and raw errors. A
+partial result is truthful: Cerne does not rollback automatically, and the safe next step is a new
+`inspect`.
 
 ## `cerne workflow setup [--agent codex|claude]`
 

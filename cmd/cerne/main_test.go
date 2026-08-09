@@ -33,6 +33,7 @@ Comandos:
   workflow  Inicializa o workflow declarado no workspace
   context   Exibe o contexto estrutural do workspace
   skill     Instala skills Cerne no perfil do agente
+  git       Coordena inspeção Git segura
   config    Administra preferências do usuário
 
 Opções:
@@ -323,39 +324,56 @@ func TestSkillInstallCommand(t *testing.T) {
 
 	t.Run("help", func(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "skill", "--help")
-		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne skill install <codex|claude>") {
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne skill install <codex|claude|gemini>") ||
+			!strings.Contains(stdout, "cerne skill install <codex|claude|gemini> <cerne-context|cerne-git-workflow>") {
 			t.Fatalf("help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		status, stdout, stderr = executeCLI(t, binary, t.TempDir(), nil, "skill", "install", "--help")
-		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne skill install <codex|claude>") {
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne skill install <codex|claude|gemini>") ||
+			!strings.Contains(stdout, "cerne skill install <codex|claude|gemini> <cerne-context|cerne-git-workflow>") {
 			t.Fatalf("install help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 	})
 
-	t.Run("valid agents", func(t *testing.T) {
-		for _, agent := range []string{"codex", "claude"} {
+	t.Run("default installs all supported skills", func(t *testing.T) {
+		for _, agent := range []string{"codex", "claude", "gemini"} {
 			home := t.TempDir()
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), "skill", "install", agent)
-			target := map[string]string{
-				"codex":  filepath.Join(home, ".codex", "skills", "cerne-context"),
-				"claude": filepath.Join(home, ".claude", "skills", "cerne-context"),
-			}[agent]
-			if status != 0 || stderr != "" || !strings.Contains(stdout, "Skill instalada: cerne-context\n") ||
-				!strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Versão: 0.1.0\n") ||
-				!strings.Contains(stdout, "Destino: "+target+"\n") {
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Versão: 0.2.0\n") {
 				t.Fatalf("%s: status=%d stdout=%q stderr=%q", agent, status, stdout, stderr)
 			}
-			if !strings.Contains(readTestFile(t, filepath.Join(target, "SKILL.md")), "name: cerne-context") {
-				t.Fatalf("%s skill não instalada", agent)
+			root := map[string]string{"codex": ".codex", "claude": ".claude", "gemini": ".gemini"}[agent]
+			want := []string{"cerne-git-workflow"}
+			if agent != "gemini" {
+				want = append([]string{"cerne-context"}, want...)
 			}
-			for _, relative := range []string{"agents/openai.yaml", "references/context-contract.md"} {
-				if _, err := os.Stat(filepath.Join(target, filepath.FromSlash(relative))); err != nil {
-					t.Fatalf("%s arquivo incorporado ausente: %s: %v", agent, relative, err)
+			for _, skill := range want {
+				target := filepath.Join(home, root, "skills", skill)
+				if !strings.Contains(stdout, "Skill instalada: "+skill+"\n") || !strings.Contains(stdout, "Destino: "+target+"\n") {
+					t.Fatalf("%s/%s não apareceu no output: %q", agent, skill, stdout)
+				}
+				if !strings.Contains(readTestFile(t, filepath.Join(target, "SKILL.md")), "name: "+skill) {
+					t.Fatalf("%s/%s skill não instalada", agent, skill)
 				}
 			}
-			audits := auditEntries(t, home)
-			if len(audits) != 1 || !strings.Contains(readTestFile(t, filepath.Join(home, ".cerne", "audit", audits[0].Name())), `"status": "succeeded"`) {
-				t.Fatalf("%s audit inválida: %v", agent, audits)
+		}
+	})
+
+	t.Run("named git workflow skill", func(t *testing.T) {
+		for _, agent := range []string{"codex", "claude", "gemini"} {
+			home := t.TempDir()
+			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), "skill", "install", agent, "cerne-git-workflow")
+			target := filepath.Join(home, map[string]string{
+				"codex":  ".codex",
+				"claude": ".claude",
+				"gemini": ".gemini",
+			}[agent], "skills", "cerne-git-workflow")
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Skill instalada: cerne-git-workflow\n") ||
+				!strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Destino: "+target+"\n") {
+				t.Fatalf("%s: status=%d stdout=%q stderr=%q", agent, status, stdout, stderr)
+			}
+			if !strings.Contains(readTestFile(t, filepath.Join(target, "SKILL.md")), "name: cerne-git-workflow") {
+				t.Fatalf("%s git workflow skill não instalada", agent)
 			}
 		}
 	})
@@ -366,10 +384,12 @@ func TestSkillInstallCommand(t *testing.T) {
 			{"skill", "install", "generic"},
 			{"skill", "install", "Codex"},
 			{"skill", "install", "codex", "extra"},
+			{"skill", "install", "gemini", "cerne-context"},
+			{"skill", "install", "codex", "Cerne-Git-Workflow"},
 		} {
 			home := t.TempDir()
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), args...)
-			if status != 2 || stdout != "" || stderr != "erro: argumento inválido\nuso: cerne skill install <codex|claude>\n" {
+			if status != 2 || stdout != "" || stderr != "erro: argumento inválido\nuso: cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]\n" {
 				t.Fatalf("%v: status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
 			}
 			if _, err := os.Stat(filepath.Join(home, ".cerne", "audit")); !os.IsNotExist(err) {

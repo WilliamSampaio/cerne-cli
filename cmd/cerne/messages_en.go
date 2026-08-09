@@ -4,7 +4,8 @@ var englishMessages = map[messageID]string{
 	messageSkillHelp: `Installs official Cerne skills in an agent profile.
 
 Usage:
-  cerne skill install <codex|claude>
+  cerne skill install <codex|claude|gemini>
+  cerne skill install <codex|claude|gemini> <cerne-context|cerne-git-workflow>
   cerne skill install --help
   cerne skill --help
 
@@ -15,12 +16,15 @@ Authorization:
 
 Package:
   Uses the official cerne-skills package embedded in the binary, without network
-  access. The manifest, cerne-context skill, agent adapter, and cerne.context.v1
+  access. The manifest, requested skill, agent adapter, and cerne.context.v1
   schema are validated before the destination is changed.
 
 Destinations:
   codex:  ~/.codex/skills/cerne-context
   claude: ~/.claude/skills/cerne-context
+  codex:  ~/.codex/skills/cerne-git-workflow
+  claude: ~/.claude/skills/cerne-git-workflow
+  gemini: ~/.gemini/skills/cerne-git-workflow
 
 Output:
   Success and help use stdout. Failures use stderr.
@@ -33,7 +37,7 @@ Effects:
 
 Examples:
   cerne skill install codex
-  cerne skill install claude
+  cerne skill install gemini cerne-git-workflow
 `,
 	messageContextHelp: `Shows the verified structural context of a Cerne workspace.
 
@@ -270,6 +274,7 @@ Commands:
   workflow  Initializes the workflow declared by the workspace
   context   Shows the workspace structural context
   skill     Installs Cerne skills in an agent profile
+  git       Coordinates safe Git inspection
   config    Manages user preferences
 
 Options:
@@ -313,7 +318,7 @@ Compatibility:
 	messageConfigInvalid:                                      "error: invalid language configuration\ncorrection: use cerne --lang en config set language <en|pt-BR> to repair it\n",
 	messageConfigWrite:                                        "error: could not update the user configuration\ncorrection: check the permissions of ~/.cerne and try again\n",
 	messageHomeUnavailable:                                    "error: could not locate the home directory\ncorrection: configure an accessible home directory\n",
-	"skill.usage":                                             "error: invalid argument\nusage: cerne skill install <codex|claude>\n",
+	"skill.usage":                                             "error: invalid argument\nusage: cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]\n",
 	"skill.installed":                                         "Installed skill: %s\n",
 	"skill.already":                                           "Skill already installed: %s\n",
 	"skill.upgraded":                                          "Upgraded skill: %s\n",
@@ -328,7 +333,7 @@ Compatibility:
 	"skill.failure.manifest-invalid":                          "error: invalid cerne-skills package manifest\ncorrection: reinstall Cerne\n",
 	"skill.failure.manifest-incompatible":                     "error: incompatible cerne-skills package\ncorrection: update or reinstall Cerne\n",
 	"skill.failure.adapter-missing":                           "error: the agent adapter is missing from cerne-skills\ncorrection: update or reinstall Cerne\n",
-	"skill.failure.skill-missing":                             "error: cerne-context is missing from cerne-skills\ncorrection: update or reinstall Cerne\n",
+	"skill.failure.skill-missing":                             "error: the skill is missing from cerne-skills\ncorrection: use a supported official skill or update Cerne\n",
 	"skill.failure.unsafe-package":                            "error: cerne-skills contains unsafe content\ncorrection: reinstall Cerne\n",
 	"skill.failure.destination-inaccessible":                  "error: the agent destination is inaccessible\ncorrection: check permissions in the agent profile\n",
 	"skill.failure.unknown-destination":                       "error: the existing destination is not managed by Cerne\ncorrection: move the existing content before installing or upgrading\n",
@@ -380,8 +385,16 @@ Compatibility:
 	"context.problem.workflow-invalid.correction":             "repair the layout before continuing",
 	"context.problem.workflow-unknown-provider.detail":        "unsupported provider",
 	"context.problem.workflow-unknown-provider.correction":    "use speckit or openspec in the manifest",
-	"command.missing":                                         "error: provide a command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|config>\n",
-	"command.unknown":                                         "error: unknown command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|config>\n",
+	messageGitHelp:                                            gitHelp,
+	"git.usage":                                               "error: invalid argument\nusage: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n       cerne git branch create --name <branch> --base knowledge=<base> --base source=<base> --state <state-id> --confirm --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.inspect.usage":                                       "error: invalid argument\nusage: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.branch.usage":                                        "error: invalid argument\nusage: cerne git branch create --name <branch> --base knowledge=<base> --base source=<base> --state <state-id> --confirm --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.commit.usage":                                        "error: invalid argument\nusage: cerne git commit <repository> --message <subject> --include <path> --state <state-id> --confirm --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.push.usage":                                          "error: invalid argument\nusage: cerne git push <repository> --remote <name> --branch <branch> --state <state-id> --confirm --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.pr.usage":                                            "error: invalid argument\nusage: cerne git pr create <repository> --remote <name> --base <branch> --head <branch> --title <title> --body-file <path> --state <state-id> --confirm --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.failure":                                             "error: could not inspect workspace Git\ncorrection: check the workspace and try again\n",
+	"command.missing":                                         "error: provide a command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
+	"command.unknown":                                         "error: unknown command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
 	"common.cwd":                                              "error: could not get the current directory\ncorrection: run the command in an accessible directory\n",
 	"common.git":                                              "error: Git is unavailable\ncorrection: install Git and make it available in PATH\n",
 	"common.home":                                             "error: could not locate the home directory\ncorrection: configure an accessible home directory\n",

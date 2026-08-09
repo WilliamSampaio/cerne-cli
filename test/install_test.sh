@@ -99,6 +99,8 @@ fi
 
 run_install --version v1.2.3 --agent codex >/tmp/cerne-install-agent.$$
 grep 'skill codex' /tmp/cerne-install-agent.$$ >/dev/null
+run_install --version v1.2.3 --agent gemini >/tmp/cerne-install-agent-gemini.$$
+grep 'skill gemini' /tmp/cerne-install-agent-gemini.$$ >/dev/null
 
 if run_install --version v1.2.4 --agent codex >/tmp/cerne-install-skill-fail.$$ 2>/dev/null; then
 	echo "expected delegated skill failure" >&2

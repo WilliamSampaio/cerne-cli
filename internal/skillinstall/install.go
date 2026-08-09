@@ -15,11 +15,13 @@ import (
 type Options struct {
 	HomeDir    string
 	PackageDir string
+	Skill      string
 	Now        func() time.Time
 }
 
 type Result struct {
 	Agent       string
+	Skill       string
 	Version     string
 	Destination string
 	Outcome     string
@@ -66,6 +68,13 @@ func Install(agent string, options Options) (Result, error) {
 	if !SupportedAgent(agent) {
 		return result, ErrInvalidAgent
 	}
+	skillName := options.Skill
+	if skillName == "" {
+		skillName = SkillName
+	}
+	if !SupportedSkill(skillName) || agent == "gemini" && skillName == SkillName {
+		return result, failure("skill-missing", "skill não suportada para o agente", "use uma skill oficial suportada")
+	}
 	home := options.HomeDir
 	if home == "" {
 		var err error
@@ -74,17 +83,18 @@ func Install(agent string, options Options) (Result, error) {
 			return result, failure("home-unavailable", "não foi possível localizar o diretório pessoal", "configure um diretório pessoal acessível")
 		}
 	}
-	destination, err := TargetPath(home, agent)
+	destination, err := TargetPath(home, agent, skillName)
 	if err != nil {
 		return result, failure("destination-invalid", "destino do agente inválido", "configure um diretório pessoal acessível")
 	}
 	result.Agent = agent
+	result.Skill = skillName
 	result.Destination = destination
 	now := time.Now
 	if options.Now != nil {
 		now = options.Now
 	}
-	audit, err := startAudit(home, agent, destination, now)
+	audit, err := startAudit(home, agent, skillName, destination, now)
 	if err != nil {
 		return result, failure("audit-start-failed", "não foi possível registrar a tentativa de instalação", "verifique a segurança e as permissões de ~/.cerne/audit")
 	}
@@ -108,7 +118,7 @@ func Install(agent string, options Options) (Result, error) {
 		}
 		defer os.RemoveAll(packageDir)
 	}
-	pkg, err := LoadPackage(packageDir, agent)
+	pkg, err := LoadPackage(packageDir, agent, skillName)
 	if err != nil {
 		return fail(err)
 	}
@@ -118,7 +128,11 @@ func Install(agent string, options Options) (Result, error) {
 	if err != nil {
 		return fail(err)
 	}
-	if exists && current.Package == PackageName && current.Skill == SkillName && current.Agent == agent && current.Version == pkg.Version {
+	sameContent := false
+	if exists && current.Package == PackageName && current.Skill == skillName && current.Agent == agent && current.Version == pkg.Version {
+		sameContent = managedContentEqual(destination, pkg, current)
+	}
+	if sameContent {
 		result.Outcome = "already"
 		if err := audit.finish("succeeded", pkg.Version, ""); err != nil {
 			return result, failure("audit-finalization-failed", "não foi possível finalizar a auditoria da instalação", "verifique ~/.cerne/audit antes de tentar novamente")
@@ -158,7 +172,7 @@ func stagePackage(pkg Package, destination, agent string) (string, error) {
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return "", failure("destination-inaccessible", "destino do agente inacessível", "verifique permissões no perfil do agente")
 	}
-	staging, err := os.MkdirTemp(parent, ".cerne-context-")
+	staging, err := os.MkdirTemp(parent, "."+pkg.ID+"-")
 	if err != nil {
 		return "", failure("destination-inaccessible", "não foi possível criar staging da instalação", "verifique permissões no perfil do agente")
 	}
@@ -178,7 +192,7 @@ func stagePackage(pkg Package, destination, agent string) (string, error) {
 			return "", err
 		}
 	}
-	m := marker{Package: PackageName, Version: pkg.Version, Agent: agent, Skill: SkillName, Files: pkg.Files}
+	m := marker{Package: PackageName, Version: pkg.Version, Agent: agent, Skill: pkg.ID, Files: pkg.Files}
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		os.RemoveAll(staging)
@@ -204,7 +218,7 @@ func readMarker(destination, agent string) (marker, bool, error) {
 		return marker{}, false, failure("unknown-destination", "destino existente não é gerenciado pelo Cerne", "remova ou mova o conteúdo existente antes de instalar")
 	}
 	var m marker
-	if err := json.Unmarshal(data, &m); err != nil || m.Package != PackageName || m.Skill != SkillName || m.Agent == "" {
+	if err := json.Unmarshal(data, &m); err != nil || m.Package != PackageName || !SupportedSkill(m.Skill) || m.Agent == "" {
 		return marker{}, false, failure("unknown-destination", "destino existente não é gerenciado pelo Cerne", "remova ou mova o conteúdo existente antes de instalar")
 	}
 	if m.Agent != agent || !validSemver(m.Version) || len(m.Files) == 0 {
@@ -296,6 +310,26 @@ func copyUnknownManagedFiles(source, destination string, current marker) error {
 	})
 }
 
+func managedContentEqual(destination string, pkg Package, current marker) bool {
+	if len(current.Files) != len(pkg.Files) {
+		return false
+	}
+	for _, rel := range pkg.Files {
+		if !containsFile(current.Files, rel) {
+			return false
+		}
+		want, err := os.ReadFile(filepath.Join(pkg.Root, pkg.Skill, rel))
+		if err != nil {
+			return false
+		}
+		got, err := os.ReadFile(filepath.Join(destination, rel))
+		if err != nil || string(got) != string(want) {
+			return false
+		}
+	}
+	return true
+}
+
 func fileSet(files []string) map[string]bool {
 	out := make(map[string]bool, len(files))
 	for _, file := range files {
@@ -327,7 +361,7 @@ func failure(code, cause, correction string) Failure {
 
 type audit struct{ path string }
 
-func startAudit(home, agent, destination string, now func() time.Time) (audit, error) {
+func startAudit(home, agent, skillName, destination string, now func() time.Time) (audit, error) {
 	auditDir := filepath.Join(home, ".cerne", "audit")
 	if err := ensureAuditDir(filepath.Join(home, ".cerne")); err != nil {
 		return audit{}, err
@@ -337,7 +371,7 @@ func startAudit(home, agent, destination string, now func() time.Time) (audit, e
 	}
 	path := filepath.Join(auditDir, "skill-install-"+randomID()+".json")
 	record := auditRecord{
-		SchemaVersion: 1, Operation: "skill.install", Agent: agent, Skill: SkillName, Package: PackageName,
+		SchemaVersion: 1, Operation: "skill.install", Agent: agent, Skill: skillName, Package: PackageName,
 		Destination: destination, Status: "started", StartedAt: now().UTC().Format(time.RFC3339),
 	}
 	a := audit{path: path}
