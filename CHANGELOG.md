@@ -5,6 +5,18 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+### Added
+
+- Standalone Linux/macOS installer published with release assets, including checksum-verified
+  binary archives for `amd64` and `arm64`.
+- Optional `install.sh --agent <codex|claude>` flow that delegates skill installation to the
+  installed `cerne skill install` command.
+
+### Security
+
+- The installer writes only `~/.local/bin/cerne`, refuses directory and symlink destinations,
+  verifies SHA-256 before promotion, never uses `sudo`, and never edits shell profile files.
+
 ## 0.8.1 - 2026-08-09
 
 ### Fixed

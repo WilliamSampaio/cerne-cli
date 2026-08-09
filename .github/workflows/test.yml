@@ -17,5 +17,11 @@ jobs:
           go-version-file: go.mod
       - name: Validate embedded skill package contract
         run: go test ./internal/skillinstall
+      - name: Validate standalone installer shell
+        if: runner.os != 'Windows'
+        run: sh -n install.sh
+      - name: Run standalone installer fixture tests
+        if: runner.os != 'Windows'
+        run: sh test/install_test.sh
       - name: Run test suite
         run: go test ./...

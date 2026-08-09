@@ -131,6 +131,22 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 	}
 }
 
+func TestCLIVersionCanBeOverriddenAtBuildTime(t *testing.T) {
+	name := "cerne"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	binary := filepath.Join(t.TempDir(), name)
+	command := exec.Command("go", "build", "-ldflags", "-X main.version=v9.8.7", "-o", binary, ".")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("go build: %v: %s", err, output)
+	}
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "--version")
+	if status != 0 || stdout != "cerne v9.8.7\n" || stderr != "" {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+	}
+}
+
 func TestCLIConfigLanguage(t *testing.T) {
 	binary := buildCLI(t)
 	home := t.TempDir()

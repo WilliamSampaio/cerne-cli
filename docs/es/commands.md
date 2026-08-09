@@ -9,6 +9,18 @@ La CLI admite inglés y portugués de Brasil para los mensajes dirigidos a perso
 
 <!-- AUTO-GENERATED: mantener sincronizado con cmd/cerne/main.go y los contratos de la CLI. -->
 
+## Instalador standalone
+
+Las releases para Linux y macOS publican `install.sh`, `checksums.txt` y binarios para `amd64` y
+`arm64`. El instalador acepta `--version <version>`, `--agent <codex|claude>` y `--help`. Instala
+solo `~/.local/bin/cerne`, verifica SHA-256 antes de promover el binario, rechaza destinos que sean
+directorios o symlinks, nunca usa `sudo` y nunca edita archivos de perfil del shell.
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh | sh
+```
+
 ## Opciones globales
 
 - `cerne --help` muestra los comandos disponibles y las opciones globales.

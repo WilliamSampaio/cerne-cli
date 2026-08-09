@@ -45,7 +45,38 @@ root; the agent choice is not stored in `knowledge/cerne.json`.
 
 ## Installation
 
-Install directly with Go:
+On Linux and macOS, install the latest stable standalone binary without Go:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh | sh
+~/.local/bin/cerne --version
+```
+
+Inspect the installer first with the same `curl` command without `| sh`. To install a fixed
+version, use the release URL for that tag:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/download/vX.Y.Z/install.sh |
+  sh -s -- --version vX.Y.Z
+```
+
+To install the optional Codex or Claude skill in the same explicit flow:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh |
+  sh -s -- --agent codex
+```
+
+The installer writes only `~/.local/bin/cerne`, verifies release checksums before replacing a
+regular file, refuses directory or symlink destinations, never uses `sudo`, and never edits shell
+profiles. Remove it with `rm ~/.local/bin/cerne`. For manual installation, download the matching
+archive and `checksums.txt` from the release, verify SHA-256, extract `cerne`, and place it on
+`PATH`.
+
+Install directly with Go instead:
 
 ```sh
 go install github.com/WilliamSampaio/cerne-cli/cmd/cerne@latest
