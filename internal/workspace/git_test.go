@@ -416,12 +416,20 @@ func fakeWorkflowRepo(path, branch, headSeed string) gitexec.WorkflowRepository 
 }
 
 func fakeWorkflowInspector(repos map[string]gitexec.WorkflowRepository, failures map[string]error) gitexec.WorkflowInspector {
+	normalizedRepos := make(map[string]gitexec.WorkflowRepository, len(repos))
+	for path, repo := range repos {
+		normalizedRepos[canonical(path)] = repo
+	}
+	normalizedFailures := make(map[string]error, len(failures))
+	for path, err := range failures {
+		normalizedFailures[canonical(path)] = err
+	}
 	return func(path string) (gitexec.WorkflowRepository, error) {
 		path = canonical(path)
-		if err, ok := failures[path]; ok {
+		if err, ok := normalizedFailures[path]; ok {
 			return gitexec.WorkflowRepository{}, err
 		}
-		if repo, ok := repos[path]; ok {
+		if repo, ok := normalizedRepos[path]; ok {
 			return repo, nil
 		}
 		return fakeWorkflowRepo(path, "main", "c"), nil
