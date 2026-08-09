@@ -18,6 +18,10 @@ Follow `Detect -> Suggest -> Confirm -> Execute -> Report`.
    cerne git inspect --agent <codex|claude|gemini> --task <short-task-id> --json
    ```
 
+   If this fails because the sandbox cannot write the private audit under `~/.cerne/audit`
+   (`audit_unavailable`, permission denied, or read-only filesystem), request permission to rerun
+   this exact inspect command with elevated filesystem access.
+
 2. Derive the active work unit only in the conversation. Do not persist it in files, audit,
    workspace metadata, or agent memory.
 3. Suggest the action, targets, expected effects, and `state_id`.
