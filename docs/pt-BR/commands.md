@@ -100,7 +100,9 @@ Localiza o workspace ancestral mais próximo e materializa o provider declarado 
 aceita provider, caminho nem opção de força. Com `--agent`, o workflow declarado deve ser Spec Kit
 e o Cerne prepara ou atualiza a ponte de descoberta na raiz para o agente local escolhido. Cada
 subprocesso real de provider ou integração de agente cria um JSON de auditoria sanitizado em
-`knowledge/runs`; executável ausente e layout pronto sem setup de agente não criam auditoria.
+`knowledge/runs`; executável ausente e layout pronto sem setup de agente não criam auditoria. Para
+o Codex descobrir a ponte em `.agents/skills`, inicie a sessão na raiz do workspace Cerne, não dentro
+de `source/`.
 
 ## `cerne context [--json]`
 

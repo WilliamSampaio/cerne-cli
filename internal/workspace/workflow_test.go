@@ -139,6 +139,11 @@ func TestWorkflowAgentBridgeCreationAuditAndManifestNeutrality(t *testing.T) {
 			t.Fatalf("ponte contém conteúdo proibido %q: %s", forbidden, content)
 		}
 	}
+	for _, required := range []string{`name: "speckit-analyze"`, "description:", "Antes de executar o workflow, leia e siga"} {
+		if !containsText(content, required) {
+			t.Fatalf("ponte sem metadado obrigatório %q: %s", required, content)
+		}
+	}
 	if !containsText(content, "knowledge/.agents/skills/speckit-analyze/SKILL.md") {
 		t.Fatalf("ponte não aponta para knowledge: %s", content)
 	}
@@ -352,7 +357,7 @@ func readyAgentTarget(name, root string, integrationRoots ...string) WorkflowAge
 				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 					return err
 				}
-				if err := os.WriteFile(path, []byte("# "+command+"\n"), 0o644); err != nil {
+				if err := os.WriteFile(path, []byte(fakeSkillContent(command)), 0o644); err != nil {
 					return err
 				}
 			}
@@ -364,11 +369,23 @@ func readyAgentTarget(name, root string, integrationRoots ...string) WorkflowAge
 func assertAgentCommandSet(t *testing.T, root string) {
 	t.Helper()
 	for _, command := range specKitBridgeCommands {
-		info, err := os.Stat(filepath.Join(root, command, "SKILL.md"))
+		path := filepath.Join(root, command, "SKILL.md")
+		info, err := os.Stat(path)
 		if err != nil || info.Size() == 0 {
 			t.Fatalf("skill %s ausente em %s: %v", command, root, err)
 		}
+		if !skillHasRequiredMetadata(readText(t, path), command) {
+			t.Fatalf("skill %s sem metadados obrigatórios em %s", command, root)
+		}
 	}
+}
+
+func fakeSkillContent(command string) string {
+	return "---\n" +
+		"name: \"" + command + "\"\n" +
+		"description: \"Run the " + command + " workflow.\"\n" +
+		"---\n\n" +
+		"# " + command + "\n"
 }
 
 func fakeInitRepository(path string) error { return os.Mkdir(filepath.Join(path, ".git"), 0o755) }
