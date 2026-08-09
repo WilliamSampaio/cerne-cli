@@ -76,6 +76,42 @@ func TestRestoreLinksLocalSourceAndPreservesManifestFields(t *testing.T) {
 	}
 }
 
+func TestRestoreCloneFixesExternalManifestSource(t *testing.T) {
+	parent, home := t.TempDir(), t.TempDir()
+	external, err := json.Marshal(filepath.ToSlash(filepath.Join(t.TempDir(), "old-source")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	knowledgeOrigin := restoreRepository(t, "knowledge", map[string]string{
+		"cerne.json":       `{"name":"example","source":` + string(external) + `,"custom":{"keep":true}}`,
+		"product/.gitkeep": "", "specs/.gitkeep": "", "decisions/.gitkeep": "",
+		"policies/.gitkeep": "", "runs/.gitkeep": "",
+	})
+	sourceOrigin := restoreRepository(t, "source", map[string]string{"README.md": "source"})
+	result, err := Restore(parent, home, RestoreRequest{
+		KnowledgeOrigin: knowledgeOrigin, SourceMode: SourceClone, SourceInput: sourceOrigin,
+	}, restoreInspector, copyRestoreTree, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.ManifestChanged || result.SourcePath != canonical(filepath.Join(parent, "example", "source")) {
+		t.Fatalf("resultado inesperado: %#v", result)
+	}
+	data, err := os.ReadFile(filepath.Join(result.KnowledgePath, "cerne.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw map[string]json.RawMessage
+	var source string
+	var custom map[string]bool
+	if json.Unmarshal(data, &raw) != nil || json.Unmarshal(raw["source"], &source) != nil || json.Unmarshal(raw["custom"], &custom) != nil {
+		t.Fatalf("manifesto inválido: %s", data)
+	}
+	if source != "../source" || !custom["keep"] {
+		t.Fatalf("manifesto não atualizado corretamente: %s", data)
+	}
+}
+
 func TestRestorePreservesPendingWorkflowWithoutExecutingProvider(t *testing.T) {
 	parent, home := t.TempDir(), t.TempDir()
 	knowledge := restoreRepository(t, "knowledge", map[string]string{
