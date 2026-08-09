@@ -305,7 +305,7 @@ func TestGitCommitPushAndPullRequestCoordinator(t *testing.T) {
 			}
 			return nil
 		})
-		if err != nil || report.Status != "succeeded" || gotPath != source {
+		if err != nil || report.Status != "succeeded" || gotPath != canonical(source) {
 			t.Fatalf("report=%#v err=%#v path=%q", report, err, gotPath)
 		}
 	})
