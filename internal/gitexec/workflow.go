@@ -187,7 +187,7 @@ func switchCreateWorkflowBranch(git, directory, name, base string) error {
 }
 
 func ValidateWorkflowLiteralPath(path string) bool {
-	if path == "" || strings.ContainsRune(path, 0) || filepath.IsAbs(path) || strings.HasPrefix(path, "-") || strings.HasPrefix(path, ":") {
+	if path == "" || strings.ContainsRune(path, 0) || filepath.IsAbs(path) || strings.HasPrefix(filepath.ToSlash(path), "/") || strings.HasPrefix(path, "-") || strings.HasPrefix(path, ":") {
 		return false
 	}
 	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
