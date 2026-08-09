@@ -17,7 +17,8 @@ func TestGitWorkflowSkillRequiresReviewedChangesConfirmationBeforeCommit(t *test
 		"reinspect before each step",
 		"fresh confirmation for that step only",
 		"before a commit, ask the user to confirm they reviewed every included change",
-		"Do you confirm that you reviewed every change included in this commit?",
+		"Ask the equivalent of this safety question in the response language",
+		"Do not quote it in English unless English is the response language",
 		"use explicit changed paths for commit",
 		"use explicit remote and branch for push",
 		"Cerne provides the inspected repository names, paths, branches, remotes, changed paths, and",
@@ -33,6 +34,25 @@ func TestGitWorkflowSkillRequiresReviewedChangesConfirmationBeforeCommit(t *test
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("missing commit review confirmation %q", want)
+		}
+	}
+}
+
+func TestBundledSkillsFollowConversationOrCerneLanguage(t *testing.T) {
+	for _, skill := range []string{SkillName, GitWorkflowSkill} {
+		data, err := os.ReadFile(filepath.Join("bundle", "skills", skill, "SKILL.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(data)
+		for _, want := range []string{
+			"Respond in the language established by the active conversation",
+			"use the effective Cerne language",
+			"Do not translate commands, flags, paths",
+		} {
+			if !strings.Contains(text, want) {
+				t.Errorf("%s missing language rule %q", skill, want)
+			}
 		}
 	}
 }

@@ -5,6 +5,13 @@ description: Load Cerne workspace context before source work. Use when inspectin
 
 # Cerne Context
 
+## Language
+
+Respond in the language established by the active conversation. If the conversation does not
+establish a language, use the effective Cerne language when it is available from the current
+context; otherwise use the agent's default language. Do not translate commands, flags, paths,
+structured fields, enum values, or stable identifiers.
+
 ## Bootstrap
 
 Start read-only. `knowledge/` is the source of truth for product requirements, specifications, decisions, and policies.

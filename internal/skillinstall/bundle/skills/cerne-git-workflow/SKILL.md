@@ -8,6 +8,14 @@ description: Guide Cerne workspace Git work by inspecting first, then delegating
 Use this skill when helping with branch, commit, push, or GitHub Pull Request work in a Cerne
 workspace.
 
+## Language
+
+Respond in the language established by the active conversation. If the conversation does not
+establish a language, use the effective Cerne language when it is available from the current
+context; otherwise use the agent's default language. Translate suggestions, confirmation questions,
+refusals, and reports. Do not translate commands, flags, paths, structured fields, enum values, or
+stable identifiers.
+
 ## Required Flow
 
 Follow `Detect -> Suggest -> Confirm -> Execute -> Report`.
@@ -71,11 +79,13 @@ For commit, push, and Pull Request sequences:
 Prefer the repository's documented commit convention. If none is visible, use a short Conventional
 Commit-style subject.
 
-Use this exact safety question before executing a commit:
+Ask the equivalent of this safety question in the response language before executing a commit:
 
 ```text
 Do you confirm that you reviewed every change included in this commit?
 ```
+
+Do not quote it in English unless English is the response language.
 
 ## Refusals
 
