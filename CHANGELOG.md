@@ -5,6 +5,8 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+## 0.10.0 - 2026-08-09
+
 ### Added
 
 - `cerne skill install <agent>` now installs every compatible official skill for Codex, Claude, and
