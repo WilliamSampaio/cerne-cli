@@ -62,13 +62,16 @@ curl --proto '=https' --tlsv1.2 -fsSL \
   sh -s -- --version vX.Y.Z
 ```
 
-To install the optional Codex or Claude skill in the same explicit flow:
+To install the optional skills for an agent in the same explicit flow:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL \
   https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh |
   sh -s -- --agent codex
 ```
+
+`--agent codex` and `--agent claude` install every compatible official skill. `--agent gemini`
+installs the Git workflow skill only.
 
 The installer writes only `~/.local/bin/cerne`, verifies release checksums before replacing a
 regular file, refuses directory or symlink destinations, never uses `sudo`, and never edits shell
@@ -209,7 +212,20 @@ cerne status
 The command reports the branch, abbreviated commit, worktree state, staged files, modified files,
 and untracked files for both repositories. Pending changes are information, not an error.
 
-### 4. Link an existing source repository (optional)
+### 4. Coordinate an approved Git step (optional)
+
+Install `cerne-git-workflow` with `cerne skill install <agent>`, then let the skill inspect first
+and ask for a separate confirmation before the agent runs any Git effect:
+
+```sh
+cerne git inspect --agent codex --task task-1 --json
+```
+
+Branch, commit, push, and Pull Request are separate agent-run steps. Cerne only provides the
+sanitized snapshot (`state_id`, repositories, branches, remotes, and changed paths). Unsupported or destructive Git operations are refused by the skill. See
+[the command reference](docs/en/commands.md) for the full JSON/audit contract.
+
+### 5. Link an existing source repository (optional)
 
 `init` already configures the empty `source` repository. Use `--replace` to point the manifest to
 another local repository:

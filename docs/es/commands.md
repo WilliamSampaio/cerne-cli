@@ -96,18 +96,43 @@ cerne restore ../knowledge.git --clone ../source.git
 cerne restore git@host:org/knowledge.git --source ../source-existente
 ```
 
-## `cerne skill install <codex|claude>`
+## `cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]`
 
-Instala explícitamente la skill oficial `cerne-context` en el perfil del usuario actual:
-`~/.codex/skills/cerne-context` para Codex o `~/.claude/skills/cerne-context` para Claude. El
-comando usa el paquete oficial `cerne-skills` incorporado en el binario, sin red, valida manifiesto,
-adaptador y schema `cerne.context.v1` antes de copiar, y registra una auditoría privada en
-`~/.cerne/audit`.
+Sin argumento de skill, instala todas las skills oficiales compatibles en el perfil del agente del
+usuario actual. Codex y Claude reciben `cerne-context` y `cerne-git-workflow`; Gemini recibe solo
+`cerne-git-workflow`. Con argumento de skill, instala exactamente esa skill. Los destinos son
+`~/.codex/skills/<skill>`, `~/.claude/skills/<skill>` o
+`~/.gemini/skills/cerne-git-workflow`.
+
+El comando usa el paquete oficial `cerne-skills` incorporado en el binario, sin red, valida
+manifiesto, adaptador, entrypoint y schema `cerne.context.v1` antes de copiar, y registra una
+auditoría privada en `~/.cerne/audit` por cada skill instalada.
 
 El uso inválido, incluido `generic`, variantes de mayúsculas, agente ausente o argumentos extra,
 devuelve estado `2` sin auditoría ni cambios de archivos. Los fallos operativos devuelven
 stderr/`1`. Reinstalar la misma versión es no-op; versiones gestionadas distintas se actualizan.
-`init`, `restore` y `workflow setup` nunca instalan esta skill por implicación.
+`init`, `restore` y `workflow setup` nunca instalan skills por implicación.
+
+## `cerne git inspect`
+
+Proporciona la superficie segura de inspección Git usada por `cerne-git-workflow`. Cerne no ejecuta
+efectos Git; el agente usa los datos inspeccionados y pide confirmación antes de branch, commit,
+push o Pull Request.
+
+```sh
+cerne git inspect --agent codex --task task-1 --json
+```
+
+`inspect` es de solo lectura y devuelve schema versión 1 con `state_id` determinístico, remotes
+sanitizados, branches locales, paths cambiados literales e id privado de auditoría. Los comandos de
+branch, commit, push y Pull Request no están disponibles en Cerne; las operaciones Git destructivas
+o fuera de alcance siguen fuera de la skill.
+
+El éxito JSON usa stdout/estado `0`; reportes bloqueados, fallidos o parciales usan stdout/estado
+`1`; uso inválido usa stderr/estado `2`. Las auditorías privadas viven en `~/.cerne/audit` y
+excluyen conversaciones, salida de Git, URLs remotas, tokens, contenido de archivos, cuerpo de PR y
+errores brutos. En un resultado parcial no hay rollback automático; el siguiente paso seguro es un
+nuevo `inspect`.
 
 ## `cerne workflow setup [--agent codex|claude]`
 

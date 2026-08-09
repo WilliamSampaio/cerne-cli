@@ -16,12 +16,34 @@ func TestInstallUsesEmbeddedPackageByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Outcome != "installed" || result.Version != "0.1.0" {
+	if result.Outcome != "installed" || result.Version != "0.3.0" || result.Skill != SkillName {
 		t.Fatalf("result = %#v", result)
 	}
 	skill := readText(t, filepath.Join(result.Destination, "SKILL.md"))
 	if !strings.Contains(skill, "name: cerne-context") {
 		t.Fatal("embedded skill not installed")
+	}
+}
+
+func TestInstallNamedGitWorkflowSkill(t *testing.T) {
+	for _, agent := range []string{"codex", "claude", "gemini"} {
+		t.Run(agent, func(t *testing.T) {
+			home := t.TempDir()
+			result, err := Install(agent, Options{HomeDir: home, PackageDir: packageFixture(t, "1.0.0"), Skill: GitWorkflowSkill})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Skill != GitWorkflowSkill || result.Outcome != "installed" {
+				t.Fatalf("result = %#v", result)
+			}
+			if readText(t, filepath.Join(result.Destination, "SKILL.md")) != "# Git\n" {
+				t.Fatal("git workflow skill not copied")
+			}
+			audit := readText(t, result.AuditPath)
+			if !strings.Contains(audit, `"skill": "cerne-git-workflow"`) {
+				t.Fatalf("audit did not record dynamic skill: %s", audit)
+			}
+		})
 	}
 }
 
@@ -80,6 +102,24 @@ func TestInstallSameVersionIsIdempotent(t *testing.T) {
 	}
 	if second.Outcome != "already" || !after.ModTime().Equal(before.ModTime()) {
 		t.Fatalf("not idempotent: %#v before=%s after=%s", second, before.ModTime(), after.ModTime())
+	}
+}
+
+func TestInstallSameVersionRefreshesChangedManagedFiles(t *testing.T) {
+	home := t.TempDir()
+	pkg := packageFixture(t, "1.0.0")
+	first, err := Install("claude", Options{HomeDir: home, PackageDir: pkg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(pkg, "skills", SkillName, "SKILL.md"), "# Cerne changed\n")
+	second, err := Install("claude", Options{HomeDir: home, PackageDir: pkg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Outcome != "upgraded" || first.Destination != second.Destination ||
+		readText(t, filepath.Join(second.Destination, "SKILL.md")) != "# Cerne changed\n" {
+		t.Fatalf("same-version refresh failed: %#v", second)
 	}
 }
 
@@ -204,10 +244,11 @@ func TestInstallAuditFailuresAndUpgradeRollbackStaySafe(t *testing.T) {
 
 func TestInstallRejectsUnsafeOwnershipMarker(t *testing.T) {
 	tests := map[string]string{
-		"wrong agent":  `{"package":"cerne-skills","version":"1.0.0","agent":"claude","skill":"cerne-context","files":["SKILL.md"]}`,
-		"bad version":  `{"package":"cerne-skills","version":"v1","agent":"codex","skill":"cerne-context","files":["SKILL.md"]}`,
-		"empty files":  `{"package":"cerne-skills","version":"1.0.0","agent":"codex","skill":"cerne-context","files":[]}`,
-		"unsafe files": `{"package":"cerne-skills","version":"1.0.0","agent":"codex","skill":"cerne-context","files":["../x"]}`,
+		"wrong agent":   `{"package":"cerne-skills","version":"1.0.0","agent":"claude","skill":"cerne-context","files":["SKILL.md"]}`,
+		"unknown skill": `{"package":"cerne-skills","version":"1.0.0","agent":"codex","skill":"unknown","files":["SKILL.md"]}`,
+		"bad version":   `{"package":"cerne-skills","version":"v1","agent":"codex","skill":"cerne-context","files":["SKILL.md"]}`,
+		"empty files":   `{"package":"cerne-skills","version":"1.0.0","agent":"codex","skill":"cerne-context","files":[]}`,
+		"unsafe files":  `{"package":"cerne-skills","version":"1.0.0","agent":"codex","skill":"cerne-context","files":["../x"]}`,
 	}
 	for name, content := range tests {
 		t.Run(name, func(t *testing.T) {

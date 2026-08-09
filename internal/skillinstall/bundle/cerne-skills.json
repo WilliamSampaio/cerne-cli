@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "cerne-skills",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Official Cerne skills for AI agents.",
   "skills": [
     {
@@ -20,6 +20,28 @@
       },
       "requires": {
         "cerneCliCommand": "cerne context --json",
+        "contextSchema": "cerne.context.v1"
+      }
+    },
+    {
+      "id": "cerne-git-workflow",
+      "source": "skills/cerne-git-workflow",
+      "entrypoint": "SKILL.md",
+      "adapters": {
+        "codex": {
+          "installTarget": "~/.codex/skills/cerne-git-workflow",
+          "invoke": "$cerne-git-workflow"
+        },
+        "claude": {
+          "installTarget": "~/.claude/skills/cerne-git-workflow",
+          "invoke": "/cerne-git-workflow"
+        },
+        "gemini": {
+          "installTarget": "~/.gemini/skills/cerne-git-workflow"
+        }
+      },
+      "requires": {
+        "cerneCliCommand": "cerne git inspect --agent <agent> --task <task-id> --json",
         "contextSchema": "cerne.context.v1"
       }
     }

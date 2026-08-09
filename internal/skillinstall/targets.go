@@ -7,23 +7,50 @@ import (
 )
 
 const (
-	SkillName   = "cerne-context"
-	PackageName = "cerne-skills"
+	SkillName        = "cerne-context"
+	GitWorkflowSkill = "cerne-git-workflow"
+	PackageName      = "cerne-skills"
 )
 
 var ErrInvalidAgent = errors.New("invalid agent")
 
 func SupportedAgent(agent string) bool {
-	return agent == "codex" || agent == "claude"
+	return agent == "codex" || agent == "claude" || agent == "gemini"
 }
 
-func TargetPath(home, agent string) (string, error) {
+func SupportedSkill(skill string) bool {
+	return skill == SkillName || skill == GitWorkflowSkill
+}
+
+func SupportedSkills(agent string) []string {
+	switch agent {
+	case "codex", "claude":
+		return []string{SkillName, GitWorkflowSkill}
+	case "gemini":
+		return []string{GitWorkflowSkill}
+	default:
+		return nil
+	}
+}
+
+func TargetPath(home, agent string, skill ...string) (string, error) {
+	skillName := SkillName
+	if len(skill) == 1 {
+		skillName = skill[0]
+	}
+	if len(skill) > 1 || !SupportedSkill(skillName) {
+		return "", errors.New("invalid skill")
+	}
 	if !SupportedAgent(agent) {
 		return "", ErrInvalidAgent
 	}
+	if agent == "gemini" && skillName == SkillName {
+		return "", ErrInvalidAgent
+	}
 	parts := map[string][]string{
-		"codex":  {".codex", "skills", SkillName},
-		"claude": {".claude", "skills", SkillName},
+		"codex":  {".codex", "skills", skillName},
+		"claude": {".claude", "skills", skillName},
+		"gemini": {".gemini", "skills", skillName},
 	}[agent]
 	target := filepath.Join(append([]string{home}, parts...)...)
 	if inside, err := pathInside(home, target); err != nil || !inside {

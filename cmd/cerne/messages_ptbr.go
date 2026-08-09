@@ -25,6 +25,7 @@ Comandos:
   workflow  Inicializa o workflow declarado no workspace
   context   Exibe o contexto estrutural do workspace
   skill     Instala skills Cerne no perfil do agente
+  git       Coordena inspeção Git segura
   config    Administra preferências do usuário
 
 Opções:
@@ -68,7 +69,7 @@ Compatibilidade:
 	messageConfigInvalid:                                      "erro: configuração de idioma inválida\ncorreção: use cerne --lang pt-BR config set language <en|pt-BR> para repará-la\n",
 	messageConfigWrite:                                        "erro: não foi possível atualizar a configuração do usuário\ncorreção: verifique as permissões de ~/.cerne e tente novamente\n",
 	messageHomeUnavailable:                                    "erro: não foi possível localizar o diretório pessoal\ncorreção: configure um diretório pessoal acessível\n",
-	"skill.usage":                                             "erro: argumento inválido\nuso: cerne skill install <codex|claude>\n",
+	"skill.usage":                                             "erro: argumento inválido\nuso: cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]\n",
 	"skill.installed":                                         "Skill instalada: %s\n",
 	"skill.already":                                           "Skill já instalada: %s\n",
 	"skill.upgraded":                                          "Skill atualizada: %s\n",
@@ -83,7 +84,7 @@ Compatibilidade:
 	"skill.failure.manifest-invalid":                          "erro: manifesto do pacote cerne-skills inválido\ncorreção: reinstale o Cerne\n",
 	"skill.failure.manifest-incompatible":                     "erro: pacote cerne-skills incompatível\ncorreção: atualize ou reinstale o Cerne\n",
 	"skill.failure.adapter-missing":                           "erro: adaptador do agente ausente no pacote cerne-skills\ncorreção: atualize ou reinstale o Cerne\n",
-	"skill.failure.skill-missing":                             "erro: skill cerne-context ausente no pacote cerne-skills\ncorreção: atualize ou reinstale o Cerne\n",
+	"skill.failure.skill-missing":                             "erro: skill ausente no pacote cerne-skills\ncorreção: use uma skill oficial suportada ou atualize o Cerne\n",
 	"skill.failure.unsafe-package":                            "erro: pacote cerne-skills contém conteúdo inseguro\ncorreção: reinstale o Cerne\n",
 	"skill.failure.destination-inaccessible":                  "erro: destino do agente inacessível\ncorreção: verifique permissões no perfil do agente\n",
 	"skill.failure.unknown-destination":                       "erro: destino existente não é gerenciado pelo Cerne\ncorreção: mova o conteúdo existente antes de instalar ou atualizar\n",
@@ -135,8 +136,16 @@ Compatibilidade:
 	"context.problem.workflow-invalid.correction":             "corrija a estrutura antes de continuar",
 	"context.problem.workflow-unknown-provider.detail":        "provider não suportado",
 	"context.problem.workflow-unknown-provider.correction":    "use speckit ou openspec no manifesto",
-	"command.missing":                                         "erro: informe um comando\nuso: cerne <init|restore|doctor|status|link|workflow|context|skill|config>\n",
-	"command.unknown":                                         "erro: comando desconhecido\nuso: cerne <init|restore|doctor|status|link|workflow|context|skill|config>\n",
+	messageGitHelp:                                            gitHelp,
+	"git.usage":                                               "erro: argumento inválido\nuso: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.inspect.usage":                                       "erro: argumento inválido\nuso: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.branch.usage":                                        "erro: argumento inválido\nuso: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.commit.usage":                                        "erro: argumento inválido\nuso: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.push.usage":                                          "erro: argumento inválido\nuso: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.pr.usage":                                            "erro: argumento inválido\nuso: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.failure":                                             "erro: não foi possível consultar o Git do workspace\ncorreção: verifique o workspace e tente novamente\n",
+	"command.missing":                                         "erro: informe um comando\nuso: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
+	"command.unknown":                                         "erro: comando desconhecido\nuso: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
 	"common.cwd":                                              "erro: não foi possível obter o diretório atual\ncorreção: execute o comando em um diretório acessível\n",
 	"common.git":                                              "erro: Git indisponível\ncorreção: instale o Git e disponibilize-o no PATH\n",
 	"common.home":                                             "erro: não foi possível localizar o diretório pessoal\ncorreção: configure um diretório pessoal acessível\n",

@@ -62,13 +62,16 @@ curl --proto '=https' --tlsv1.2 -fsSL \
   sh -s -- --version vX.Y.Z
 ```
 
-Para instalar a skill opcional de Codex ou Claude no mesmo fluxo explícito:
+Para instalar as skills opcionais de um agente no mesmo fluxo explícito:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL \
   https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh |
   sh -s -- --agent codex
 ```
+
+`--agent codex` e `--agent claude` instalam todas as skills oficiais compatíveis. `--agent gemini`
+instala somente a skill de fluxo Git.
 
 O instalador escreve somente `~/.local/bin/cerne`, verifica checksums da release antes de substituir
 um arquivo regular, recusa destino como diretório ou symlink, nunca usa `sudo` e nunca edita perfis
@@ -209,7 +212,20 @@ cerne status
 O comando mostra branch, commit abreviado, estado da árvore, arquivos em stage, modificados e não
 rastreados nos dois repositórios. Alterações pendentes são informação, não erro.
 
-### 4. Vincule um source existente (opcional)
+### 4. Coordene uma etapa Git aprovada (opcional)
+
+Instale `cerne-git-workflow` com `cerne skill install <agent>` e deixe a skill inspecionar primeiro
+e pedir uma confirmação separada antes de o agente executar qualquer efeito Git:
+
+```sh
+cerne git inspect --agent codex --task task-1 --json
+```
+
+Branch, commit, push e Pull Request são etapas separadas executadas pelo agente. O Cerne só fornece
+o snapshot sanitizado (`state_id`, repositórios, branches, remotes e paths alterados). Operações Git destrutivas ou fora de escopo são recusadas pela skill.
+Veja a [referência de comandos](docs/pt-BR/commands.md) para o contrato completo de JSON/auditoria.
+
+### 5. Vincule um source existente (opcional)
 
 O `init` já configura o repositório `source` vazio. Use `--replace` para apontar o manifesto para
 outro repositório local:

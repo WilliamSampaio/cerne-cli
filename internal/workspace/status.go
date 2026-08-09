@@ -39,6 +39,11 @@ type WorkspaceReport struct {
 
 type GitStatus func(string) (GitRepositoryStatus, error)
 
+type RepositoryParticipant struct {
+	Name string
+	Path string
+}
+
 type StatusFailure struct {
 	Code       string
 	Cause      string
@@ -69,36 +74,38 @@ func CurrentStatus(start string, collect GitStatus) (WorkspaceReport, error) {
 		return WorkspaceReport{}, statusFailure("workflow-invalid", "workflow inválido no manifesto", manifestPath, "corrija o objeto workflow.provider")
 	}
 
-	knowledge := filepath.Join(root, "knowledge")
-	source, err := validateSourcePath(knowledge, data.Source)
+	participants, err := workspaceRepositories(root, data)
 	if err != nil {
-		return WorkspaceReport{}, statusFailure("source-invalid", "caminho source inválido no manifesto", manifestSourcePath(knowledge, data.Source), "configure um caminho source existente e seguro")
-	}
-	if err := regularDir(knowledge); err != nil {
-		return WorkspaceReport{}, statusFailure("knowledge-missing", "repositório de conhecimento não encontrado", knowledge, "restaure o diretório knowledge")
-	}
-	if err := regularDir(source); err != nil {
-		return WorkspaceReport{}, statusFailure("source-missing", "repositório de código-fonte não encontrado", source, "restaure o diretório source")
+		return WorkspaceReport{}, err
 	}
 	if collect == nil {
 		return WorkspaceReport{}, statusFailure("git-unavailable", "Git indisponível", "", "instale o Git e disponibilize-o no PATH")
 	}
 
-	reports := make([]RepositoryReport, 0, 2)
-	for _, repository := range []struct {
-		name string
-		path string
-	}{
-		{"knowledge", knowledge},
-		{"source", source},
-	} {
-		status, err := collect(repository.path)
+	reports := make([]RepositoryReport, 0, len(participants))
+	for _, repository := range participants {
+		status, err := collect(repository.Path)
 		if err != nil {
-			return WorkspaceReport{}, statusFailure("git-status-failed", "não foi possível consultar o repositório Git", repository.path, "verifique se o diretório é um repositório Git local válido")
+			return WorkspaceReport{}, statusFailure("git-status-failed", "não foi possível consultar o repositório Git", repository.Path, "verifique se o diretório é um repositório Git local válido")
 		}
-		reports = append(reports, repositoryReport(repository.name, repository.path, status))
+		reports = append(reports, repositoryReport(repository.Name, repository.Path, status))
 	}
 	return WorkspaceReport{ProjectName: data.Name, Root: root, Repositories: reports}, nil
+}
+
+func workspaceRepositories(root string, data manifest) ([]RepositoryParticipant, error) {
+	knowledge := filepath.Join(root, "knowledge")
+	source, err := validateSourcePath(knowledge, data.Source)
+	if err != nil {
+		return nil, statusFailure("source-invalid", "caminho source inválido no manifesto", manifestSourcePath(knowledge, data.Source), "configure um caminho source existente e seguro")
+	}
+	if err := regularDir(knowledge); err != nil {
+		return nil, statusFailure("knowledge-missing", "repositório de conhecimento não encontrado", knowledge, "restaure o diretório knowledge")
+	}
+	if err := regularDir(source); err != nil {
+		return nil, statusFailure("source-missing", "repositório de código-fonte não encontrado", source, "restaure o diretório source")
+	}
+	return []RepositoryParticipant{{Name: "knowledge", Path: knowledge}, {Name: "source", Path: source}}, nil
 }
 
 func locateWorkspace(start string) (string, string, error) {

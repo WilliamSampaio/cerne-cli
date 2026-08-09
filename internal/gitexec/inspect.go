@@ -52,7 +52,7 @@ func revParse(git, directory, flag string) (string, error) {
 
 func gitEnvironment(environment []string) []string {
 	clean := cleanEnvironment(environment)
-	clean = append(clean, "GIT_OPTIONAL_LOCKS=0", "GIT_TERMINAL_PROMPT=0")
+	clean = append(clean, "GIT_OPTIONAL_LOCKS=0", "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=Never", "GIT_ASKPASS=", "SSH_ASKPASS=")
 	return clean
 }
 
