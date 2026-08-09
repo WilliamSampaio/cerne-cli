@@ -161,8 +161,11 @@ func Restore(parent, home string, request RestoreRequest, inspect LinkGitInspect
 	if request.SourceMode == SourceClone {
 		relative, relativeErr := portableRestoreSource(data.Source)
 		if relativeErr != nil {
-			attempt.Phases.Source.Failure = "invalid-path"
-			return fail("source-path-invalid", "caminho source do manifesto é inseguro", "use um caminho portátil ../<diretório> dentro do workspace")
+			relative = "../source"
+			if updateRestoreManifestSource(manifestPath, relative) != nil {
+				return fail("manifest-update-failed", "manifesto não pode ser atualizado com segurança", "corrija knowledge/cerne.json")
+			}
+			result.ManifestChanged = true
 		}
 		source = filepath.Clean(filepath.Join(knowledge, filepath.FromSlash(relative)))
 		if !containsPath(staging, source) || containsPath(knowledge, source) || samePath(staging, source) {
@@ -192,13 +195,7 @@ func Restore(parent, home string, request RestoreRequest, inspect LinkGitInspect
 		}
 		newSource := manifestLinkSource(finalKnowledge, localSource)
 		if newSource != data.Source {
-			manifest, readErr := readLinkManifest(manifestPath)
-			if readErr != nil {
-				return fail("manifest-update-failed", "manifesto não pode ser atualizado com segurança", "corrija knowledge/cerne.json")
-			}
-			manifest.raw["source"], _ = json.Marshal(newSource)
-			content, marshalErr := json.MarshalIndent(manifest.raw, "", "  ")
-			if marshalErr != nil || writeManifestAtomically(manifestPath, append(content, '\n')) != nil {
+			if updateRestoreManifestSource(manifestPath, newSource) != nil {
 				return fail("manifest-update-failed", "manifesto não pode ser atualizado com segurança", "verifique permissões e tente novamente")
 			}
 			result.ManifestChanged = true
@@ -281,6 +278,23 @@ func validateRestoreKnowledge(knowledge, manifestPath string, inspect LinkGitIns
 		}
 	}
 	return data, nil
+}
+
+func updateRestoreManifestSource(manifestPath, source string) error {
+	manifest, err := readLinkManifest(manifestPath)
+	if err != nil {
+		return err
+	}
+	encoded, err := json.Marshal(source)
+	if err != nil {
+		return err
+	}
+	manifest.raw["source"] = encoded
+	content, err := json.MarshalIndent(manifest.raw, "", "  ")
+	if err != nil {
+		return err
+	}
+	return writeManifestAtomically(manifestPath, append(content, '\n'))
 }
 
 func portableRestoreSource(source string) (string, error) {
