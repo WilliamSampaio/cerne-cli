@@ -1770,7 +1770,8 @@ func main() {
     for _, command := range commands {
       skill := filepath.Join(agentRoot, command, "SKILL.md")
       if err := os.MkdirAll(filepath.Dir(skill), 0755); err != nil { os.Exit(1) }
-      if err := os.WriteFile(skill, []byte("# "+command+"\n"), 0644); err != nil { os.Exit(1) }
+      content := "---\nname: \""+command+"\"\ndescription: \"Run the "+command+" workflow.\"\n---\n\n# "+command+"\n"
+      if err := os.WriteFile(skill, []byte(content), 0644); err != nil { os.Exit(1) }
     }
     record := strings.Join(os.Args[1:], "\n") + "\n" + strings.Join(os.Environ(), "\n")
     if err := os.WriteFile(filepath.Join(agentRoot, "record"), []byte(record), 0644); err != nil { os.Exit(1) }

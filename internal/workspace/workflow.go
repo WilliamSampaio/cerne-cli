@@ -93,6 +93,19 @@ var specKitBridgeCommands = []string{
 	"speckit-taskstoissues",
 }
 
+var specKitBridgeDescriptions = map[string]string{
+	"speckit-analyze":       "Perform a non-destructive cross-artifact consistency and quality analysis across spec.md, plan.md, and tasks.md after task generation.",
+	"speckit-checklist":     "Generate a custom checklist for the current feature based on user requirements.",
+	"speckit-clarify":       "Identify underspecified areas in the current feature spec by asking up to 5 highly targeted clarification questions and encoding answers back into the spec.",
+	"speckit-constitution":  "Create or update the project constitution from interactive or provided principle inputs, ensuring all dependent templates stay in sync.",
+	"speckit-converge":      "Assess the current codebase against the feature's spec, plan, and tasks, then append any remaining unbuilt work as new tasks to tasks.md so implement can complete it.",
+	"speckit-implement":     "Execute the implementation plan by processing and executing all tasks defined in tasks.md.",
+	"speckit-plan":          "Execute the implementation planning workflow using the plan template to generate design artifacts.",
+	"speckit-specify":       "Create or update the feature specification from a natural language feature description.",
+	"speckit-tasks":         "Generate an actionable, dependency-ordered tasks.md for the feature based on available design artifacts.",
+	"speckit-taskstoissues": "Convert existing tasks into actionable, dependency-ordered GitHub issues for the feature based on available design artifacts.",
+}
+
 func SetupWorkflow(start string, resolve WorkflowResolver) (WorkflowResult, error) {
 	return SetupWorkflowWithAgent(start, resolve, "")
 }
@@ -256,6 +269,10 @@ func validateAgentIntegration(knowledge, relative string) error {
 		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() == 0 {
 			return errors.New("skill ausente ou inválida")
 		}
+		content, err := os.ReadFile(path)
+		if err != nil || !skillHasRequiredMetadata(string(content), command) {
+			return errors.New("skill ausente ou inválida")
+		}
 	}
 	return nil
 }
@@ -319,9 +336,49 @@ func ensureRegularDirectory(path string) error {
 
 func agentBridgeContent(command, integrationRoot string) string {
 	knowledgeSkill := filepath.ToSlash(filepath.Join("knowledge", filepath.FromSlash(integrationRoot), command, "SKILL.md"))
-	return "# " + command + "\n\n" +
+	description := specKitBridgeDescriptions[command]
+	if description == "" {
+		description = "Run the " + command + " Spec Kit workflow from the Cerne workspace root."
+	}
+	return "---\n" +
+		"name: \"" + command + "\"\n" +
+		"description: \"" + description + "\"\n" +
+		"---\n\n" +
+		"# " + command + "\n\n" +
 		"Este arquivo é uma ponte local gerenciada pelo Cerne.\n\n" +
-		"Use `knowledge` como raiz do projeto Spec Kit deste workspace e siga `" + knowledgeSkill + "`.\n"
+		"Use `knowledge` como raiz do projeto Spec Kit deste workspace. Antes de executar o workflow, leia e siga `" + knowledgeSkill + "`.\n"
+}
+
+func skillHasRequiredMetadata(content, command string) bool {
+	if !strings.HasPrefix(content, "---\n") {
+		return false
+	}
+	rest := strings.TrimPrefix(content, "---\n")
+	header, _, ok := strings.Cut(rest, "\n---")
+	if !ok {
+		return false
+	}
+	return frontmatterValuePresent(header, "name", command) && frontmatterKeyPresent(header, "description")
+}
+
+func frontmatterValuePresent(header, key, expected string) bool {
+	value, ok := frontmatterValue(header, key)
+	return ok && strings.Trim(value, `"'`) == expected
+}
+
+func frontmatterKeyPresent(header, key string) bool {
+	value, ok := frontmatterValue(header, key)
+	return ok && strings.Trim(value, `"'`) != ""
+}
+
+func frontmatterValue(header, key string) (string, bool) {
+	for _, line := range strings.Split(header, "\n") {
+		name, value, ok := strings.Cut(line, ":")
+		if ok && strings.TrimSpace(name) == key {
+			return strings.TrimSpace(value), true
+		}
+	}
+	return "", false
 }
 
 func workflowPaths(knowledge string, definition WorkflowDefinition) (string, string, error) {

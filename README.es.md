@@ -66,6 +66,15 @@ go build -o cerne ./cmd/cerne
 ./cerne --version
 ```
 
+Para instalar el estado local del checkout para pruebas desde todo el host, sin depender de commits
+ni del remoto:
+
+```sh
+go install ./cmd/cerne
+# o
+make install-local
+```
+
 En Windows, el binario generado es `cerne.exe`.
 
 ## Idioma
@@ -148,7 +157,10 @@ setup es idempotente; se rechazan estructuras parciales o con Git anidado.
 Cuando `--agent codex` o `--agent claude` se usa con Spec Kit, Cerne también pide a Spec Kit que
 cree la integración correspondiente dentro de `knowledge` y escribe pequeños puentes en la raíz del
 workspace en `.agents/skills` o `.claude/skills`. Esos puentes apuntan de vuelta a `knowledge` y no
-contienen conocimiento privado, remotos, credenciales, dumps de entorno ni rutas absolutas.
+contienen conocimiento privado, remotos, credenciales, dumps de entorno ni rutas absolutas. Para que
+Codex descubra esas skills locales, inicia la sesión desde la raíz del workspace Cerne; una sesión
+iniciada dentro de `source/` no sube hasta la raíz del workspace porque `source` es un repositorio
+Git separado.
 
 ### 2. Valida la estructura
 
@@ -260,11 +272,17 @@ dominio está separado de la impresión en terminal para poder reutilizarlo en f
 
 ```sh
 go build -o cerne ./cmd/cerne
+go install ./cmd/cerne
 go test ./...
 go test -count=1 ./...
 go vet ./...
 gofmt -w <archivos-go-modificados>
 ```
+
+Hay atajos equivalentes con `make build`, `make install-local`, `make test`, `make test-fresh`,
+`make vet`, `make fmt` y `make check`. Usa `make install-path` para ver dónde `make install-local`
+deja disponible el ejecutable. Para instalar en otro directorio, define `GOBIN`, por ejemplo
+`GOBIN=/tmp/bin make install-local`.
 
 Las pruebas usan el paquete `testing`, directorios temporales y solamente repositorios Git locales.
 No necesitan red ni credenciales.

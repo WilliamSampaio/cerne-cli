@@ -100,6 +100,8 @@ does not accept a provider, path, or force option. With `--agent`, the declared 
 Spec Kit and Cerne prepares or refreshes the workspace-root discovery bridge for the selected local
 agent. Each real provider or agent-integration subprocess creates one redacted JSON audit record in
 `knowledge/runs`; no audit is created for a missing executable or ready layout without agent setup.
+For Codex to discover the bridge in `.agents/skills`, start the session at the Cerne workspace root,
+not inside `source/`.
 
 ## `cerne context [--json]`
 
