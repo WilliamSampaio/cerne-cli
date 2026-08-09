@@ -14,7 +14,46 @@ commit, push, publicação ou deploy do seu trabalho.
 
 ## Antes de começar
 
-Você precisa do Git no `PATH` e de Linux, Windows ou macOS. Para instalar o Cerne com Go:
+Você precisa do Git no `PATH` e de Linux, Windows ou macOS.
+
+No Linux e macOS, instale o binário standalone estável mais recente sem Go:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh | sh
+~/.local/bin/cerne --version
+```
+
+Para inspecionar o instalador antes:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh
+```
+
+Instale uma versão fixa ou a skill opcional de Codex/Claude explicitamente:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/download/vX.Y.Z/install.sh |
+  sh -s -- --version vX.Y.Z
+
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh |
+  sh -s -- --agent codex
+```
+
+O instalador escreve somente `~/.local/bin/cerne`, nunca usa `sudo` e nunca edita arquivos de
+perfil do shell. Se `~/.local/bin` não estiver no `PATH`, adicione manualmente. Remova o Cerne com:
+
+```sh
+rm ~/.local/bin/cerne
+```
+
+Para instalação manual, baixe o arquivo compatível e `checksums.txt` na release do GitHub,
+verifique o SHA-256, extraia `cerne` e coloque-o em um diretório no `PATH`.
+
+Para instalar o Cerne com Go:
 
 ```sh
 go install github.com/WilliamSampaio/cerne-cli/cmd/cerne@latest

@@ -9,6 +9,18 @@ Cerne supports English and Brazilian Portuguese for human-readable output. Run
 
 <!-- AUTO-GENERATED: keep synchronized with cmd/cerne/main.go and the CLI contracts. -->
 
+## Standalone installer
+
+Linux and macOS releases publish `install.sh`, `checksums.txt`, and binary archives for `amd64` and
+`arm64`. The installer accepts `--version <version>`, `--agent <codex|claude>`, and `--help`. It
+installs only `~/.local/bin/cerne`, verifies SHA-256 before promotion, refuses directory or symlink
+destinations, never uses `sudo`, and never edits shell profile files.
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh | sh
+```
+
 ## Global options
 
 - `cerne --help` prints the available commands and global options.

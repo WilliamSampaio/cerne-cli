@@ -46,6 +46,37 @@ la raíz del workspace; la elección del agente no se guarda en `knowledge/cerne
 
 ## Instalación
 
+En Linux y macOS, instala el binario standalone estable más reciente sin Go:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh | sh
+~/.local/bin/cerne --version
+```
+
+Inspecciona primero el instalador usando el mismo `curl` sin `| sh`. Para instalar una versión
+fija, usa la URL de la release de esa tag:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/download/vX.Y.Z/install.sh |
+  sh -s -- --version vX.Y.Z
+```
+
+Para instalar la skill opcional de Codex o Claude en el mismo flujo explícito:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh |
+  sh -s -- --agent codex
+```
+
+El instalador escribe solo `~/.local/bin/cerne`, verifica checksums de la release antes de
+reemplazar un archivo regular, rechaza destinos que sean directorios o symlinks, nunca usa `sudo` y
+nunca edita perfiles del shell. Elimínalo con `rm ~/.local/bin/cerne`. Para instalación manual,
+descarga el archivo compatible y `checksums.txt` desde la release, verifica el SHA-256, extrae
+`cerne` y colócalo en `PATH`.
+
 Instala directamente con Go:
 
 ```sh

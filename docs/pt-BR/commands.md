@@ -9,6 +9,18 @@ instalada.
 
 <!-- AUTO-GENERATED: manter sincronizado com cmd/cerne/main.go e os contratos do CLI. -->
 
+## Instalador standalone
+
+Releases para Linux e macOS publicam `install.sh`, `checksums.txt` e binários para `amd64` e
+`arm64`. O instalador aceita `--version <version>`, `--agent <codex|claude>` e `--help`. Ele
+instala somente `~/.local/bin/cerne`, verifica SHA-256 antes da promoção, recusa destino como
+diretório ou symlink, nunca usa `sudo` e nunca edita arquivos de perfil do shell.
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh | sh
+```
+
 ## Opções globais
 
 - `cerne --help` exibe os comandos disponíveis e as opções globais.
