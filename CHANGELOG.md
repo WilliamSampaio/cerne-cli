@@ -5,6 +5,13 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+## 0.8.1 - 2026-08-09
+
+### Fixed
+
+- `cerne restore --clone` now repairs non-portable restored source paths to `../source` instead
+  of rejecting workspaces whose manifest points to a source location from another machine.
+
 ## 0.8.0 - 2026-08-08
 
 ### Added
