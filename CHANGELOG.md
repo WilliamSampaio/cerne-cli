@@ -5,6 +5,8 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+## 0.9.0 - 2026-08-09
+
 ### Added
 
 - Standalone Linux/macOS installer published with release assets, including checksum-verified
