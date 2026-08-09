@@ -116,7 +116,7 @@ func safeWalk(root, relative string) ([]string, error) {
 		if !info.Mode().IsRegular() {
 			return errors.New("non-regular")
 		}
-		files = append(files, rel)
+		files = append(files, filepath.ToSlash(rel))
 		return nil
 	})
 	if err != nil {
