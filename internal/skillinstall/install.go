@@ -276,6 +276,7 @@ func validateManagedUpgrade(destination string, current marker, nextFiles []stri
 		if err != nil {
 			return err
 		}
+		rel = filepath.ToSlash(rel)
 		if rel == ".cerne-install.json" || managed[rel] {
 			return nil
 		}
@@ -299,6 +300,7 @@ func copyUnknownManagedFiles(source, destination string, current marker) error {
 		if err != nil {
 			return err
 		}
+		rel = filepath.ToSlash(rel)
 		if rel == ".cerne-install.json" || managed[rel] {
 			return nil
 		}
