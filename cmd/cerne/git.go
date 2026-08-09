@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/WilliamSampaio/cerne-cli/internal/gitexec"
-	"github.com/WilliamSampaio/cerne-cli/internal/githubapi"
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
 
@@ -18,15 +16,11 @@ const gitHelp = `Coordena operações Git seguras em um workspace Cerne.
 
 Uso:
   cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json
-  cerne git branch create --name <branch> --base knowledge=<base> --base source=<base> --state <state-id> --confirm --agent <codex|claude|gemini> --task <task-id> --json
-  cerne git commit <repository> --message <subject> --include <path> --state <state-id> --confirm --agent <codex|claude|gemini> --task <task-id> --json
-  cerne git push <repository> --remote <name> --branch <branch> --state <state-id> --confirm --agent <codex|claude|gemini> --task <task-id> --json
-  cerne git pr create <repository> --remote <name> --base <branch> --head <branch> --title <title> --body-file <path> --state <state-id> --confirm --agent <codex|claude|gemini> --task <task-id> --json
   cerne git --help
 
 Autorização:
-  inspect é somente leitura, mas exige agente e tarefa para auditoria. Mutações
-  exigem estado obtido por inspect e confirmação explícita.
+  inspect é somente leitura e fornece estado sanitizado para o agente executar
+  Git diretamente. O Cerne não executa branch, commit, push ou Pull Request.
 `
 
 func runGit(args []string, stdout, stderr io.Writer, messages localizer, home string) int {
@@ -41,14 +35,6 @@ func runGit(args []string, stdout, stderr io.Writer, messages localizer, home st
 	switch args[0] {
 	case "inspect":
 		return runGitInspect(args[1:], stdout, stderr, home, messages)
-	case "branch":
-		return runGitBranch(args[1:], stdout, stderr, home, messages)
-	case "commit":
-		return runGitCommit(args[1:], stdout, stderr, home, messages)
-	case "push":
-		return runGitPush(args[1:], stdout, stderr, home, messages)
-	case "pr":
-		return runGitPR(args[1:], stdout, stderr, home, messages)
 	default:
 		fmt.Fprint(stderr, messages.text("git.usage"))
 		return 2
@@ -183,12 +169,10 @@ func runGitPR(args []string, stdout, stderr io.Writer, home string, messages loc
 		fmt.Fprint(stderr, messages.text("git.pr.usage"))
 		return 2
 	}
-	body, err := os.ReadFile(bodyFile)
-	if err != nil {
+	if _, err := os.ReadFile(bodyFile); err != nil {
 		fmt.Fprintln(stderr, "validation_failed")
 		return 2
 	}
-	request.Body = string(body)
 	request.Home = home
 	current, err := currentDirectory()
 	if err != nil {
@@ -200,25 +184,7 @@ func runGitPR(args []string, stdout, stderr io.Writer, home string, messages loc
 		fmt.Fprint(stderr, messages.text("common.git"))
 		return 1
 	}
-	remoteURL, err := gitexec.FindWorkflowRemoteURLReader()
-	if err != nil {
-		fmt.Fprint(stderr, messages.text("common.git"))
-		return 1
-	}
-	open := func(ctx context.Context, request workspace.GitPullRequestRequest, remote string) (workspace.GitPullRequestResult, error) {
-		result, err := githubapi.OpenPullRequest(ctx, githubapi.PullRequestRequest{
-			RemoteURL:  remote,
-			Base:       request.Base,
-			Head:       request.Head,
-			Title:      request.Title,
-			Body:       request.Body,
-			Env:        os.Environ(),
-			APIBaseURL: os.Getenv("CERNE_GITHUB_API_BASE"),
-			UserAgent:  "cerne/dev",
-		})
-		return workspace.GitPullRequestResult{Number: result.Number, URL: result.URL, Outcome: result.Outcome}, err
-	}
-	report, err := workspace.CreateGitPullRequest(current, request, inspect, remoteURL, open)
+	report, err := workspace.PrepareGitPullRequest(current, request, inspect)
 	return renderGitMutation(report, err, stdout, stderr, messages)
 }
 
@@ -471,7 +437,7 @@ func parseGitPushArgs(args []string) (workspace.GitPushRequest, bool) {
 }
 
 func parseGitPRArgs(args []string) (workspace.GitPullRequestRequest, string, bool) {
-	if len(args) < 2 || args[0] != "create" || strings.HasPrefix(args[1], "-") {
+	if len(args) < 2 || args[0] != "prepare" || strings.HasPrefix(args[1], "-") {
 		return workspace.GitPullRequestRequest{}, "", false
 	}
 	request := workspace.GitPullRequestRequest{Repository: args[1]}

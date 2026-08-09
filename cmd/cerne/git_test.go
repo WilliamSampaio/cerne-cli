@@ -2,8 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -108,99 +106,28 @@ func TestCLIGitInspectUsageHelpAndFailures(t *testing.T) {
 	}
 }
 
-func TestCLIGitBranchCreateJSONAndValidation(t *testing.T) {
+func TestCLIGitDelegatesEffectsWithoutAudit(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("Git não está disponível")
 	}
 	binary := buildCLI(t)
 	root := newCLIGitWorkspace(t)
-	home := t.TempDir()
-
-	status, stdout, stderr := executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "inspect", "--agent", "codex", "--task", "task-1", "--json")
-	if status != 0 || stderr != "" {
-		t.Fatalf("inspect: status=%d stdout=%q stderr=%q", status, stdout, stderr)
-	}
-	var snapshot struct {
-		StateID string `json:"state_id"`
-	}
-	if err := json.Unmarshal([]byte(stdout), &snapshot); err != nil {
-		t.Fatal(err)
-	}
-
-	status, stdout, stderr = executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "branch", "create", "--name", "feat/safe", "--base", "knowledge=main", "--base", "source=main", "--state", snapshot.StateID, "--confirm", "--agent", "gemini", "--task", "task-1", "--json")
-	if status != 0 || stderr != "" || !strings.Contains(stdout, `"operation": "branch_create"`) || !strings.Contains(stdout, `"status": "succeeded"`) {
-		t.Fatalf("branch create: status=%d stdout=%q stderr=%q", status, stdout, stderr)
-	}
-	for _, repo := range []string{"knowledge", "source"} {
-		got := strings.TrimSpace(mustCLIGitOutput(t, filepath.Join(root, repo), "branch", "--show-current"))
-		if got != "feat/safe" {
-			t.Fatalf("%s branch=%q", repo, got)
-		}
-	}
+	state := cliGitState(t, binary, root, t.TempDir())
 
 	for _, args := range [][]string{
-		{"git", "branch"},
-		{"git", "branch", "create", "--name", "feat/x", "--base", "knowledge=main", "--base", "source=main", "--state", snapshot.StateID, "--agent", "codex", "--task", "task-1", "--json"},
-		{"git", "branch", "create", "--name", "feat/x", "--base", "knowledge=main", "--state", snapshot.StateID, "--confirm", "--agent", "codex", "--task", "task-1", "--json"},
-		{"git", "branch", "create", "--name", "bad name", "--base", "knowledge=main", "--base", "source=main", "--state", snapshot.StateID, "--confirm", "--agent", "codex", "--task", "bad task", "--json"},
+		{"git", "branch", "create", "--name", "feat/x", "--base", "knowledge=main", "--base", "source=main", "--state", state, "--agent", "codex", "--task", "task-1", "--json"},
+		{"git", "commit", "source", "--message", "feat: checkpoint", "--include", "file.txt", "--state", state, "--confirm", "--agent", "codex", "--task", "task-2", "--json"},
+		{"git", "push", "source", "--remote", "origin", "--branch", "main", "--state", state, "--confirm", "--agent", "codex", "--task", "task-3", "--json"},
+		{"git", "pr", "prepare", "source", "--remote", "origin", "--base", "main", "--head", "feat/x", "--title", "Title", "--body-file", "body.md", "--state", state, "--confirm", "--agent", "codex", "--task", "task-4", "--json"},
 	} {
-		status, stdout, stderr := executeCLI(t, binary, root, skillHomeEnvironment(t.TempDir()), args...)
-		if status != 2 || stdout != "" || !strings.Contains(stderr, "cerne git branch create") {
+		home := t.TempDir()
+		status, stdout, stderr := executeCLI(t, binary, root, skillHomeEnvironment(home), args...)
+		if status != 2 || stdout != "" || !strings.Contains(stderr, "cerne git inspect") {
 			t.Fatalf("%v: status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
 		}
-	}
-}
-
-func TestCLIGitCommitPushAndPRJSON(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("Git não está disponível")
-	}
-	binary := buildCLI(t)
-	root := newCLIGitWorkspace(t)
-	home := t.TempDir()
-	source := filepath.Join(root, "source")
-	mustCLIGit(t, source, "switch", "--create", "feat/checkpoint")
-	if err := os.WriteFile(filepath.Join(source, "file.txt"), []byte("changed\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	state := cliGitState(t, binary, root, home)
-	status, stdout, stderr := executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "commit", "source", "--message", "feat: checkpoint", "--include", "file.txt", "--state", state, "--confirm", "--agent", "codex", "--task", "task-2", "--json")
-	if status != 0 || stderr != "" || !strings.Contains(stdout, `"operation": "commit"`) || !strings.Contains(stdout, `"status": "succeeded"`) {
-		t.Fatalf("commit: status=%d stdout=%q stderr=%q", status, stdout, stderr)
-	}
-	if got := strings.TrimSpace(mustCLIGitOutput(t, source, "show", "-s", "--format=%s")); got != "feat: checkpoint" {
-		t.Fatalf("commit subject=%q", got)
-	}
-
-	remote := filepath.Join(t.TempDir(), "remote.git")
-	mustCLIGit(t, t.TempDir(), "init", "--bare", "--quiet", remote)
-	mustCLIGit(t, source, "remote", "set-url", "origin", remote)
-	state = cliGitState(t, binary, root, home)
-	status, stdout, stderr = executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "push", "source", "--remote", "origin", "--branch", "feat/checkpoint", "--state", state, "--confirm", "--agent", "codex", "--task", "task-3", "--json")
-	if status != 0 || stderr != "" || !strings.Contains(stdout, `"operation": "push"`) {
-		t.Fatalf("push: status=%d stdout=%q stderr=%q", status, stdout, stderr)
-	}
-
-	mustCLIGit(t, source, "remote", "set-url", "origin", "https://github.com/acme/app.git")
-	mustCLIGit(t, source, "update-ref", "refs/remotes/origin/feat/checkpoint", "HEAD")
-	bodyFile := filepath.Join(root, "body.md")
-	if err := os.WriteFile(bodyFile, []byte("Body\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			w.Write([]byte("[]\n"))
-			return
+		if entries, _ := os.ReadDir(filepath.Join(home, ".cerne", "audit")); len(entries) != 0 {
+			t.Fatalf("%v created audit entries: %v", args, entries)
 		}
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"number":12,"url":"https://github.com/acme/app/pull/12"}` + "\n"))
-	}))
-	defer server.Close()
-	env := append(skillHomeEnvironment(home), "GH_TOKEN=test-token", "CERNE_GITHUB_API_BASE="+server.URL)
-	state = cliGitState(t, binary, root, home)
-	status, stdout, stderr = executeCLI(t, binary, root, env, "git", "pr", "create", "source", "--remote", "origin", "--base", "main", "--head", "feat/checkpoint", "--title", "Title", "--body-file", bodyFile, "--state", state, "--confirm", "--agent", "codex", "--task", "task-4", "--json")
-	if status != 0 || stderr != "" || !strings.Contains(stdout, `"operation": "pull_request_create"`) || !strings.Contains(stdout, `"number": 12`) {
-		t.Fatalf("pr: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 }
 

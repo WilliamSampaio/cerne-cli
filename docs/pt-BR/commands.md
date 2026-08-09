@@ -110,27 +110,20 @@ status `2` sem criar auditoria nem alterar arquivos. Falhas operacionais retorna
 stderr. Reinstalar a mesma versão é no-op; versões gerenciadas diferentes são atualizadas.
 `init`, `restore` e `workflow setup` nunca instalam skills por implicação.
 
-## `cerne git inspect|branch|commit|push|pr`
+## `cerne git inspect`
 
-Coordena a superfície Git segura usada por `cerne-git-workflow`. Todo comando é explícito e
-allowlisted; operações Git fora de escopo como merge, rebase, reset, stash, clean, amend, deleção de
-branch, force push, mutação de remote e merge/close de PR são recusadas.
+Fornece a superfície segura de inspeção Git usada por `cerne-git-workflow`. O Cerne não executa
+efeitos Git; o agente usa os dados inspecionados e pede confirmação antes de branch, commit, push ou
+Pull Request.
 
 ```sh
 cerne git inspect --agent codex --task task-1 --json
-cerne git branch create --name feat/exemplo --base knowledge=main --base source=main --state <state-id> --confirm --agent codex --task task-1 --json
-cerne git commit source --message "feat: exemplo" --include caminho/arquivo.go --state <state-id> --confirm --agent codex --task task-1 --json
-cerne git push source --remote origin --branch feat/exemplo --state <state-id> --confirm --agent codex --task task-1 --json
-cerne git pr create source --remote origin --base main --head feat/exemplo --title "feat: exemplo" --body-file pr.md --state <state-id> --confirm --agent codex --task task-1 --json
 ```
 
 `inspect` é somente leitura e retorna schema versão 1 com `state_id` determinístico, remotes
-sanitizados, branches locais, paths alterados literais e id privado de auditoria. Toda mutação exige
-`--state`, `--confirm`, `--agent` e `--task`; o Cerne reinspeciona antes do efeito e bloqueia estado
-obsoleto. Criação de branch valida todos os participantes antes do primeiro `git switch --create`.
-Commit atua em um repositório e somente em paths relativos alterados e explícitos. Push constrói um
-refspec sem force para um remote e branch locais. Pull Request suporta apenas GitHub.com, lê token de
-`GH_TOKEN` ou `GITHUB_TOKEN` e nunca armazena credenciais.
+sanitizados, branches locais, paths alterados literais e id privado de auditoria. Comandos de
+branch, commit, push e Pull Request não estão disponíveis pelo Cerne; operações Git destrutivas ou
+fora de escopo continuam fora da skill.
 
 Sucesso JSON usa stdout/status `0`; relatórios bloqueados, com falha ou parciais usam stdout/status
 `1`; uso inválido usa stderr/status `2`. Auditorias privadas ficam em `~/.cerne/audit` e excluem

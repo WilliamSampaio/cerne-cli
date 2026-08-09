@@ -1,6 +1,6 @@
 ---
 name: cerne-git-workflow
-description: Guide Cerne workspace Git work by inspecting first, suggesting safe next steps, and requiring explicit confirmation before any Git effect.
+description: Guide Cerne workspace Git work by inspecting first, then delegating Git effects to the agent with explicit confirmation.
 ---
 
 # Cerne Git Workflow
@@ -22,7 +22,9 @@ Follow `Detect -> Suggest -> Confirm -> Execute -> Report`.
    workspace metadata, or agent memory.
 3. Suggest the action, targets, expected effects, and `state_id`.
 4. Ask for explicit user confirmation for exactly one effect.
-5. Execute only the exact CLI command that was confirmed.
+5. Execute only the exact confirmed effect with the agent's native Git tooling or GitHub capability.
+   Cerne provides the inspected repository names, paths, branches, remotes, changed paths, and
+   `state_id`; it must not execute branch, commit, push, Pull Request creation, or PR preparation.
 6. Report the structured result honestly, including blocked or partial outcomes.
 
 Agent skill activation or consent to load this skill is not authorization for Git.
@@ -57,7 +59,9 @@ For commit, push, and Pull Request sequences:
 - before a commit, ask the user to confirm they reviewed every included change;
 - use explicit changed paths for commit;
 - use explicit remote and branch for push;
-- open Pull Requests only on GitHub.com when a token is externally available;
+- create Pull Requests only on GitHub.com using the agent's native capability, such as its GitHub
+  integration or authenticated `gh` CLI;
+- do not read, request, store, or pass GitHub tokens through Cerne;
 - stop after the first refusal, blocked state, failed result, or partial result.
 
 Prefer the repository's documented commit convention. If none is visible, use a short Conventional
@@ -74,8 +78,8 @@ Do you confirm that you reviewed every change included in this commit?
 Refuse destructive, ambiguous, arbitrary, or out-of-scope Git operations, including merge, rebase,
 reset, stash, clean, amend, branch deletion, force push, remote mutation, PR merge, and PR close.
 
-Do not pass arbitrary Git flags, URLs, credentials, free refspecs, absolute paths, path traversal, or
-pathspec magic to Cerne.
+Do not ask Cerne to execute Git effects or pass arbitrary Git flags, URLs, credentials, free
+refspecs, absolute paths, path traversal, or pathspec magic to Cerne.
 
 ## Reporting
 

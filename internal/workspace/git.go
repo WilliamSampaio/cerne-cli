@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -65,30 +64,28 @@ type GitPullRequestRequest struct {
 	Base       string
 	Head       string
 	Title      string
-	Body       string
 	Confirm    bool
 }
 
-type PullRequestOpener func(context.Context, GitPullRequestRequest, string) (GitPullRequestResult, error)
-
-type GitPullRequestResult struct {
-	Number  int    `json:"number"`
-	URL     string `json:"url"`
-	Outcome string `json:"outcome"`
+type GitPullRequestPlan struct {
+	Repository string `json:"repository"`
+	Remote     string `json:"remote"`
+	Base       string `json:"base"`
+	Head       string `json:"head"`
 }
 
 type WorkspaceGitMutationReport struct {
-	SchemaVersion int                   `json:"schema_version"`
-	Operation     string                `json:"operation"`
-	Status        string                `json:"status"`
-	StateBefore   string                `json:"state_before,omitempty"`
-	StateAfter    string                `json:"state_after,omitempty"`
-	Aligned       bool                  `json:"aligned"`
-	AuditID       string                `json:"audit_id,omitempty"`
-	Repositories  []RepositoryGitEffect `json:"repositories"`
-	PullRequest   *GitPullRequestResult `json:"pull_request,omitempty"`
-	Problems      []GitProblem          `json:"problems"`
-	ErrorCode     string                `json:"error_code,omitempty"`
+	SchemaVersion   int                   `json:"schema_version"`
+	Operation       string                `json:"operation"`
+	Status          string                `json:"status"`
+	StateBefore     string                `json:"state_before,omitempty"`
+	StateAfter      string                `json:"state_after,omitempty"`
+	Aligned         bool                  `json:"aligned"`
+	AuditID         string                `json:"audit_id,omitempty"`
+	Repositories    []RepositoryGitEffect `json:"repositories"`
+	PullRequestPlan *GitPullRequestPlan   `json:"pull_request_plan,omitempty"`
+	Problems        []GitProblem          `json:"problems"`
+	ErrorCode       string                `json:"error_code,omitempty"`
 }
 
 type RepositoryGitEffect struct {
@@ -383,16 +380,16 @@ func PushGit(start string, request GitPushRequest, inspect gitexec.WorkflowInspe
 	return finishAfterMutation(participantsFrom(participant), inspect, audit, &report)
 }
 
-func CreateGitPullRequest(start string, request GitPullRequestRequest, inspect gitexec.WorkflowInspector, remoteURL gitexec.WorkflowRemoteURLReader, open PullRequestOpener) (WorkspaceGitMutationReport, error) {
+func PrepareGitPullRequest(start string, request GitPullRequestRequest, inspect gitexec.WorkflowInspector) (WorkspaceGitMutationReport, error) {
 	if !validMutationRequest(request.Agent, request.TaskID, request.Home, request.StateID, request.Confirm) ||
 		request.Repository == "" || request.Remote == "" || request.Base == "" || request.Head == "" || strings.TrimSpace(request.Title) == "" ||
-		inspect == nil || remoteURL == nil || open == nil {
+		inspect == nil {
 		return WorkspaceGitMutationReport{}, gitFailure("validation_failed", "argumento inválido", "informe repositório, remote, base, head, título, estado e confirmação")
 	}
 	if !validRemoteName(request.Remote) || gitexec.ValidateWorkflowBranchName(request.Base) != nil || gitexec.ValidateWorkflowBranchName(request.Head) != nil {
 		return WorkspaceGitMutationReport{}, gitFailure("validation_failed", "argumento inválido", "use remote local e branches explícitas")
 	}
-	report, participant, before, audit, err := prepareSingleGitMutation(start, request.Home, request.Agent, request.TaskID, request.StateID, request.Repository, "pull_request_create", inspect)
+	report, _, before, audit, err := prepareSingleGitMutation(start, request.Home, request.Agent, request.TaskID, request.StateID, request.Repository, "pull_request_prepare", inspect)
 	if err != nil {
 		return report, err
 	}
@@ -400,29 +397,14 @@ func CreateGitPullRequest(start string, request GitPullRequestRequest, inspect g
 		return finishGitMutation(audit, &report, nil)
 	}
 	repo := findRepository(before.Repositories, request.Repository)
-	if !containsRemote(repo.Remotes, request.Remote) || !containsGitName(repo.RemoteBranches, request.Remote+"/"+request.Head) {
+	if !containsGitHubRemote(repo.Remotes, request.Remote) || !containsGitName(repo.RemoteBranches, request.Remote+"/"+request.Head) {
 		report.Status = "blocked"
 		report.ErrorCode = "github_remote_required"
 		report.Problems = append(report.Problems, GitProblem{Code: "github_remote_required", Component: repo.Name})
 		return finishGitMutation(audit, &report, nil)
 	}
-	rawURL, err := remoteURL(participant.Path, request.Remote)
-	if err != nil {
-		report.Status = "blocked"
-		report.ErrorCode = "remote_missing"
-		report.Problems = append(report.Problems, GitProblem{Code: "remote_missing", Component: repo.Name})
-		return finishGitMutation(audit, &report, nil)
-	}
-	result, err := open(context.Background(), request, rawURL)
-	if err != nil {
-		report.Status = "failed"
-		report.ErrorCode = safeErrorCode(err, "remote_result_unknown")
-		report.Repositories[0].Status = "failed"
-		report.Repositories[0].ErrorCode = report.ErrorCode
-		return finishGitMutation(audit, &report, nil)
-	}
-	report.PullRequest = &result
-	report.Repositories[0].Status = "succeeded"
+	report.PullRequestPlan = &GitPullRequestPlan{Repository: request.Repository, Remote: request.Remote, Base: request.Base, Head: request.Head}
+	report.Repositories[0].Status = "prepared"
 	return finishGitMutation(audit, &report, nil)
 }
 
@@ -653,17 +635,13 @@ func containsRemote(remotes []gitexec.WorkflowRemote, name string) bool {
 	return false
 }
 
-func safeErrorCode(err error, fallback string) string {
-	var failure GitFailure
-	if errors.As(err, &failure) && failure.Code != "" {
-		return failure.Code
+func containsGitHubRemote(remotes []gitexec.WorkflowRemote, name string) bool {
+	for _, remote := range remotes {
+		if remote.Name == name && remote.Provider == "github" {
+			return true
+		}
 	}
-	type coded interface{ Error() string }
-	var withCode coded
-	if errors.As(err, &withCode) && withCode.Error() != "" && validTaskID(withCode.Error()) {
-		return withCode.Error()
-	}
-	return fallback
+	return false
 }
 
 func snapshotStateID(snapshot WorkspaceGitSnapshot) string {

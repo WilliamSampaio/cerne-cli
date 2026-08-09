@@ -215,18 +215,14 @@ and untracked files for both repositories. Pending changes are information, not 
 ### 4. Coordinate an approved Git step (optional)
 
 Install `cerne-git-workflow` with `cerne skill install <agent>`, then let the skill inspect first
-and ask for a separate confirmation before each mutation:
+and ask for a separate confirmation before the agent runs any Git effect:
 
 ```sh
 cerne git inspect --agent codex --task task-1 --json
-cerne git branch create --name feat/example --base knowledge=main --base source=main --state <state-id> --confirm --agent codex --task task-1 --json
-cerne git commit source --message "feat: example" --include path/to/file.go --state <state-id> --confirm --agent codex --task task-1 --json
-cerne git push source --remote origin --branch feat/example --state <state-id> --confirm --agent codex --task task-1 --json
-cerne git pr create source --remote origin --base main --head feat/example --title "feat: example" --body-file pr.md --state <state-id> --confirm --agent codex --task task-1 --json
 ```
 
-Commit, push, and Pull Request are separate steps. PR creation supports GitHub.com and reads tokens
-only from `GH_TOKEN` or `GITHUB_TOKEN`. Unsupported or destructive Git operations are refused. See
+Branch, commit, push, and Pull Request are separate agent-run steps. Cerne only provides the
+sanitized snapshot (`state_id`, repositories, branches, remotes, and changed paths). Unsupported or destructive Git operations are refused by the skill. See
 [the command reference](docs/en/commands.md) for the full JSON/audit contract.
 
 ### 5. Link an existing source repository (optional)

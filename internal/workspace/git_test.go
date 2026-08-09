@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -330,16 +329,23 @@ func TestGitCommitPushAndPullRequestCoordinator(t *testing.T) {
 			t.Fatalf("report=%#v err=%#v got=%q", report, err, got)
 		}
 	})
-	t.Run("pull request opens only when head is published", func(t *testing.T) {
-		report, err := CreateGitPullRequest(root, GitPullRequestRequest{Agent: "gemini", TaskID: "task", Home: t.TempDir(), StateID: state.StateID, Repository: "source", Remote: "origin", Base: "main", Head: "feat/x", Title: "Title", Body: "Body", Confirm: true}, fakeWorkflowInspector(repos, nil), func(path, remote string) (string, error) {
-			return "https://github.com/acme/app.git", nil
-		}, func(_ context.Context, request GitPullRequestRequest, remote string) (GitPullRequestResult, error) {
-			if remote != "https://github.com/acme/app.git" || request.Title != "Title" {
-				t.Fatalf("request=%#v remote=%q", request, remote)
-			}
-			return GitPullRequestResult{Number: 1, URL: "https://github.com/acme/app/pull/1", Outcome: "created"}, nil
-		})
-		if err != nil || report.Status != "succeeded" || report.PullRequest == nil || report.PullRequest.Number != 1 {
+	t.Run("pull request plan is prepared only when head is published", func(t *testing.T) {
+		report, err := PrepareGitPullRequest(root, GitPullRequestRequest{Agent: "gemini", TaskID: "task", Home: t.TempDir(), StateID: state.StateID, Repository: "source", Remote: "origin", Base: "main", Head: "feat/x", Title: "Title", Confirm: true}, fakeWorkflowInspector(repos, nil))
+		if err != nil || report.Status != "succeeded" || report.PullRequestPlan == nil || report.PullRequestPlan.Head != "feat/x" || report.Repositories[0].Status != "prepared" {
+			t.Fatalf("report=%#v err=%#v", report, err)
+		}
+	})
+	t.Run("pull request preparation blocks non GitHub remotes", func(t *testing.T) {
+		otherRepos := make(map[string]gitexec.WorkflowRepository, len(repos))
+		for path, repo := range repos {
+			otherRepos[path] = repo
+		}
+		repo := otherRepos[source]
+		repo.Remotes = []gitexec.WorkflowRemote{{Name: "origin", Provider: "other"}}
+		otherRepos[source] = repo
+		otherState := branchState(t, root, otherRepos)
+		report, err := PrepareGitPullRequest(root, GitPullRequestRequest{Agent: "gemini", TaskID: "task", Home: t.TempDir(), StateID: otherState.StateID, Repository: "source", Remote: "origin", Base: "main", Head: "feat/x", Title: "Title", Confirm: true}, fakeWorkflowInspector(otherRepos, nil))
+		if err != nil || report.Status != "blocked" || report.ErrorCode != "github_remote_required" || report.PullRequestPlan != nil {
 			t.Fatalf("report=%#v err=%#v", report, err)
 		}
 	})

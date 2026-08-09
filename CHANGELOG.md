@@ -10,16 +10,16 @@ All notable changes to Cerne are documented in this file. This project follows
 - `cerne skill install <agent>` now installs every compatible official skill for Codex, Claude, and
   Gemini, including the new `cerne-git-workflow` skill.
 - `cerne skill install <agent> <skill>` installs one explicit supported skill.
-- `cerne git inspect`, coordinated `branch create`, scoped `commit`, explicit non-force `push`, and
-  GitHub.com Pull Request creation for the `cerne-git-workflow` skill.
+- `cerne git inspect` for the `cerne-git-workflow` skill; branch, commit, push, and Pull Request
+  effects are delegated to the agent's native Git and GitHub tooling.
 
 ### Security
 
 - Every `cerne git` mutation requires `--state`, `--confirm`, `--agent`, and `--task`, starts a
   private redacted audit before effects, reinspects stale state, disables controllable Git prompts,
   and refuses destructive or arbitrary Git operations.
-- GitHub Pull Request creation uses only `GH_TOKEN` or `GITHUB_TOKEN`, stores no token, and uses
-  offline-idempotent GET/POST/reconcile behavior without retrying creation.
+- Pull Request preparation uses no network or credentials and prevents Cerne from handling GitHub
+  tokens; the agent uses exactly the authorized PR targets with its own authentication.
 
 ## 0.9.0 - 2026-08-09
 

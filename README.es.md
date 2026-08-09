@@ -219,18 +219,14 @@ rastreados en ambos repositorios. Los cambios pendientes son información, no un
 ### 4. Coordina una etapa Git aprobada (opcional)
 
 Instala `cerne-git-workflow` con `cerne skill install <agent>` y deja que la skill inspeccione
-primero y pida una confirmación separada antes de cada mutación:
+primero y pida una confirmación separada antes de que el agente ejecute cualquier efecto Git:
 
 ```sh
 cerne git inspect --agent codex --task task-1 --json
-cerne git branch create --name feat/ejemplo --base knowledge=main --base source=main --state <state-id> --confirm --agent codex --task task-1 --json
-cerne git commit source --message "feat: ejemplo" --include ruta/archivo.go --state <state-id> --confirm --agent codex --task task-1 --json
-cerne git push source --remote origin --branch feat/ejemplo --state <state-id> --confirm --agent codex --task task-1 --json
-cerne git pr create source --remote origin --base main --head feat/ejemplo --title "feat: ejemplo" --body-file pr.md --state <state-id> --confirm --agent codex --task task-1 --json
 ```
 
-Commit, push y Pull Request son etapas separadas. Crear PR soporta GitHub.com y lee tokens solo
-desde `GH_TOKEN` o `GITHUB_TOKEN`. Las operaciones Git destructivas o fuera de alcance se rechazan.
+Branch, commit, push y Pull Request son etapas separadas ejecutadas por el agente. Cerne solo
+proporciona el snapshot sanitizado (`state_id`, repositorios, branches, remotes y paths cambiados). Las operaciones Git destructivas o fuera de alcance las rechaza la skill.
 Consulta la [referencia de comandos](docs/es/commands.md) para el contrato completo de JSON/auditoría.
 
 ### 5. Vincula un source existente (opcional)
