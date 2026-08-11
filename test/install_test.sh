@@ -108,6 +108,14 @@ if HOME=$work/link/home TMPDIR=$tmp_root CERNE_INSTALL_ALLOW_FILE_URLS=1 CERNE_I
 	exit 1
 fi
 
+mkdir -p "$work/link-parent/home" "$work/link-parent/outside"
+ln -s "$work/link-parent/outside" "$work/link-parent/home/.local"
+if HOME=$work/link-parent/home TMPDIR=$tmp_root CERNE_INSTALL_ALLOW_FILE_URLS=1 CERNE_INSTALL_REPO_URL=file://$work/release CERNE_INSTALL_OS=linux CERNE_INSTALL_ARCH=amd64 sh "$root/install.sh" >/dev/null 2>/dev/null; then
+	echo "expected symlink parent refusal" >&2
+	exit 1
+fi
+test ! -e "$work/link-parent/outside/bin/cerne"
+
 mkdir -p "$work/mismatch/download/v1.2.3"
 cp "$work/release/download/v1.2.3/"*.tar.gz "$work/mismatch/download/v1.2.3/"
 printf '%064d  cerne_v1.2.3_linux_amd64.tar.gz\n' 0 >"$work/mismatch/download/v1.2.3/checksums.txt"

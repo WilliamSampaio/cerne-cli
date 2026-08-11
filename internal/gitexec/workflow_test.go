@@ -1,9 +1,11 @@
 package gitexec
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -70,6 +72,43 @@ func TestWorkflowInspectNoCommitAndGitEnvironment(t *testing.T) {
 	}
 	if got.Head != NoCommits || got.DefaultBranch != "main" {
 		t.Fatalf("empty repo = %#v", got)
+	}
+}
+
+func TestWorkflowInspectDisablesConfiguredFSMonitor(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	repo := t.TempDir()
+	mustGitInspect(t, repo, "init", "--quiet", "--initial-branch", "main")
+	mustGitInspect(t, repo, "config", "user.email", "test@example.com")
+	mustGitInspect(t, repo, "config", "user.name", "Test")
+	writeWorkflowFile(t, filepath.Join(repo, "tracked.txt"), "one\n")
+	mustGitInspect(t, repo, "add", "tracked.txt")
+	mustGitInspect(t, repo, "commit", "-m", "init")
+	hook := filepath.Join(t.TempDir(), "fsmonitor")
+	sentinel := hook + ".ran"
+	if runtime.GOOS == "windows" {
+		hook += ".bat"
+		sentinel = hook + ".ran"
+		writeWorkflowFile(t, hook, "@echo off\r\necho ran > \"%~f0.ran\"\r\nexit /b 0\r\n")
+	} else {
+		writeWorkflowFile(t, hook, "#!/bin/sh\nprintf ran > \"$0.ran\"\n")
+	}
+	if err := os.Chmod(hook, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustGitInspect(t, repo, "config", "core.fsmonitor", hook)
+
+	inspect, err := FindWorkflowInspector()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := inspect(repo); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(sentinel); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("fsmonitor configurado foi executado: %v", err)
 	}
 }
 

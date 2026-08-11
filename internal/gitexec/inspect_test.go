@@ -120,13 +120,13 @@ func TestInspectSanitizesHostileGitEnvironmentAndUsesOnlyRevParse(t *testing.T) 
 func writeFakeGit(t *testing.T, path string) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
-		script := "@echo off\r\nif not \"%1\"==\"-C\" exit /b 3\r\nif not \"%3\"==\"rev-parse\" exit /b 4\r\nif \"%4\"==\"--show-toplevel\" echo %2\r\nif \"%4\"==\"--git-common-dir\" echo %2\\.git\r\nif not \"%4\"==\"--show-toplevel\" if not \"%4\"==\"--git-common-dir\" exit /b 5\r\n"
+		script := "@echo off\r\nif not \"%1\"==\"-c\" exit /b 2\r\nif not \"%5\"==\"-C\" exit /b 3\r\nif not \"%7\"==\"rev-parse\" exit /b 4\r\nif \"%8\"==\"--show-toplevel\" echo %6\r\nif \"%8\"==\"--git-common-dir\" echo %6\\.git\r\nif not \"%8\"==\"--show-toplevel\" if not \"%8\"==\"--git-common-dir\" exit /b 5\r\n"
 		if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 			t.Fatal(err)
 		}
 		return
 	}
-	script := "#!/bin/sh\n[ \"$1\" = \"-C\" ] || exit 3\n[ \"$3\" = \"rev-parse\" ] || exit 4\ncase \"$4\" in\n  --show-toplevel) printf '%s\\n' \"$2\" ;;\n  --git-common-dir) printf '%s/.git\\n' \"$2\" ;;\n  *) exit 5 ;;\nesac\n"
+	script := "#!/bin/sh\n[ \"$1\" = \"-c\" ] || exit 2\n[ \"$5\" = \"-C\" ] || exit 3\n[ \"$7\" = \"rev-parse\" ] || exit 4\ncase \"$8\" in\n  --show-toplevel) printf '%s\\n' \"$6\" ;;\n  --git-common-dir) printf '%s/.git\\n' \"$6\" ;;\n  *) exit 5 ;;\nesac\n"
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}

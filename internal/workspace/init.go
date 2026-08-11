@@ -17,11 +17,13 @@ var (
 )
 
 type Result struct {
-	Name          string
-	KnowledgePath string
-	SourcePath    string
-	SourceMode    SourceMode
-	AuditPath     string
+	Name              string
+	KnowledgePath     string
+	SourcePath        string
+	SourceMode        SourceMode
+	AuditPath         string
+	rootIdentity      ownedPath
+	knowledgeIdentity ownedPath
 }
 
 type SourceMode string
@@ -131,7 +133,7 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 		return Result{}, fmt.Errorf("não foi possível resolver o destino: %w", err)
 	}
 
-	var created []string
+	var created []ownedPath
 	defer func() {
 		if err == nil {
 			return
@@ -141,10 +143,12 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 		}
 	}()
 
+	var rootIdentity ownedPath
 	if info, err := os.Lstat(root); err == nil {
 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 			return Result{}, fmt.Errorf("%w: %q não é um diretório regular", ErrUnsafeDestination, root)
 		}
+		rootIdentity = ownedPath{path: filepath.Clean(root), info: info}
 		empty, err := isEmpty(root)
 		if err != nil {
 			return Result{}, fmt.Errorf("não foi possível inspecionar o destino %q: %w", root, err)
@@ -156,7 +160,12 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 		if err := os.Mkdir(root, 0o755); err != nil {
 			return Result{}, fmt.Errorf("não foi possível criar o destino %q: %w", root, err)
 		}
-		created = append(created, root)
+		owned, err := recordOwnedPath(root)
+		if err != nil {
+			return Result{}, fmt.Errorf("não foi possível confirmar ownership de %q: %w", root, err)
+		}
+		rootIdentity = owned
+		created = append(created, owned)
 	} else {
 		return Result{}, fmt.Errorf("não foi possível inspecionar o destino %q: %w", root, err)
 	}
@@ -175,7 +184,11 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 		if err := os.Mkdir(directory, 0o755); err != nil {
 			return Result{}, fmt.Errorf("não foi possível criar %q: %w", directory, err)
 		}
-		created = append(created, directory)
+		owned, err := recordOwnedPath(directory)
+		if err != nil {
+			return Result{}, fmt.Errorf("não foi possível confirmar ownership de %q: %w", directory, err)
+		}
+		created = append(created, owned)
 	}
 	for _, directory := range knowledgeDirs {
 		if err := os.WriteFile(filepath.Join(directory, ".gitkeep"), nil, 0o644); err != nil {
@@ -188,7 +201,12 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 	if err != nil {
 		return Result{}, fmt.Errorf("não foi possível criar o manifesto: %w", err)
 	}
-	created = append(created, manifestPath)
+	ownedManifest, err := recordOwnedPath(manifestPath)
+	if err != nil {
+		manifest.Close()
+		return Result{}, fmt.Errorf("não foi possível confirmar ownership de %q: %w", manifestPath, err)
+	}
+	created = append(created, ownedManifest)
 	encoder := json.NewEncoder(manifest)
 	encoder.SetIndent("", "  ")
 	manifestData := struct {
@@ -222,7 +240,14 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 		}
 	}
 
-	return Result{Name: name, KnowledgePath: knowledge, SourcePath: source, SourceMode: SourceEmpty}, nil
+	knowledgeIdentity, err := recordOwnedPath(knowledge)
+	if err != nil {
+		return Result{}, fmt.Errorf("não foi possível confirmar ownership de %q: %w", knowledge, err)
+	}
+	return Result{
+		Name: name, KnowledgePath: knowledge, SourcePath: source, SourceMode: SourceEmpty,
+		rootIdentity: rootIdentity, knowledgeIdentity: knowledgeIdentity,
+	}, nil
 }
 
 func initWithLocalSource(parent, name, input string, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect) (Result, error) {
@@ -410,11 +435,10 @@ func cleanupCloneStaging(root, staging string) error {
 }
 
 func rollbackInitializedWorkspace(result Result, rootExisted bool) error {
-	root := filepath.Dir(result.KnowledgePath)
 	if !rootExisted {
-		return os.RemoveAll(root)
+		return removeOwnedPath(result.rootIdentity)
 	}
-	return os.RemoveAll(result.KnowledgePath)
+	return removeOwnedPath(result.knowledgeIdentity)
 }
 
 func pathExists(path string) bool {
@@ -460,14 +484,41 @@ func asciiAlphaNumeric(character byte) bool {
 		character >= '0' && character <= '9'
 }
 
-func removeCreated(paths []string) error {
+type ownedPath struct {
+	path string
+	info os.FileInfo
+}
+
+func recordOwnedPath(path string) (ownedPath, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return ownedPath{}, err
+	}
+	return ownedPath{path: filepath.Clean(path), info: info}, nil
+}
+
+func removeCreated(paths []ownedPath) error {
 	var rollbackErr error
 	for index := len(paths) - 1; index >= 0; index-- {
-		if err := os.RemoveAll(paths[index]); err != nil {
-			rollbackErr = errors.Join(rollbackErr, fmt.Errorf("remover %q: %w", paths[index], err))
+		if err := removeOwnedPath(paths[index]); err != nil {
+			rollbackErr = errors.Join(rollbackErr, fmt.Errorf("remover %q: %w", paths[index].path, err))
 		}
 	}
 	return rollbackErr
+}
+
+func removeOwnedPath(path ownedPath) error {
+	if path.path == "" || path.info == nil {
+		return errors.New("ownership do rollback não confirmada")
+	}
+	info, err := os.Lstat(path.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !os.SameFile(info, path.info) {
+		return errors.New("ownership do rollback não confirmada")
+	}
+	return os.RemoveAll(path.path)
 }
 
 func knowledgeDirectories(root string) []string {

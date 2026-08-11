@@ -218,6 +218,44 @@ func TestInitWithLocalSourceRevalidatesAndRollsBack(t *testing.T) {
 	}
 }
 
+func TestInitRollbackRefusesReplacedRoot(t *testing.T) {
+	parent := t.TempDir()
+	external := filepath.Join(parent, "external")
+	if err := os.Mkdir(external, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(parent, "example")
+	replacement := filepath.Join(parent, "replacement")
+	if err := os.Mkdir(replacement, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(replacement, "alien.txt"), []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	inspect := func(path string) (LinkRepositoryFacts, error) {
+		calls++
+		common := filepath.Join(path, ".git")
+		if calls == 2 {
+			if err := os.RemoveAll(root); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Rename(replacement, root); err != nil {
+				t.Fatal(err)
+			}
+			common = filepath.Join(path, ".git-changed")
+		}
+		return LinkRepositoryFacts{RequestedPath: path, WorktreeRoot: path, CommonDir: common, HasWorktree: true}, nil
+	}
+	_, err := InitWithSource(parent, "example", SourceInitRequest{Mode: SourceLocal, Input: external}, fakeInitRepository, inspect, nil)
+	if err == nil || !strings.Contains(err.Error(), "falha no rollback") {
+		t.Fatalf("erro=%v", err)
+	}
+	if readText(t, filepath.Join(root, "alien.txt")) != "keep" {
+		t.Fatal("rollback removeu conteúdo que não criou")
+	}
+}
+
 func TestInitWithClonePromotesValidSourceAndFinalizesRedactedAudit(t *testing.T) {
 	parent := t.TempDir()
 	origin := "https://token@example.invalid/private/repo.git"

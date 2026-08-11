@@ -83,7 +83,7 @@ func collectStatus(git, directory string) (RepositoryStatus, error) {
 }
 
 func statusOutput(git, directory string, args ...string) (string, error) {
-	command := exec.Command(git, append([]string{"-C", directory}, args...)...)
+	command := exec.Command(git, append(readOnlyGitArgs(directory), args...)...)
 	command.Env = gitEnvironment(os.Environ())
 	output, err := command.CombinedOutput()
 	if err != nil {

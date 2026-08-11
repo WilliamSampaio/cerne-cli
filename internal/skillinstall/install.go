@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -145,7 +146,7 @@ func Install(agent string, options Options) (Result, error) {
 		}
 	}
 
-	staging, err := stagePackage(pkg, destination, agent)
+	staging, err := stagePackage(pkg, home, destination, agent)
 	if err != nil {
 		return fail(err)
 	}
@@ -167,9 +168,9 @@ func Install(agent string, options Options) (Result, error) {
 	return result, nil
 }
 
-func stagePackage(pkg Package, destination, agent string) (string, error) {
+func stagePackage(pkg Package, home, destination, agent string) (string, error) {
 	parent := filepath.Dir(destination)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
+	if err := ensureInstallDirectoryUnder(home, parent); err != nil {
 		return "", failure("destination-inaccessible", "destino do agente inacessível", "verifique permissões no perfil do agente")
 	}
 	staging, err := os.MkdirTemp(parent, "."+pkg.ID+"-")
@@ -203,6 +204,50 @@ func stagePackage(pkg Package, destination, agent string) (string, error) {
 		return "", err
 	}
 	return staging, nil
+}
+
+func ensureInstallDirectoryUnder(home, path string) error {
+	home, err := filepath.Abs(home)
+	if err != nil {
+		return err
+	}
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	inside, err := pathInside(home, path)
+	if err != nil || !inside {
+		return errors.New("destination outside home")
+	}
+	rel, err := filepath.Rel(home, path)
+	if err != nil {
+		return err
+	}
+	current := home
+	if rel == "." {
+		return ensureInstallDirectory(current)
+	}
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		current = filepath.Join(current, part)
+		if err := ensureInstallDirectory(current); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureInstallDirectory(path string) error {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return os.Mkdir(path, 0o755)
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return errors.New("unsafe install directory")
+	}
+	return nil
 }
 
 func readMarker(destination, agent string) (marker, bool, error) {

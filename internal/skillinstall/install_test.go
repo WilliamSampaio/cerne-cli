@@ -242,6 +242,22 @@ func TestInstallAuditFailuresAndUpgradeRollbackStaySafe(t *testing.T) {
 	})
 }
 
+func TestInstallRejectsSymlinkProfileAncestor(t *testing.T) {
+	home := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(home, ".codex")); err != nil {
+		t.Skipf("symlink indisponível: %v", err)
+	}
+	_, err := Install("codex", Options{HomeDir: home, PackageDir: packageFixture(t, "1.0.0")})
+	var failure Failure
+	if !errors.As(err, &failure) || failure.Code != "destination-inaccessible" {
+		t.Fatalf("err=%v", err)
+	}
+	if entries, readErr := os.ReadDir(outside); readErr != nil || len(entries) != 0 {
+		t.Fatalf("destino externo foi alterado: entries=%v err=%v", entries, readErr)
+	}
+}
+
 func TestInstallRejectsUnsafeOwnershipMarker(t *testing.T) {
 	tests := map[string]string{
 		"wrong agent":   `{"package":"cerne-skills","version":"1.0.0","agent":"claude","skill":"cerne-context","files":["SKILL.md"]}`,

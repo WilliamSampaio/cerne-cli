@@ -21,6 +21,35 @@ fail() {
 	exit 1
 }
 
+ensure_safe_dir_under_home() {
+	current=$home
+	if test -L "$current"; then
+		fail "$current is a symbolic link"
+	fi
+	if test -e "$current"; then
+		test -d "$current" || fail "$current exists and is not a directory"
+	else
+		mkdir "$current" || fail "failed to create $current"
+	fi
+	old_ifs=$IFS
+	IFS=/
+	set -- $1
+	IFS=$old_ifs
+	for part do
+		test -n "$part" || continue
+		current=$current/$part
+		if test -L "$current"; then
+			fail "$current is a symbolic link"
+		fi
+		if test -e "$current"; then
+			test -d "$current" || fail "$current exists and is not a directory"
+		else
+			mkdir "$current" || fail "failed to create $current"
+			test ! -L "$current" || fail "$current is a symbolic link"
+		fi
+	done
+}
+
 need_value() {
 	test "$#" -gt 1 || fail "$1 requires a value"
 }
@@ -127,7 +156,7 @@ cleanup() {
 	esac
 }
 trap cleanup EXIT HUP INT TERM
-mkdir -p "$bin_dir"
+ensure_safe_dir_under_home ".local/bin"
 
 case "$repo_url" in
 	https://*) ;;
@@ -213,6 +242,7 @@ cp "$tmp/extract/cerne" "$staged" || fail "failed to stage cerne"
 chmod 755 "$staged" || fail "failed to prepare staged cerne"
 installed=$("$staged" --version 2>/dev/null || true)
 test -n "$installed" || fail "staged binary did not report a version"
+ensure_safe_dir_under_home ".local/bin"
 mv "$staged" "$target" || fail "failed to install cerne"
 staged=""
 

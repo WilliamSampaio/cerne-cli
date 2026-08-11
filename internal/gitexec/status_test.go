@@ -128,14 +128,15 @@ func writeFakeStatusGit(t *testing.T, path string) {
 			"if not \"%GIT_DIR%\"==\"\" exit /b 20",
 			"if not \"%GIT_OPTIONAL_LOCKS%\"==\"0\" exit /b 21",
 			"if not \"%GIT_TERMINAL_PROMPT%\"==\"0\" exit /b 22",
-			"if not \"%1\"==\"-C\" exit /b 3",
-			"if \"%3\"==\"rev-parse\" if \"%4\"==\"--show-toplevel\" echo %2&& exit /b 0",
-			"if \"%3\"==\"rev-parse\" if \"%4\"==\"--git-common-dir\" echo %2\\.git&& exit /b 0",
-			"if \"%3\"==\"rev-parse\" if \"%4\"==\"--verify\" echo abc1234&& exit /b 0",
-			"if \"%3\"==\"symbolic-ref\" if \"%4\"==\"--quiet\" if \"%5\"==\"--short\" if \"%6\"==\"HEAD\" echo main&& exit /b 0",
-			"if \"%3\"==\"diff\" if \"%4\"==\"--name-only\" echo modified.txt&& exit /b 0",
-			"if \"%3\"==\"diff\" if \"%4\"==\"--cached\" if \"%5\"==\"--name-only\" echo staged.txt&& exit /b 0",
-			"if \"%3\"==\"ls-files\" if \"%4\"==\"--others\" if \"%5\"==\"--exclude-standard\" echo untracked.txt&& exit /b 0",
+			"if not \"%1\"==\"-c\" exit /b 2",
+			"if not \"%5\"==\"-C\" exit /b 3",
+			"if \"%7\"==\"rev-parse\" if \"%8\"==\"--show-toplevel\" echo %6&& exit /b 0",
+			"if \"%7\"==\"rev-parse\" if \"%8\"==\"--git-common-dir\" echo %6\\.git&& exit /b 0",
+			"if \"%7\"==\"rev-parse\" if \"%8\"==\"--verify\" echo abc1234&& exit /b 0",
+			"if \"%7\"==\"symbolic-ref\" if \"%8\"==\"--quiet\" if \"%9\"==\"--short\" echo main&& exit /b 0",
+			"if \"%7\"==\"diff\" if \"%8\"==\"--name-only\" echo modified.txt&& exit /b 0",
+			"if \"%7\"==\"diff\" if \"%8\"==\"--cached\" if \"%9\"==\"--name-only\" echo staged.txt&& exit /b 0",
+			"if \"%7\"==\"ls-files\" if \"%8\"==\"--others\" if \"%9\"==\"--exclude-standard\" echo untracked.txt&& exit /b 0",
 			"exit /b 9",
 			"",
 		}, "\r\n")
@@ -148,10 +149,11 @@ func writeFakeStatusGit(t *testing.T, path string) {
 [ -z "$GIT_DIR" ] || exit 20
 [ "$GIT_OPTIONAL_LOCKS" = "0" ] || exit 21
 [ "$GIT_TERMINAL_PROMPT" = "0" ] || exit 22
-[ "$1" = "-C" ] || exit 3
-case "$3 $4 $5 $6" in
-  "rev-parse --show-toplevel  ") printf '%s\n' "$2" ;;
-  "rev-parse --git-common-dir  ") printf '%s/.git\n' "$2" ;;
+[ "$1" = "-c" ] || exit 2
+[ "$5" = "-C" ] || exit 3
+case "$7 $8 $9 ${10}" in
+  "rev-parse --show-toplevel  ") printf '%s\n' "$6" ;;
+  "rev-parse --git-common-dir  ") printf '%s/.git\n' "$6" ;;
   "rev-parse --verify --short=7 HEAD") printf 'abc1234\n' ;;
   "symbolic-ref --quiet --short HEAD") printf 'main\n' ;;
   "diff --name-only  ") printf 'modified.txt\n' ;;

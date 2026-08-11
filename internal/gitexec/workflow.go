@@ -232,7 +232,7 @@ func pushWorkflowBranch(git, directory, remote, branch string) error {
 }
 
 func workflowChanges(git, directory string) ([]WorkflowChange, error) {
-	output, err := workflowOutput(git, directory, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+	output, err := workflowReadOnlyOutput(git, directory, "status", "--porcelain=v1", "-z", "--untracked-files=all")
 	if err != nil {
 		return nil, err
 	}
@@ -262,6 +262,16 @@ func workflowChanges(git, directory string) ([]WorkflowChange, error) {
 	}
 	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
 	return changes, nil
+}
+
+func workflowReadOnlyOutput(git, directory string, args ...string) (string, error) {
+	command := exec.Command(git, append(readOnlyGitArgs(directory), args...)...)
+	command.Env = gitEnvironment(os.Environ())
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("consulta Git falhou em %q: %w", directory, err)
+	}
+	return string(output), nil
 }
 
 func workflowOutput(git, directory string, args ...string) (string, error) {
