@@ -515,7 +515,7 @@ func removeOwnedPath(path ownedPath) error {
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
-	if err != nil || info.Mode()&os.ModeSymlink != 0 || !os.SameFile(info, path.info) {
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || info.Mode().Type() != path.info.Mode().Type() || !os.SameFile(info, path.info) {
 		return errors.New("ownership do rollback não confirmada")
 	}
 	return os.RemoveAll(path.path)
