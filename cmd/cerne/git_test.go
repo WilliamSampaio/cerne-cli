@@ -61,7 +61,7 @@ func TestCLIGitInspectUsageHelpAndFailures(t *testing.T) {
 	root := newCLIGitWorkspace(t)
 
 	status, stdout, stderr := executeCLI(t, binary, root, nil, "git", "--help")
-	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne git inspect --agent") {
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne git inspect --agent") || strings.Contains(stdout, "cerne git branch") {
 		t.Fatalf("help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 	for _, args := range [][]string{
@@ -115,7 +115,7 @@ func TestCLIGitDelegatesEffectsWithoutAudit(t *testing.T) {
 	state := cliGitState(t, binary, root, t.TempDir())
 
 	for _, args := range [][]string{
-		{"git", "branch", "create", "--name", "feat/x", "--base", "knowledge=main", "--base", "source=main", "--state", state, "--agent", "codex", "--task", "task-1", "--json"},
+		{"git", "branch", "create", "--name", "feat/x", "--base", "knowledge=main", "--base", "source=main", "--state", state, "--confirm", "--agent", "codex", "--task", "task-1", "--json"},
 		{"git", "commit", "source", "--message", "feat: checkpoint", "--include", "file.txt", "--state", state, "--confirm", "--agent", "codex", "--task", "task-2", "--json"},
 		{"git", "push", "source", "--remote", "origin", "--branch", "main", "--state", state, "--confirm", "--agent", "codex", "--task", "task-3", "--json"},
 		{"git", "pr", "prepare", "source", "--remote", "origin", "--base", "main", "--head", "feat/x", "--title", "Title", "--body-file", "body.md", "--state", state, "--confirm", "--agent", "codex", "--task", "task-4", "--json"},

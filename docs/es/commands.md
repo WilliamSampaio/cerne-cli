@@ -128,11 +128,10 @@ sanitizados, branches locales, paths cambiados literales e id privado de auditor
 branch, commit, push y Pull Request no están disponibles en Cerne; las operaciones Git destructivas
 o fuera de alcance siguen fuera de la skill.
 
-El éxito JSON usa stdout/estado `0`; reportes bloqueados, fallidos o parciales usan stdout/estado
-`1`; uso inválido usa stderr/estado `2`. Las auditorías privadas viven en `~/.cerne/audit` y
+El éxito JSON usa stdout/estado `0`; un snapshot de workspace inválido usa stdout/estado `1`; uso
+inválido usa stderr/estado `2`. Las auditorías privadas en `~/.cerne/audit` cubren solo `inspect` y
 excluyen conversaciones, salida de Git, URLs remotas, tokens, contenido de archivos, cuerpo de PR y
-errores brutos. En un resultado parcial no hay rollback automático; el siguiente paso seguro es un
-nuevo `inspect`.
+errores brutos. La evidencia de ejecución pertenece al agente o harness, no a la auditoría de Cerne.
 
 ## `cerne workflow setup [--agent codex|claude]`
 

@@ -228,6 +228,7 @@ cerne git inspect --agent codex --task task-1 --json
 Branch, commit, push y Pull Request son etapas separadas ejecutadas por el agente. Cerne solo
 proporciona el snapshot sanitizado (`state_id`, repositorios, branches, remotes y paths cambiados). Las operaciones Git destructivas o fuera de alcance las rechaza la skill.
 Consulta la [referencia de comandos](docs/es/commands.md) para el contrato completo de JSON/auditoría.
+La auditoría de Cerne cubre solo la inspección; la evidencia de efectos nativos pertenece al agente o harness.
 
 ### 5. Vincula un source existente (opcional)
 

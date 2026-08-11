@@ -9,7 +9,38 @@ permissions:
   contents: write
 
 jobs:
+  validate-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate SemVer release tag
+        run: sh scripts/validate-release-tag.sh "$GITHUB_REF_NAME"
+
+  test:
+    needs: validate-tag
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Validate standalone installer shell
+        if: runner.os != 'Windows'
+        run: sh -n install.sh
+      - name: Run standalone installer fixture tests
+        if: runner.os != 'Windows'
+        run: sh test/install_test.sh
+      - name: Validate release workflow contract
+        if: runner.os != 'Windows'
+        run: sh test/release_workflow_test.sh
+      - name: Run test suite
+        run: go test -count=1 ./...
+
   release:
+    needs: [validate-tag, test]
     runs-on: ubuntu-latest
     strategy:
       matrix:

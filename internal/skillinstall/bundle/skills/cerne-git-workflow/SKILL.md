@@ -99,3 +99,5 @@ refspecs, absolute paths, path traversal, or pathspec magic to Cerne.
 
 Never claim repositories are aligned unless the CLI result proves it. For partial results, name what
 completed, what did not run, and the safe next step: reinspect before deciding.
+Do not claim that Cerne executed or audited an agent-native effect. Cerne audit covers only the
+read-only `git inspect`; execution evidence belongs to the agent or harness.
