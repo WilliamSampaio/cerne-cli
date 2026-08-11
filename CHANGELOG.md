@@ -5,6 +5,11 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+### Changed
+
+- Official skills now respond in the active conversation language, falling back to the effective
+  Cerne language when available.
+
 ## 0.10.0 - 2026-08-09
 
 ### Added
