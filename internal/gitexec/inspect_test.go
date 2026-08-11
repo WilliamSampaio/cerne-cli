@@ -120,7 +120,18 @@ func TestInspectSanitizesHostileGitEnvironmentAndUsesOnlyRevParse(t *testing.T) 
 func writeFakeGit(t *testing.T, path string) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
-		script := "@echo off\r\nif not \"%1\"==\"-c\" exit /b 2\r\nif not \"%5\"==\"-C\" exit /b 3\r\nif not \"%7\"==\"rev-parse\" exit /b 4\r\nif \"%8\"==\"--show-toplevel\" echo %6\r\nif \"%8\"==\"--git-common-dir\" echo %6\\.git\r\nif not \"%8\"==\"--show-toplevel\" if not \"%8\"==\"--git-common-dir\" exit /b 5\r\n"
+		script := strings.Join([]string{
+			"@echo off",
+			"if not \"%1\"==\"-c\" exit /b 2",
+			"if \"%5\"==\"-C\" set repo=%6& set cmd=%7& set flag=%8",
+			"if \"%6\"==\"-C\" set repo=%7& set cmd=%8& set flag=%9",
+			"if \"%repo%\"==\"\" exit /b 3",
+			"if not \"%cmd%\"==\"rev-parse\" exit /b 4",
+			"if \"%flag%\"==\"--show-toplevel\" echo %repo%&& exit /b 0",
+			"if \"%flag%\"==\"--git-common-dir\" echo %repo%\\.git&& exit /b 0",
+			"exit /b 5",
+			"",
+		}, "\r\n")
 		if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 			t.Fatal(err)
 		}

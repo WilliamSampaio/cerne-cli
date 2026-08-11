@@ -276,8 +276,9 @@ Saídas normais e ajuda usam stdout. Erros de uso e falhas operacionais usam std
 
 - `doctor` e `status` são somente de leitura.
 - `link` atualiza apenas `knowledge/cerne.json`, depois que todas as validações passam.
-- O setup usa argumentos fixos, não usa shell, recebe ambiente mínimo e desabilita a telemetria do
-  OpenSpec. Não recebe credenciais nem o caminho de source e não registra a saída bruta do provider.
+- O setup usa argumentos fixos, não usa shell, recebe ambiente reduzido, HOME/perfil temporário do
+  provider e desabilita a telemetria do OpenSpec. Não recebe o caminho de source e não registra a
+  saída bruta do provider. O provider ainda é um executável local: use somente instalações confiáveis.
 - O clone usa argumentos Git fixos sem shell, allowlist de protocolos, staging privado e promoção
   sem substituição. Origem e saída Git bruta não entram na saída do Cerne, manifesto ou auditoria;
   a autenticação permanece externa e o Git mantém a origem como remoto `origin`.

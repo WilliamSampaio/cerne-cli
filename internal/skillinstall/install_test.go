@@ -16,7 +16,7 @@ func TestInstallUsesEmbeddedPackageByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Outcome != "installed" || result.Version != "0.4.0" || result.Skill != SkillName {
+	if result.Outcome != "installed" || result.Version != "0.4.1" || result.Skill != SkillName {
 		t.Fatalf("result = %#v", result)
 	}
 	skill := readText(t, filepath.Join(result.Destination, "SKILL.md"))

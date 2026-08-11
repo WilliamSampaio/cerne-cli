@@ -12,7 +12,7 @@ jobs:
   validate-tag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Validate SemVer release tag
         run: sh scripts/validate-release-tag.sh "$GITHUB_REF_NAME"
 
@@ -23,8 +23,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version-file: go.mod
       - name: Validate standalone installer shell
@@ -36,6 +36,8 @@ jobs:
       - name: Validate release workflow contract
         if: runner.os != 'Windows'
         run: sh test/release_workflow_test.sh
+      - name: Run Go vet
+        run: go vet ./...
       - name: Run test suite
         run: go test -count=1 ./...
 
@@ -54,8 +56,8 @@ jobs:
           - goos: darwin
             goarch: arm64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version-file: go.mod
       - name: Build archive
@@ -68,7 +70,7 @@ jobs:
           name="cerne_${VERSION}_${GOOS}_${GOARCH}"
           go build -ldflags "-X main.version=${VERSION}" -o cerne ./cmd/cerne
           tar -czf "${name}.tar.gz" cerne
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cerne_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}
           path: cerne_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz
@@ -77,8 +79,8 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           path: dist
           merge-multiple: true
@@ -88,7 +90,7 @@ jobs:
           cd dist
           sha256sum *.tar.gz > checksums.txt
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
         with:
           files: |
             install.sh

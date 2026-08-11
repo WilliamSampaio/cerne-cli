@@ -197,6 +197,13 @@ sha256_file() {
 	fi
 }
 
+binary_reports_version() {
+	binary=$1
+	expected_version=$2
+	output=$("$binary" --version 2>/dev/null || true)
+	test "$output" = "cerne $expected_version"
+}
+
 if test -n "$version"; then
 	asset_base=$repo_url/download/$version
 	archive=cerne_${version}_${os}_${arch}.tar.gz
@@ -235,19 +242,17 @@ tar -xzf "$tarball" -C "$tmp/extract" || fail "failed to extract $archive"
 test -f "$tmp/extract/cerne" || fail "archive does not contain cerne"
 test ! -L "$tmp/extract/cerne" || fail "archive member cerne must not be a symbolic link"
 test -x "$tmp/extract/cerne" || chmod +x "$tmp/extract/cerne"
-installed=$("$tmp/extract/cerne" --version 2>/dev/null || true)
-test -n "$installed" || fail "downloaded binary did not report a version"
+binary_reports_version "$tmp/extract/cerne" "$archive_version" || fail "downloaded binary did not report $archive_version"
 staged=$(mktemp "$bin_dir/.cerne.XXXXXX") || fail "failed to stage cerne"
 cp "$tmp/extract/cerne" "$staged" || fail "failed to stage cerne"
 chmod 755 "$staged" || fail "failed to prepare staged cerne"
-installed=$("$staged" --version 2>/dev/null || true)
-test -n "$installed" || fail "staged binary did not report a version"
+binary_reports_version "$staged" "$archive_version" || fail "staged binary did not report $archive_version"
 ensure_safe_dir_under_home ".local/bin"
 mv "$staged" "$target" || fail "failed to install cerne"
 staged=""
 
 installed=$("$target" --version 2>/dev/null || true)
-test -n "$installed" || fail "installed binary did not report a version"
+test "$installed" = "cerne $archive_version" || fail "installed binary did not report $archive_version"
 printf 'installed: %s\n' "$installed"
 printf 'path: %s\n' "$target"
 case ":$PATH:" in

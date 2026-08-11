@@ -27,3 +27,6 @@ grep -F 'os: [ubuntu-latest, windows-latest, macos-latest]' "$workflow" >/dev/nu
 grep -F 'needs: validate-tag' "$workflow" >/dev/null || fail "test matrix is not gated by tag validation"
 grep -F 'needs: [validate-tag, test]' "$workflow" >/dev/null || fail "release build is not gated by tag validation and tests"
 grep -F 'run: go test -count=1 ./...' "$workflow" >/dev/null || fail "release matrix does not run the Go suite"
+if grep -R -nE 'uses: .+@v[0-9]' "$root/.github/workflows" >/dev/null; then
+	fail "workflow actions must be pinned to full commit SHAs"
+fi

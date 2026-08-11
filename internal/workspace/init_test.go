@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -240,7 +241,11 @@ func TestInitRollbackRefusesReplacedRoot(t *testing.T) {
 			if err := os.RemoveAll(root); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.Rename(replacement, root); err != nil {
+			if runtime.GOOS == "windows" {
+				if err := os.WriteFile(root, []byte("alien"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := os.Rename(replacement, root); err != nil {
 				t.Fatal(err)
 			}
 			common = filepath.Join(path, ".git-changed")
@@ -251,7 +256,11 @@ func TestInitRollbackRefusesReplacedRoot(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "falha no rollback") {
 		t.Fatalf("erro=%v", err)
 	}
-	if readText(t, filepath.Join(root, "alien.txt")) != "keep" {
+	if runtime.GOOS == "windows" {
+		if readText(t, root) != "alien" {
+			t.Fatal("rollback removeu conteúdo que não criou")
+		}
+	} else if readText(t, filepath.Join(root, "alien.txt")) != "keep" {
 		t.Fatal("rollback removeu conteúdo que não criou")
 	}
 }

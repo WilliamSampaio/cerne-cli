@@ -11,8 +11,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version-file: go.mod
       - name: Validate embedded skill package contract
@@ -26,5 +26,7 @@ jobs:
       - name: Validate release workflow contract
         if: runner.os != 'Windows'
         run: sh test/release_workflow_test.sh
+      - name: Run Go vet
+        run: go vet ./...
       - name: Run test suite
         run: go test ./...

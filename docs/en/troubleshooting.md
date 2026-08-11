@@ -98,4 +98,4 @@ recovery.
 
 `erro: pacote oficial cerne-skills incorporado está inacessível` means the embedded package could
 not be materialized or validated. Check access to the system temporary directory and reinstall
-Cerne before retrying `cerne skill install <codex|claude>`.
+Cerne before retrying `cerne skill install <codex|claude|gemini>`.

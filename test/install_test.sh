@@ -65,15 +65,37 @@ make_bad_asset() {
 	printf '%s  %s\n' "$sum" "$archive" >>"$dir/checksums.txt"
 }
 
+make_version_mismatch_asset() {
+	version=$1
+	reported=$2
+	dir=$3
+	tmp=$work/src/$version-linux-amd64-version-mismatch
+	mkdir -p "$tmp"
+	cat >"$tmp/cerne" <<EOF
+#!/bin/sh
+if test "\${1:-}" = "--version"; then
+  echo "cerne $reported"
+  exit 0
+fi
+exit 2
+EOF
+	chmod +x "$tmp/cerne"
+	archive=cerne_${version}_linux_amd64.tar.gz
+	( cd "$tmp" && tar -czf "$dir/$archive" cerne )
+	sum=$(sha256sum "$dir/$archive" | awk '{print $1}')
+	printf '%s  %s\n' "$sum" "$archive" >>"$dir/checksums.txt"
+}
+
 make_asset v1.2.3 linux amd64 "$work/release/download/v1.2.3"
 cp "$work/release/download/v1.2.3/"* "$work/release/latest/download/"
 mkdir -p "$work/release/download/v1.2.4"
 make_asset v1.2.4 linux amd64 "$work/release/download/v1.2.4" 1
-mkdir -p "$work/release/download/v1.2.5" "$work/release/download/v1.2.6" "$work/release/download/v1.2.7" "$work/release/download/v1.2.8"
+mkdir -p "$work/release/download/v1.2.5" "$work/release/download/v1.2.6" "$work/release/download/v1.2.7" "$work/release/download/v1.2.8" "$work/release/download/v1.2.9"
 make_bad_asset v1.2.5 invalid-binary "$work/release/download/v1.2.5"
 make_bad_asset v1.2.6 symlink "$work/release/download/v1.2.6"
 make_bad_asset v1.2.7 directory "$work/release/download/v1.2.7"
 make_bad_asset v1.2.8 fifo "$work/release/download/v1.2.8"
+make_version_mismatch_asset v1.2.9 v9.9.9 "$work/release/download/v1.2.9"
 
 run_install() {
 	HOME=$work/home PATH=/usr/bin:/bin TMPDIR=$tmp_root CERNE_INSTALL_ALLOW_FILE_URLS=1 CERNE_INSTALL_REPO_URL=file://$work/release CERNE_INSTALL_OS=linux CERNE_INSTALL_ARCH=amd64 sh "$root/install.sh" "$@"
@@ -196,6 +218,11 @@ fi
 
 if run_install --version v1.2.8 >/dev/null 2>/dev/null; then
 	echo "expected archive special-file refusal" >&2
+	exit 1
+fi
+
+if run_install --version v1.2.9 >/dev/null 2>/dev/null; then
+	echo "expected binary version mismatch refusal" >&2
 	exit 1
 fi
 

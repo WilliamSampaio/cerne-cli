@@ -38,9 +38,13 @@ func TestDescribeProvidersWithoutLookingAtPATH(t *testing.T) {
 }
 
 func TestResolveDefinitionsAndExactInvocations(t *testing.T) {
-	originalLookPath, originalRun := lookPath, runProvider
-	t.Cleanup(func() { lookPath, runProvider = originalLookPath, originalRun })
+	originalLookPath, originalRun, originalTempDir, originalRemoveAll := lookPath, runProvider, tempDir, removeAll
+	t.Cleanup(func() {
+		lookPath, runProvider, tempDir, removeAll = originalLookPath, originalRun, originalTempDir, originalRemoveAll
+	})
 	lookPath = func(name string) (string, error) { return filepath.Join(t.TempDir(), name), nil }
+	tempDir = func(string, string) (string, error) { return filepath.Join(t.TempDir(), "provider-home"), nil }
+	removeAll = func(string) error { return nil }
 
 	for _, test := range []struct {
 		provider, executor, specs, root, marker string
@@ -93,9 +97,13 @@ func TestResolveDefinitionsAndExactInvocations(t *testing.T) {
 }
 
 func TestResolveSpecKitAgentTargetsAndExactInvocations(t *testing.T) {
-	originalLookPath, originalRun := lookPath, runProvider
-	t.Cleanup(func() { lookPath, runProvider = originalLookPath, originalRun })
+	originalLookPath, originalRun, originalTempDir, originalRemoveAll := lookPath, runProvider, tempDir, removeAll
+	t.Cleanup(func() {
+		lookPath, runProvider, tempDir, removeAll = originalLookPath, originalRun, originalTempDir, originalRemoveAll
+	})
 	lookPath = func(name string) (string, error) { return filepath.Join(t.TempDir(), name), nil }
+	tempDir = func(string, string) (string, error) { return filepath.Join(t.TempDir(), "provider-home"), nil }
+	removeAll = func(string) error { return nil }
 
 	var gotArguments []string
 	runProvider = func(_ string, arguments []string, _ string, _ []string) error {
@@ -130,8 +138,10 @@ func TestResolveSpecKitAgentTargetsAndExactInvocations(t *testing.T) {
 }
 
 func TestResolveMissingUnknownAndSanitizesEnvironmentAndFailure(t *testing.T) {
-	originalLookPath, originalRun := lookPath, runProvider
-	t.Cleanup(func() { lookPath, runProvider = originalLookPath, originalRun })
+	originalLookPath, originalRun, originalTempDir, originalRemoveAll := lookPath, runProvider, tempDir, removeAll
+	t.Cleanup(func() {
+		lookPath, runProvider, tempDir, removeAll = originalLookPath, originalRun, originalTempDir, originalRemoveAll
+	})
 	lookPath = func(name string) (string, error) {
 		if name == "specify" {
 			return "", errors.New("missing")
@@ -147,7 +157,16 @@ func TestResolveMissingUnknownAndSanitizesEnvironmentAndFailure(t *testing.T) {
 	}
 
 	t.Setenv("CERNE_SECRET_TOKEN", "never-pass-this")
+	t.Setenv("HOME", "do-not-pass-this-home")
 	t.Setenv("PATH", os.Getenv("PATH"))
+	profile := filepath.Join(t.TempDir(), "provider-home")
+	tempDir = func(string, string) (string, error) { return profile, nil }
+	removeAll = func(path string) error {
+		if path != profile {
+			t.Fatalf("cleanup path=%q want %q", path, profile)
+		}
+		return nil
+	}
 	var environment []string
 	runProvider = func(_ string, _ []string, _ string, env []string) error {
 		environment = env
@@ -163,6 +182,16 @@ func TestResolveMissingUnknownAndSanitizesEnvironmentAndFailure(t *testing.T) {
 	}
 	if strings.Contains(strings.Join(environment, "\n"), "never-pass-this") {
 		t.Fatalf("segredo no ambiente: %v", environment)
+	}
+	if strings.Contains(strings.Join(environment, "\n"), "do-not-pass-this-home") {
+		t.Fatalf("provider HOME inseguro: %v", environment)
+	}
+	if runtime.GOOS == "windows" {
+		if !hasEnvironment(environment, "USERPROFILE="+profile) {
+			t.Fatalf("provider USERPROFILE ausente: %v", environment)
+		}
+	} else if !hasEnvironment(environment, "HOME="+profile) {
+		t.Fatalf("provider HOME ausente: %v", environment)
 	}
 }
 
