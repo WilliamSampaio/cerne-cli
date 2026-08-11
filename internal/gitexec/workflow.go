@@ -7,16 +7,11 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 )
 
 type WorkflowInspector func(string) (WorkflowRepository, error)
-type WorkflowBrancher func(string, string, string) error
-type WorkflowCommitter func(string, string, []string) error
-type WorkflowPusher func(string, string, string) error
-type WorkflowRemoteURLReader func(string, string) (string, error)
 
 type WorkflowRepository struct {
 	Path           string
@@ -58,80 +53,6 @@ func FindWorkflowInspector() (WorkflowInspector, error) {
 	return func(directory string) (WorkflowRepository, error) {
 		return inspectWorkflowRepository(git, directory)
 	}, nil
-}
-
-func FindWorkflowBrancher() (WorkflowBrancher, error) {
-	git, err := exec.LookPath("git")
-	if err != nil {
-		return nil, fmt.Errorf("Git não encontrado no PATH: %w", err)
-	}
-	return func(directory, name, base string) error {
-		return switchCreateWorkflowBranch(git, directory, name, base)
-	}, nil
-}
-
-func FindWorkflowCommitter() (WorkflowCommitter, error) {
-	git, err := exec.LookPath("git")
-	if err != nil {
-		return nil, fmt.Errorf("Git não encontrado no PATH: %w", err)
-	}
-	return func(directory, message string, paths []string) error {
-		return commitWorkflowPaths(git, directory, message, paths)
-	}, nil
-}
-
-func FindWorkflowPusher() (WorkflowPusher, error) {
-	git, err := exec.LookPath("git")
-	if err != nil {
-		return nil, fmt.Errorf("Git não encontrado no PATH: %w", err)
-	}
-	return func(directory, remote, branch string) error {
-		return pushWorkflowBranch(git, directory, remote, branch)
-	}, nil
-}
-
-func FindWorkflowRemoteURLReader() (WorkflowRemoteURLReader, error) {
-	git, err := exec.LookPath("git")
-	if err != nil {
-		return nil, fmt.Errorf("Git não encontrado no PATH: %w", err)
-	}
-	return func(directory, remote string) (string, error) {
-		return statusOutput(git, directory, "remote", "get-url", "--push", remote)
-	}, nil
-}
-
-func ValidateWorkflowBranchName(name string) error {
-	git, err := exec.LookPath("git")
-	if err != nil {
-		return fmt.Errorf("Git não encontrado no PATH: %w", err)
-	}
-	_, err = workflowOutput(git, ".", "check-ref-format", "--branch", name)
-	return err
-}
-
-func WorkflowOperationInProgress(directory string) bool {
-	git, err := exec.LookPath("git")
-	if err != nil {
-		return true
-	}
-	gitDir, err := statusOutput(git, directory, "rev-parse", "--git-dir")
-	if err != nil {
-		return true
-	}
-	if !filepath.IsAbs(gitDir) {
-		gitDir = filepath.Join(directory, gitDir)
-	}
-	for _, name := range []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REBASE_HEAD", "BISECT_LOG"} {
-		if _, err := os.Stat(filepath.Join(gitDir, name)); err == nil {
-			return true
-		}
-	}
-	for _, name := range []string{"rebase-merge", "rebase-apply"} {
-		if info, err := os.Stat(filepath.Join(gitDir, name)); err == nil && info.IsDir() {
-			return true
-		}
-	}
-	return false
 }
 
 func inspectWorkflowRepository(git, directory string) (WorkflowRepository, error) {
@@ -181,56 +102,6 @@ func inspectWorkflowRepository(git, directory string) (WorkflowRepository, error
 	}, nil
 }
 
-func switchCreateWorkflowBranch(git, directory, name, base string) error {
-	_, err := workflowOutput(git, directory, "switch", "--create", name, base)
-	return err
-}
-
-func ValidateWorkflowLiteralPath(path string) bool {
-	if path == "" || strings.ContainsRune(path, 0) || filepath.IsAbs(path) || strings.HasPrefix(filepath.ToSlash(path), "/") || strings.HasPrefix(path, "-") || strings.HasPrefix(path, ":") {
-		return false
-	}
-	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
-		if part == ".." {
-			return false
-		}
-	}
-	return true
-}
-
-func commitWorkflowPaths(git, directory, message string, paths []string) error {
-	if strings.TrimSpace(message) == "" || strings.ContainsAny(message, "\r\n") || len(paths) == 0 {
-		return fmt.Errorf("commit inválido")
-	}
-	for _, path := range paths {
-		if !ValidateWorkflowLiteralPath(path) {
-			return fmt.Errorf("path inválido")
-		}
-	}
-	if _, err := statusOutput(git, directory, "config", "--get", "user.name"); err != nil {
-		return err
-	}
-	if _, err := statusOutput(git, directory, "config", "--get", "user.email"); err != nil {
-		return err
-	}
-	if _, err := workflowLiteralOutput(git, directory, append([]string{"add", "-A", "--"}, paths...)...); err != nil {
-		return err
-	}
-	_, err := workflowLiteralOutput(git, directory, append([]string{"commit", "--only", "-m", message, "--"}, paths...)...)
-	return err
-}
-
-func pushWorkflowBranch(git, directory, remote, branch string) error {
-	if remote == "" || branch == "" || strings.HasPrefix(remote, "-") || strings.ContainsAny(remote, "\r\n\x00") {
-		return fmt.Errorf("push inválido")
-	}
-	if err := ValidateWorkflowBranchName(branch); err != nil {
-		return err
-	}
-	_, err := workflowOutput(git, directory, "push", "--set-upstream", remote, "refs/heads/"+branch+":refs/heads/"+branch)
-	return err
-}
-
 func workflowChanges(git, directory string) ([]WorkflowChange, error) {
 	output, err := workflowReadOnlyOutput(git, directory, "status", "--porcelain=v1", "-z", "--untracked-files=all")
 	if err != nil {
@@ -267,26 +138,6 @@ func workflowChanges(git, directory string) ([]WorkflowChange, error) {
 func workflowReadOnlyOutput(git, directory string, args ...string) (string, error) {
 	command := exec.Command(git, append(readOnlyGitArgs(directory), args...)...)
 	command.Env = gitEnvironment(os.Environ())
-	output, err := command.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("consulta Git falhou em %q: %w", directory, err)
-	}
-	return string(output), nil
-}
-
-func workflowOutput(git, directory string, args ...string) (string, error) {
-	command := exec.Command(git, append([]string{"-C", directory}, args...)...)
-	command.Env = gitEnvironment(os.Environ())
-	output, err := command.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("consulta Git falhou em %q: %w", directory, err)
-	}
-	return string(output), nil
-}
-
-func workflowLiteralOutput(git, directory string, args ...string) (string, error) {
-	command := exec.Command(git, append([]string{"-C", directory}, args...)...)
-	command.Env = append(gitEnvironment(os.Environ()), "GIT_LITERAL_PATHSPECS=1")
 	output, err := command.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("consulta Git falhou em %q: %w", directory, err)

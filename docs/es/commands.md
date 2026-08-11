@@ -12,9 +12,10 @@ La CLI admite inglés y portugués de Brasil para los mensajes dirigidos a perso
 ## Instalador standalone
 
 Las releases para Linux y macOS publican `install.sh`, `checksums.txt` y binarios para `amd64` y
-`arm64`. El instalador acepta `--version <version>`, `--agent <codex|claude>` y `--help`. Instala
-solo `~/.local/bin/cerne`, verifica SHA-256 antes de promover el binario, rechaza destinos que sean
-directorios o symlinks, nunca usa `sudo` y nunca edita archivos de perfil del shell.
+`arm64`. El instalador acepta `--version <version>`, `--agent <codex|claude|gemini>` y `--help`.
+Instala solo `~/.local/bin/cerne`, verifica SHA-256 y que el binario instalado reporte exactamente
+la versión solicitada antes de promoverlo, rechaza destinos que sean directorios o symlinks, nunca
+usa `sudo` y nunca edita archivos de perfil del shell.
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL \
