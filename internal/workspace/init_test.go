@@ -501,3 +501,28 @@ func TestPromoteDirectoryNoReplacePreservesConcurrentTarget(t *testing.T) {
 		t.Fatalf("staging foi perdido: %v", err)
 	}
 }
+
+func TestRemoveOwnedPathRefusesTypeReplacement(t *testing.T) {
+	parent := t.TempDir()
+	target := filepath.Join(parent, "target")
+	if err := os.Mkdir(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	owned, err := recordOwnedPath(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(target); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("alien"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := removeOwnedPath(owned); err == nil {
+		t.Fatal("rollback removeu alvo substituído por outro tipo")
+	}
+	if readText(t, target) != "alien" {
+		t.Fatal("rollback removeu conteúdo que não criou")
+	}
+}
