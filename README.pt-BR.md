@@ -224,6 +224,7 @@ cerne git inspect --agent codex --task task-1 --json
 Branch, commit, push e Pull Request são etapas separadas executadas pelo agente. O Cerne só fornece
 o snapshot sanitizado (`state_id`, repositórios, branches, remotes e paths alterados). Operações Git destrutivas ou fora de escopo são recusadas pela skill.
 Veja a [referência de comandos](docs/pt-BR/commands.md) para o contrato completo de JSON/auditoria.
+O audit do Cerne cobre somente a inspeção; a evidência dos efeitos nativos pertence ao agente ou harness.
 
 ### 5. Vincule um source existente (opcional)
 
@@ -275,8 +276,9 @@ Saídas normais e ajuda usam stdout. Erros de uso e falhas operacionais usam std
 
 - `doctor` e `status` são somente de leitura.
 - `link` atualiza apenas `knowledge/cerne.json`, depois que todas as validações passam.
-- O setup usa argumentos fixos, não usa shell, recebe ambiente mínimo e desabilita a telemetria do
-  OpenSpec. Não recebe credenciais nem o caminho de source e não registra a saída bruta do provider.
+- O setup usa argumentos fixos, não usa shell, recebe ambiente reduzido, HOME/perfil temporário do
+  provider e desabilita a telemetria do OpenSpec. Não recebe o caminho de source e não registra a
+  saída bruta do provider. O provider ainda é um executável local: use somente instalações confiáveis.
 - O clone usa argumentos Git fixos sem shell, allowlist de protocolos, staging privado e promoção
   sem substituição. Origem e saída Git bruta não entram na saída do Cerne, manifesto ou auditoria;
   a autenticação permanece externa e o Git mantém a origem como remoto `origin`.

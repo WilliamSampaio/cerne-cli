@@ -9,6 +9,9 @@ All notable changes to Cerne are documented in this file. This project follows
 
 - Official skills now respond in the active conversation language, falling back to the effective
   Cerne language when available.
+- The Git workflow contract is now explicitly inspect-only in Cerne: agents execute confirmed Git
+  and GitHub effects with native tooling and must not attribute those effects or their audit to the
+  Cerne CLI.
 
 ## 0.10.0 - 2026-08-09
 
@@ -22,11 +25,10 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ### Security
 
-- Every `cerne git` mutation requires `--state`, `--confirm`, `--agent`, and `--task`, starts a
-  private redacted audit before effects, reinspects stale state, disables controllable Git prompts,
-  and refuses destructive or arbitrary Git operations.
-- Pull Request preparation uses no network or credentials and prevents Cerne from handling GitHub
-  tokens; the agent uses exactly the authorized PR targets with its own authentication.
+- Every `cerne git inspect` requires `--agent` and `--task`, creates a private redacted audit, and
+  performs no Git mutation, network request, credential access, or agent-native effect.
+- Pull Request creation and validation remain entirely in the agent's native capability, preventing
+  Cerne from handling GitHub tokens or claiming a preparation result.
 
 ## 0.9.0 - 2026-08-09
 

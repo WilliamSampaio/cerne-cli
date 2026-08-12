@@ -41,7 +41,7 @@ func FindInspector() (func(string) (Repository, error), error) {
 }
 
 func revParse(git, directory, flag string) (string, error) {
-	command := exec.Command(git, "-C", directory, "rev-parse", flag)
+	command := exec.Command(git, append(readOnlyGitArgs(directory), "rev-parse", flag)...)
 	command.Env = gitEnvironment(os.Environ())
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -54,6 +54,14 @@ func gitEnvironment(environment []string) []string {
 	clean := cleanEnvironment(environment)
 	clean = append(clean, "GIT_OPTIONAL_LOCKS=0", "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=Never", "GIT_ASKPASS=", "SSH_ASKPASS=")
 	return clean
+}
+
+func readOnlyGitArgs(directory string) []string {
+	return []string{
+		"-c", "core.fsmonitor=false",
+		"-c", "diff.external=",
+		"-C", directory,
+	}
 }
 
 func cleanPath(path string) string {

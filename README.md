@@ -224,6 +224,7 @@ cerne git inspect --agent codex --task task-1 --json
 Branch, commit, push, and Pull Request are separate agent-run steps. Cerne only provides the
 sanitized snapshot (`state_id`, repositories, branches, remotes, and changed paths). Unsupported or destructive Git operations are refused by the skill. See
 [the command reference](docs/en/commands.md) for the full JSON/audit contract.
+The Cerne audit covers inspection only; native effect evidence belongs to the agent or harness.
 
 ### 5. Link an existing source repository (optional)
 
@@ -275,8 +276,9 @@ including blocking findings, use stdout so the full diagnosis remains one stable
 
 - `doctor` and `status` are read-only.
 - `link` updates only `knowledge/cerne.json` after all validations pass.
-- Workflow setup uses fixed arguments, no shell, a minimal environment, and disables OpenSpec
-  telemetry. It receives no credentials or source path and does not log raw provider output.
+- Workflow setup uses fixed arguments, no shell, a reduced environment, a temporary provider
+  HOME/profile, and disables OpenSpec telemetry. It receives no source path and does not log raw
+  provider output. The provider is still a local executable: use only trusted installations.
 - Clone uses fixed shell-free Git arguments, a protocol allowlist, private staging, and
   non-replacing promotion. The origin and raw Git output are excluded from Cerne output, manifest,
   and audit; authentication remains external and Git retains the origin as remote `origin`.

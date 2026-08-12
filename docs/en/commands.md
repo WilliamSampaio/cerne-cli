@@ -12,9 +12,10 @@ Cerne supports English and Brazilian Portuguese for human-readable output. Run
 ## Standalone installer
 
 Linux and macOS releases publish `install.sh`, `checksums.txt`, and binary archives for `amd64` and
-`arm64`. The installer accepts `--version <version>`, `--agent <codex|claude>`, and `--help`. It
-installs only `~/.local/bin/cerne`, verifies SHA-256 before promotion, refuses directory or symlink
-destinations, never uses `sudo`, and never edits shell profile files.
+`arm64`. The installer accepts `--version <version>`, `--agent <codex|claude|gemini>`, and `--help`.
+It installs only `~/.local/bin/cerne`, verifies SHA-256 and the binary-reported version before
+promotion, refuses directory or symlink destinations, never uses `sudo`, and never edits shell
+profile files.
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL \
@@ -108,7 +109,7 @@ status `2` without audit or filesystem mutation. Operational failures return std
 Reinstalling the same version is a no-op; different managed versions are upgraded. `init`,
 `restore`, and `workflow setup` never install skills by implication.
 
-## `cerne git inspect|branch|commit|push|pr`
+## `cerne git inspect`
 
 Provides the safe Git inspection surface used by `cerne-git-workflow`. Cerne does not execute Git
 effects; the agent uses the inspected data and asks for confirmation before branch, commit, push,
@@ -123,11 +124,10 @@ remotes, local branches, changed literal paths, and a private audit id. Branch, 
 Pull Request commands are intentionally not available through Cerne; unsupported or destructive Git
 operations remain out of scope for the skill.
 
-JSON success returns stdout/status `0`; blocked, failed, or partial reports return stdout/status
-`1`; invalid usage returns stderr/status `2`. Private audit records live under `~/.cerne/audit` and
-exclude conversations, Git output, remote URLs, tokens, file contents, PR body, and raw errors. A
-partial result is truthful: Cerne does not rollback automatically, and the safe next step is a new
-`inspect`.
+JSON success returns stdout/status `0`; an invalid workspace snapshot returns stdout/status `1`;
+invalid usage returns stderr/status `2`. Private audit records under `~/.cerne/audit` cover only
+`inspect` and exclude conversations, Git output, remote URLs, tokens, file contents, PR body, and
+raw errors. Execution evidence belongs to the agent or harness, not to the Cerne audit.
 
 ## `cerne workflow setup [--agent codex|claude]`
 

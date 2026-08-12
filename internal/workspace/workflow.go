@@ -282,12 +282,12 @@ func createAgentBridge(workspaceRoot string, target WorkflowAgentTarget, integra
 	if err != nil {
 		return err
 	}
-	if err := ensureRegularDirectory(root); err != nil {
+	if err := ensureRegularDirectoryUnder(workspaceRoot, root); err != nil {
 		return err
 	}
 	for _, command := range specKitBridgeCommands {
 		directory := filepath.Join(root, command)
-		if err := ensureRegularDirectory(directory); err != nil {
+		if err := ensureRegularDirectoryUnder(workspaceRoot, directory); err != nil {
 			return err
 		}
 		skill := filepath.Join(directory, "SKILL.md")
@@ -320,10 +320,39 @@ func safeBridgePath(workspaceRoot, relative string) (string, error) {
 	return path, nil
 }
 
+func ensureRegularDirectoryUnder(root, path string) error {
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return err
+	}
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	if !lexicallyContains(root, path) {
+		return errors.New("caminho fora do workspace")
+	}
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return err
+	}
+	current := root
+	if rel == "." {
+		return ensureRegularDirectory(current)
+	}
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		current = filepath.Join(current, part)
+		if err := ensureRegularDirectory(current); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func ensureRegularDirectory(path string) error {
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return os.MkdirAll(path, 0o755)
+		return os.Mkdir(path, 0o755)
 	}
 	if err != nil {
 		return err

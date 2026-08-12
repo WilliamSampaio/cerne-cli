@@ -174,6 +174,21 @@ func TestWorkflowAgentBridgeUsesCompatibleCodexIntegrationRoot(t *testing.T) {
 	}
 }
 
+func TestWorkflowAgentBridgeRejectsSymlinkAncestor(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, ".agents")); err != nil {
+		t.Skipf("symlink indisponível: %v", err)
+	}
+	err := createAgentBridge(root, readyAgentTarget("codex", ".agents/skills"), ".agents/skills")
+	if err == nil {
+		t.Fatal("ponte aceitou ancestral symlink")
+	}
+	if entries, readErr := os.ReadDir(outside); readErr != nil || len(entries) != 0 {
+		t.Fatalf("destino externo foi alterado: entries=%v err=%v", entries, readErr)
+	}
+}
+
 func TestWorkflowAgentCanChangeAfterRestoreWithoutTouchingSource(t *testing.T) {
 	definition := readySpecKitDefinitionWithAgents()
 	base, _, err := InitWithWorkflowAndAgent(t.TempDir(), "example", definition, "codex", fakeInitRepository)

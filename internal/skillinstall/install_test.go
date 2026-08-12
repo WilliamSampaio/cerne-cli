@@ -16,7 +16,7 @@ func TestInstallUsesEmbeddedPackageByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Outcome != "installed" || result.Version != "0.4.0" || result.Skill != SkillName {
+	if result.Outcome != "installed" || result.Version != "0.4.1" || result.Skill != SkillName {
 		t.Fatalf("result = %#v", result)
 	}
 	skill := readText(t, filepath.Join(result.Destination, "SKILL.md"))
@@ -240,6 +240,22 @@ func TestInstallAuditFailuresAndUpgradeRollbackStaySafe(t *testing.T) {
 			t.Fatal("failed audit did not preserve validated package version")
 		}
 	})
+}
+
+func TestInstallRejectsSymlinkProfileAncestor(t *testing.T) {
+	home := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(home, ".codex")); err != nil {
+		t.Skipf("symlink indisponível: %v", err)
+	}
+	_, err := Install("codex", Options{HomeDir: home, PackageDir: packageFixture(t, "1.0.0")})
+	var failure Failure
+	if !errors.As(err, &failure) || failure.Code != "destination-inaccessible" {
+		t.Fatalf("err=%v", err)
+	}
+	if entries, readErr := os.ReadDir(outside); readErr != nil || len(entries) != 0 {
+		t.Fatalf("destino externo foi alterado: entries=%v err=%v", entries, readErr)
+	}
 }
 
 func TestInstallRejectsUnsafeOwnershipMarker(t *testing.T) {

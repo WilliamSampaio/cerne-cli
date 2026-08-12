@@ -339,7 +339,7 @@ func TestSkillInstallCommand(t *testing.T) {
 		for _, agent := range []string{"codex", "claude", "gemini"} {
 			home := t.TempDir()
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), "skill", "install", agent)
-			if status != 0 || stderr != "" || !strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Versão: 0.4.0\n") {
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Versão: 0.4.1\n") {
 				t.Fatalf("%s: status=%d stdout=%q stderr=%q", agent, status, stdout, stderr)
 			}
 			root := map[string]string{"codex": ".codex", "claude": ".claude", "gemini": ".gemini"}[agent]

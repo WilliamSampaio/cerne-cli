@@ -29,6 +29,7 @@ func TestGitWorkflowSkillRequiresReviewedChangesConfirmationBeforeCommit(t *test
 		"Agent skill activation or consent to load this skill is not authorization for Git",
 		"Refuse destructive, ambiguous, arbitrary, or out-of-scope Git operations",
 		"Do not ask Cerne to execute Git effects",
+		"Do not claim that Cerne executed or audited an agent-native effect",
 		"partial results, name what",
 		"reinspect before deciding",
 	} {

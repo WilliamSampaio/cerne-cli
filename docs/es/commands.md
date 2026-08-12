@@ -12,9 +12,10 @@ La CLI admite inglés y portugués de Brasil para los mensajes dirigidos a perso
 ## Instalador standalone
 
 Las releases para Linux y macOS publican `install.sh`, `checksums.txt` y binarios para `amd64` y
-`arm64`. El instalador acepta `--version <version>`, `--agent <codex|claude>` y `--help`. Instala
-solo `~/.local/bin/cerne`, verifica SHA-256 antes de promover el binario, rechaza destinos que sean
-directorios o symlinks, nunca usa `sudo` y nunca edita archivos de perfil del shell.
+`arm64`. El instalador acepta `--version <version>`, `--agent <codex|claude|gemini>` y `--help`.
+Instala solo `~/.local/bin/cerne`, verifica SHA-256 y que el binario instalado reporte exactamente
+la versión solicitada antes de promoverlo, rechaza destinos que sean directorios o symlinks, nunca
+usa `sudo` y nunca edita archivos de perfil del shell.
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL \
@@ -128,11 +129,10 @@ sanitizados, branches locales, paths cambiados literales e id privado de auditor
 branch, commit, push y Pull Request no están disponibles en Cerne; las operaciones Git destructivas
 o fuera de alcance siguen fuera de la skill.
 
-El éxito JSON usa stdout/estado `0`; reportes bloqueados, fallidos o parciales usan stdout/estado
-`1`; uso inválido usa stderr/estado `2`. Las auditorías privadas viven en `~/.cerne/audit` y
+El éxito JSON usa stdout/estado `0`; un snapshot de workspace inválido usa stdout/estado `1`; uso
+inválido usa stderr/estado `2`. Las auditorías privadas en `~/.cerne/audit` cubren solo `inspect` y
 excluyen conversaciones, salida de Git, URLs remotas, tokens, contenido de archivos, cuerpo de PR y
-errores brutos. En un resultado parcial no hay rollback automático; el siguiente paso seguro es un
-nuevo `inspect`.
+errores brutos. La evidencia de ejecución pertenece al agente o harness, no a la auditoría de Cerne.
 
 ## `cerne workflow setup [--agent codex|claude]`
 

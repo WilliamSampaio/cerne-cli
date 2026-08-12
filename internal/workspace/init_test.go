@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -215,6 +216,52 @@ func TestInitWithLocalSourceRevalidatesAndRollsBack(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(parent, "example")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("workspace não revertido: %v", err)
+	}
+}
+
+func TestInitRollbackRefusesReplacedRoot(t *testing.T) {
+	parent := t.TempDir()
+	external := filepath.Join(parent, "external")
+	if err := os.Mkdir(external, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(parent, "example")
+	replacement := filepath.Join(parent, "replacement")
+	if err := os.Mkdir(replacement, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(replacement, "alien.txt"), []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	inspect := func(path string) (LinkRepositoryFacts, error) {
+		calls++
+		common := filepath.Join(path, ".git")
+		if calls == 2 {
+			if err := os.RemoveAll(root); err != nil {
+				t.Fatal(err)
+			}
+			if runtime.GOOS == "windows" {
+				if err := os.WriteFile(root, []byte("alien"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := os.Rename(replacement, root); err != nil {
+				t.Fatal(err)
+			}
+			common = filepath.Join(path, ".git-changed")
+		}
+		return LinkRepositoryFacts{RequestedPath: path, WorktreeRoot: path, CommonDir: common, HasWorktree: true}, nil
+	}
+	_, err := InitWithSource(parent, "example", SourceInitRequest{Mode: SourceLocal, Input: external}, fakeInitRepository, inspect, nil)
+	if err == nil || !strings.Contains(err.Error(), "falha no rollback") {
+		t.Fatalf("erro=%v", err)
+	}
+	if runtime.GOOS == "windows" {
+		if readText(t, root) != "alien" {
+			t.Fatal("rollback removeu conteúdo que não criou")
+		}
+	} else if readText(t, filepath.Join(root, "alien.txt")) != "keep" {
+		t.Fatal("rollback removeu conteúdo que não criou")
 	}
 }
 
@@ -452,5 +499,30 @@ func TestPromoteDirectoryNoReplacePreservesConcurrentTarget(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(staging, "ours")); err != nil {
 		t.Fatalf("staging foi perdido: %v", err)
+	}
+}
+
+func TestRemoveOwnedPathRefusesTypeReplacement(t *testing.T) {
+	parent := t.TempDir()
+	target := filepath.Join(parent, "target")
+	if err := os.Mkdir(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	owned, err := recordOwnedPath(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(target); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("alien"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := removeOwnedPath(owned); err == nil {
+		t.Fatal("rollback removeu alvo substituído por outro tipo")
+	}
+	if readText(t, target) != "alien" {
+		t.Fatal("rollback removeu conteúdo que não criou")
 	}
 }
