@@ -1,10 +1,33 @@
 #!/bin/sh
 set -eu
 
-repo_url="${CERNE_INSTALL_REPO_URL:-https://github.com/WilliamSampaio/cerne-cli/releases}"
+official_repo_url="https://github.com/WilliamSampaio/cerne-cli/releases"
+repo_url=$official_repo_url
 version=""
 agent=""
 allow_file_downloads=0
+test_downloader=""
+
+case "${CERNE_INSTALL_TEST_MODE:-}" in
+	"")
+		if test "${CERNE_INSTALL_REPO_URL+x}${CERNE_INSTALL_OS+x}${CERNE_INSTALL_ARCH+x}${CERNE_INSTALL_DOWNLOADER+x}" != ""; then
+			printf 'error: installer overrides require CERNE_INSTALL_TEST_MODE=1\n' >&2
+			exit 1
+		fi
+		;;
+	1)
+		repo_url=${CERNE_INSTALL_REPO_URL:-$official_repo_url}
+		test_downloader=${CERNE_INSTALL_DOWNLOADER:-}
+		case "$test_downloader" in
+			""|curl|wget) ;;
+			*) printf 'error: unsupported test downloader\n' >&2; exit 1 ;;
+		esac
+		;;
+	*)
+		printf 'error: CERNE_INSTALL_TEST_MODE must be 1 when set\n' >&2
+		exit 1
+		;;
+esac
 
 usage() {
 	cat <<'EOF'
@@ -111,8 +134,13 @@ while test "$#" -gt 0; do
 	esac
 done
 
-os=${CERNE_INSTALL_OS:-$(uname -s | tr '[:upper:]' '[:lower:]')}
-arch=${CERNE_INSTALL_ARCH:-$(uname -m)}
+if test "${CERNE_INSTALL_TEST_MODE:-}" = "1"; then
+	os=${CERNE_INSTALL_OS:-$(uname -s | tr '[:upper:]' '[:lower:]')}
+	arch=${CERNE_INSTALL_ARCH:-$(uname -m)}
+else
+	os=$(uname -s | tr '[:upper:]' '[:lower:]')
+	arch=$(uname -m)
+fi
 case "$os" in
 	linux|darwin) ;;
 	*) fail "unsupported operating system: $os" ;;
@@ -160,7 +188,7 @@ ensure_safe_dir_under_home ".local/bin"
 
 case "$repo_url" in
 	https://*) ;;
-	file://*) test "${CERNE_INSTALL_ALLOW_FILE_URLS:-}" = "1" || fail "file downloads require CERNE_INSTALL_ALLOW_FILE_URLS=1"; allow_file_downloads=1 ;;
+	file://*) test "${CERNE_INSTALL_TEST_MODE:-}" = "1" || fail "file downloads are test-only"; allow_file_downloads=1 ;;
 	*) fail "release URL must use https" ;;
 esac
 
@@ -176,7 +204,14 @@ download() {
 		https://*) ;;
 		*) fail "download URL must use https" ;;
 	esac
-	if command -v curl >/dev/null 2>&1; then
+	if test "$test_downloader" = "curl"; then
+		command -v curl >/dev/null 2>&1 || fail "curl is required"
+		curl --proto '=https' --tlsv1.2 -fsSL "$url" -o "$out"
+	elif test "$test_downloader" = "wget"; then
+		command -v wget >/dev/null 2>&1 || fail "wget is required"
+		wget --help 2>/dev/null | grep -- '--https-only' >/dev/null || fail "wget with HTTPS-only support is required"
+		wget --https-only -q -O "$out" "$url"
+	elif command -v curl >/dev/null 2>&1; then
 		curl --proto '=https' --tlsv1.2 -fsSL "$url" -o "$out"
 	elif command -v wget >/dev/null 2>&1; then
 		wget --help 2>/dev/null | grep -- '--https-only' >/dev/null || fail "curl or wget with HTTPS-only support is required"
@@ -216,7 +251,7 @@ checksums=$tmp/checksums.txt
 download "$asset_base/checksums.txt" "$checksums" || fail "failed to download checksums"
 
 if test -z "$archive"; then
-	archive=$(awk -v os="$os" -v arch="$arch" '$2 ~ "^cerne_v[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*(-[0-9A-Za-z][0-9A-Za-z.-]*)?(\\+[0-9A-Za-z][0-9A-Za-z.-]*)?_" os "_" arch "\\.tar\\.gz$" { print $2 }' "$checksums")
+	archive=$(awk -v os="$os" -v arch="$arch" '$2 ~ "^cerne_v[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*(\\+[0-9A-Za-z][0-9A-Za-z.-]*)?_" os "_" arch "\\.tar\\.gz$" { print $2 }' "$checksums")
 	count=$(printf '%s\n' "$archive" | sed '/^$/d' | wc -l | tr -d ' ')
 	test "$count" = "1" || fail "compatible release artifact was not found"
 else

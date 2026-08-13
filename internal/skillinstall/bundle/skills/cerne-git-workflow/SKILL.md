@@ -46,9 +46,19 @@ effect, or override the refusal rules below.
 
 ## Branch Guidance
 
-Suggest a new branch only for a new independent work unit. Continue the current branch when the task
-is related to it. If the relationship is uncertain, ask for direction and do not run a mutating
-command.
+Classify the request before suggesting Git work:
+
+- `new`: independent implementable work that needs its own branch;
+- `related`: a small change that belongs to the active work unit; continue without a new branch;
+- `current`: an explicit continuation of the current branch, or an informational request that needs no Git action;
+- `uncertain`: insufficient context to decide whether implementable work is new or related; ask for direction.
+
+Dirty state blocks only a `new` branch. It does not turn `related`, `current`, or `uncertain` into a
+new unit. Suggest a checkpoint before the new branch when it is blocked.
+
+Use `feat` for a new user-facing capability, integration, agent support, or installer. Use `fix`
+for a defect, `refactor` for behavior-preserving restructuring, and `spec` for specification work.
+Use `chore` only for maintenance that adds no product behavior.
 
 Branch names use:
 
