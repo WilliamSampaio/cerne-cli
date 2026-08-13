@@ -5,7 +5,7 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
-## 0.11.0 - 2026-08-12
+## 0.11.0 - 2026-08-13
 
 ### Changed
 
