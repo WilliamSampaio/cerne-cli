@@ -5,6 +5,8 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+## 0.11.0 - 2026-08-12
+
 ### Changed
 
 - Official skills now respond in the active conversation language, falling back to the effective
@@ -12,6 +14,20 @@ All notable changes to Cerne are documented in this file. This project follows
 - The Git workflow contract is now explicitly inspect-only in Cerne: agents execute confirmed Git
   and GitHub effects with native tooling and must not attribute those effects or their audit to the
   Cerne CLI.
+
+### Fixed
+
+- Standalone installation now validates all Linux/macOS `amd64`/`arm64` release combinations,
+  keeps default installs on stable releases, and preserves an existing binary when promotion fails.
+- Git and workspace rollback paths now preserve replaced targets consistently across supported
+  operating systems.
+
+### Security
+
+- Installer test overrides now require an explicit test mode; production downloads remain pinned
+  to the official HTTPS release source, and hardlink or special-file archives are rejected.
+- Skill installation now validates managed ownership metadata, package versions, package-contained
+  paths, and private audit permissions before modifying an agent profile.
 
 ## 0.10.0 - 2026-08-09
 
