@@ -30,6 +30,13 @@ func TestGitWorkflowSkillRequiresReviewedChangesConfirmationBeforeCommit(t *test
 		"Refuse destructive, ambiguous, arbitrary, or out-of-scope Git operations",
 		"Do not ask Cerne to execute Git effects",
 		"Do not claim that Cerne executed or audited an agent-native effect",
+		"`new`: independent implementable work that needs its own branch",
+		"`related`: a small change that belongs to the active work unit",
+		"`current`: an explicit continuation of the current branch, or an informational request that needs no Git action",
+		"`uncertain`: insufficient context to decide whether implementable work is new or related",
+		"Dirty state blocks only a `new` branch",
+		"Use `feat` for a new user-facing capability, integration, agent support, or installer",
+		"Use `chore` only for maintenance that adds no product behavior",
 		"partial results, name what",
 		"reinspect before deciding",
 	} {
