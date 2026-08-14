@@ -168,6 +168,20 @@ func TestInitReadmeFailureRollsBackWorkspace(t *testing.T) {
 	}
 }
 
+func TestInitNormalizesEmbeddedReadmeLineEndings(t *testing.T) {
+	original := knowledgeReadme
+	knowledgeReadme = "# {{PROJECT_NAME}} knowledge\r\n\r\nnext\r\n"
+	defer func() { knowledgeReadme = original }()
+
+	result, err := Init(t.TempDir(), "example", fakeInitRepository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := readText(t, filepath.Join(result.KnowledgePath, "README.md")); got != "# example knowledge\n\nnext\n" {
+		t.Fatalf("README = %q", got)
+	}
+}
+
 func TestInitRejectsInvalidPortableNamesWithoutMutation(t *testing.T) {
 	names := []string{
 		"", ".", "..", "-project", "project.", "project/name", `project\name`,

@@ -262,6 +262,7 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, langu
 	if language == localization.PortugueseBrazil {
 		template = knowledgeReadmePTBR
 	}
+	template = strings.ReplaceAll(template, "\r\n", "\n")
 	_, writeErr = io.WriteString(readme, strings.ReplaceAll(template, "{{PROJECT_NAME}}", name))
 	closeErr = readme.Close()
 	if writeErr != nil {
