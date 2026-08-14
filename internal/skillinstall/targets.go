@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	SkillName        = "cerne-context"
-	GitWorkflowSkill = "cerne-git-workflow"
-	PackageName      = "cerne-skills"
+	SkillName             = "cerne-context"
+	ProductDiscoverySkill = "cerne-product-discovery"
+	GitWorkflowSkill      = "cerne-git-workflow"
+	PackageName           = "cerne-skills"
 )
 
 var ErrInvalidAgent = errors.New("invalid agent")
@@ -19,18 +20,27 @@ func SupportedAgent(agent string) bool {
 }
 
 func SupportedSkill(skill string) bool {
-	return skill == SkillName || skill == GitWorkflowSkill
+	return skill == SkillName || skill == ProductDiscoverySkill || skill == GitWorkflowSkill
 }
 
 func SupportedSkills(agent string) []string {
 	switch agent {
 	case "codex", "claude":
-		return []string{SkillName, GitWorkflowSkill}
+		return []string{SkillName, ProductDiscoverySkill, GitWorkflowSkill}
 	case "gemini":
 		return []string{GitWorkflowSkill}
 	default:
 		return nil
 	}
+}
+
+func SupportsSkill(agent, skill string) bool {
+	for _, supported := range SupportedSkills(agent) {
+		if skill == supported {
+			return true
+		}
+	}
+	return false
 }
 
 func TargetPath(home, agent string, skill ...string) (string, error) {
@@ -44,7 +54,7 @@ func TargetPath(home, agent string, skill ...string) (string, error) {
 	if !SupportedAgent(agent) {
 		return "", ErrInvalidAgent
 	}
-	if agent == "gemini" && skillName == SkillName {
+	if !SupportsSkill(agent, skillName) {
 		return "", ErrInvalidAgent
 	}
 	parts := map[string][]string{

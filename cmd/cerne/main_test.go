@@ -330,12 +330,12 @@ func TestSkillInstallCommand(t *testing.T) {
 	t.Run("help", func(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "skill", "--help")
 		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne skill install <codex|claude|gemini>") ||
-			!strings.Contains(stdout, "cerne skill install <codex|claude|gemini> <cerne-context|cerne-git-workflow>") {
+			!strings.Contains(stdout, "cerne skill install <codex|claude|gemini> <cerne-context|cerne-product-discovery|cerne-git-workflow>") {
 			t.Fatalf("help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		status, stdout, stderr = executeCLI(t, binary, t.TempDir(), nil, "skill", "install", "--help")
 		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne skill install <codex|claude|gemini>") ||
-			!strings.Contains(stdout, "cerne skill install <codex|claude|gemini> <cerne-context|cerne-git-workflow>") {
+			!strings.Contains(stdout, "cerne skill install <codex|claude|gemini> <cerne-context|cerne-product-discovery|cerne-git-workflow>") {
 			t.Fatalf("install help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 	})
@@ -344,13 +344,13 @@ func TestSkillInstallCommand(t *testing.T) {
 		for _, agent := range []string{"codex", "claude", "gemini"} {
 			home := t.TempDir()
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), "skill", "install", agent)
-			if status != 0 || stderr != "" || !strings.Contains(stdout, "Agent: "+agent+"\n") || !strings.Contains(stdout, "Version: 0.4.2\n") {
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Agent: "+agent+"\n") || !strings.Contains(stdout, "Version: 0.5.0\n") {
 				t.Fatalf("%s: status=%d stdout=%q stderr=%q", agent, status, stdout, stderr)
 			}
 			root := map[string]string{"codex": ".codex", "claude": ".claude", "gemini": ".gemini"}[agent]
 			want := []string{"cerne-git-workflow"}
 			if agent != "gemini" {
-				want = append([]string{"cerne-context"}, want...)
+				want = append([]string{"cerne-context", "cerne-product-discovery"}, want...)
 			}
 			for _, skill := range want {
 				target := filepath.Join(home, root, "skills", skill)
@@ -360,6 +360,21 @@ func TestSkillInstallCommand(t *testing.T) {
 				if !strings.Contains(readTestFile(t, filepath.Join(target, "SKILL.md")), "name: "+skill) {
 					t.Fatalf("%s/%s skill não instalada", agent, skill)
 				}
+			}
+		}
+	})
+
+	t.Run("named product discovery skill", func(t *testing.T) {
+		for _, agent := range []string{"codex", "claude"} {
+			home := t.TempDir()
+			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), "skill", "install", agent, "cerne-product-discovery")
+			target := filepath.Join(home, map[string]string{"codex": ".codex", "claude": ".claude"}[agent], "skills", "cerne-product-discovery")
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Installed skill: cerne-product-discovery\n") ||
+				!strings.Contains(stdout, "Agent: "+agent+"\n") || !strings.Contains(stdout, "Destination: "+target+"\n") {
+				t.Fatalf("%s: status=%d stdout=%q stderr=%q", agent, status, stdout, stderr)
+			}
+			if !strings.Contains(readTestFile(t, filepath.Join(target, "SKILL.md")), "name: cerne-product-discovery") {
+				t.Fatalf("%s product discovery skill not installed", agent)
 			}
 		}
 	})
@@ -390,11 +405,12 @@ func TestSkillInstallCommand(t *testing.T) {
 			{"skill", "install", "Codex"},
 			{"skill", "install", "codex", "extra"},
 			{"skill", "install", "gemini", "cerne-context"},
+			{"skill", "install", "gemini", "cerne-product-discovery"},
 			{"skill", "install", "codex", "Cerne-Git-Workflow"},
 		} {
 			home := t.TempDir()
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), args...)
-			if status != 2 || stdout != "" || stderr != "error: invalid argument\nusage: cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]\n" {
+			if status != 2 || stdout != "" || stderr != "error: invalid argument\nusage: cerne skill install <codex|claude|gemini> [cerne-context|cerne-product-discovery|cerne-git-workflow]\n" {
 				t.Fatalf("%v: status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
 			}
 			if _, err := os.Stat(filepath.Join(home, ".cerne", "audit")); !os.IsNotExist(err) {

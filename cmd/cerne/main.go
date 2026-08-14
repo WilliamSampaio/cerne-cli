@@ -51,7 +51,7 @@ const skillHelp = `Instala skills oficiais do Cerne no perfil do agente.
 
 Uso:
   cerne skill install <codex|claude|gemini>
-  cerne skill install <codex|claude|gemini> <cerne-context|cerne-git-workflow>
+  cerne skill install <codex|claude|gemini> <cerne-context|cerne-product-discovery|cerne-git-workflow>
   cerne skill install --help
   cerne skill --help
 
@@ -68,6 +68,8 @@ Pacote:
 Destinos:
   codex:  ~/.codex/skills/cerne-context
   claude: ~/.claude/skills/cerne-context
+  codex:  ~/.codex/skills/cerne-product-discovery
+  claude: ~/.claude/skills/cerne-product-discovery
   codex:  ~/.codex/skills/cerne-git-workflow
   claude: ~/.claude/skills/cerne-git-workflow
   gemini: ~/.gemini/skills/cerne-git-workflow
@@ -83,6 +85,7 @@ Efeitos:
 
 Exemplos:
   cerne skill install codex
+  cerne skill install claude cerne-product-discovery
   cerne skill install gemini cerne-git-workflow
 `
 
@@ -485,7 +488,7 @@ func runSkill(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if len(args) == 3 {
 		skill = args[2]
 	}
-	if len(args) == 3 && (!skillinstall.SupportedSkill(skill) || args[1] == "gemini" && skill == skillinstall.SkillName) {
+	if len(args) == 3 && !skillinstall.SupportsSkill(args[1], skill) {
 		fmt.Fprint(stderr, messages.text("skill.usage"))
 		return 2
 	}

@@ -97,13 +97,20 @@ cerne restore ../knowledge.git --clone ../source.git
 cerne restore git@host:org/knowledge.git --source ../source-existente
 ```
 
-## `cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]`
+## `cerne skill install <codex|claude|gemini> [cerne-context|cerne-product-discovery|cerne-git-workflow]`
 
 Sin argumento de skill, instala todas las skills oficiales compatibles en el perfil del agente del
-usuario actual. Codex y Claude reciben `cerne-context` y `cerne-git-workflow`; Gemini recibe solo
-`cerne-git-workflow`. Con argumento de skill, instala exactamente esa skill. Los destinos son
+usuario actual. Codex y Claude reciben `cerne-context`, `cerne-product-discovery` y
+`cerne-git-workflow`; Gemini recibe solo `cerne-git-workflow`. Con argumento de skill, instala
+exactamente esa skill. Los destinos son
 `~/.codex/skills/<skill>`, `~/.claude/skills/<skill>` o
 `~/.gemini/skills/cerne-git-workflow`.
+
+`cerne-product-discovery` evalúa críticamente ideas de producto y features sin crear archivos ni
+iniciar un workflow por defecto. Cuando una idea está lista y Spec Kit está configurado, solicita
+una autorización nueva antes de entregar el resumen mínimo del descubrimiento a `speckit-specify`.
+La skill no está disponible para Gemini en esta versión porque el puente Spec Kit de Cerne soporta
+Codex y Claude.
 
 El comando usa el paquete oficial `cerne-skills` incorporado en el binario, sin red, valida
 manifiesto, adaptador, entrypoint y schema `cerne.context.v1` antes de copiar, y registra una

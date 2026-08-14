@@ -66,7 +66,7 @@ Precedência:
 	messageConfigInvalid:                                      "erro: configuração de idioma inválida\ncorreção: use cerne --lang pt-BR config set language <en|pt-BR> para repará-la\n",
 	messageConfigWrite:                                        "erro: não foi possível atualizar a configuração do usuário\ncorreção: verifique as permissões de ~/.cerne e tente novamente\n",
 	messageHomeUnavailable:                                    "erro: não foi possível localizar o diretório pessoal\ncorreção: configure um diretório pessoal acessível\n",
-	"skill.usage":                                             "erro: argumento inválido\nuso: cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]\n",
+	"skill.usage":                                             "erro: argumento inválido\nuso: cerne skill install <codex|claude|gemini> [cerne-context|cerne-product-discovery|cerne-git-workflow]\n",
 	"skill.installed":                                         "Skill instalada: %s\n",
 	"skill.already":                                           "Skill já instalada: %s\n",
 	"skill.upgraded":                                          "Skill atualizada: %s\n",

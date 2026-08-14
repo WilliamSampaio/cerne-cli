@@ -7,6 +7,8 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ### Added
 
+- `cerne-product-discovery` for Codex and Claude evaluates product and feature ideas before
+  specification and hands mature ideas to Spec Kit only after fresh authorization.
 - New workspaces include a workflow-neutral `knowledge/README.md` in the effective `en` or `pt-BR`
   language, with collection guidance, repository boundaries, and safe first commands.
 

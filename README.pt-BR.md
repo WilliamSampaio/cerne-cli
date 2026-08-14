@@ -215,7 +215,20 @@ cerne status
 O comando mostra branch, commit abreviado, estado da árvore, arquivos em stage, modificados e não
 rastreados nos dois repositórios. Alterações pendentes são informação, não erro.
 
-### 4. Coordene uma etapa Git aprovada (opcional)
+### 4. Avalie uma ideia de produto (opcional)
+
+Instale `cerne-product-discovery` para Codex ou Claude e use a skill antes de transformar uma ideia
+imatura em especificação:
+
+```sh
+cerne skill install codex cerne-product-discovery
+```
+
+A skill questiona problema, evidências, escopo e valor sem criar arquivos por padrão. Se a ideia
+ficar pronta e Spec Kit estiver configurado, ela pede uma autorização nova antes de iniciar
+`speckit-specify` com o resumo da descoberta.
+
+### 5. Coordene uma etapa Git aprovada (opcional)
 
 Instale `cerne-git-workflow` com `cerne skill install <agent>` e deixe a skill inspecionar primeiro
 e pedir uma confirmação separada antes de o agente executar qualquer efeito Git:
@@ -229,7 +242,7 @@ o snapshot sanitizado (`state_id`, repositórios, branches, remotes e paths alte
 Veja a [referência de comandos](docs/pt-BR/commands.md) para o contrato completo de JSON/auditoria.
 O audit do Cerne cobre somente a inspeção; a evidência dos efeitos nativos pertence ao agente ou harness.
 
-### 5. Vincule um source existente (opcional)
+### 6. Vincule um source existente (opcional)
 
 O `init` já configura o repositório `source` vazio. Use `--replace` para apontar o manifesto para
 outro repositório local:
@@ -352,9 +365,10 @@ O histórico de versões está documentado em [CHANGELOG.md](CHANGELOG.md).
 ## Roadmap e escopo
 
 O escopo atual inclui criação com source vazio, vinculado ou clonado, bootstrap opcional de
-workflow, validação, status local e vínculo de source. Futuramente, o Cerne poderá coordenar agentes auditáveis para produto,
-documentação, implementação, validação e manutenção, sem depender de modelos, agentes ou
-fornecedores específicos.
+workflow, validação, status local, vínculo de source e descoberta de produto opcional para Codex e
+Claude. Futuramente, o Cerne poderá ampliar a coordenação auditável de agentes para documentação,
+implementação, validação e manutenção, sem depender de modelos, agentes ou fornecedores
+específicos.
 
 Administração de hospedagem remota, commits automáticos, push, pull request, merge, publicação,
 deploy, interface gráfica, saída JSON e execução de IA não fazem parte do CLI atual.

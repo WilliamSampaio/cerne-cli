@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "cerne-skills",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Official Cerne skills for AI agents.",
   "skills": [
     {
@@ -16,6 +16,25 @@
         "claude": {
           "installTarget": "~/.claude/skills/cerne-context",
           "invoke": "/cerne-context"
+        }
+      },
+      "requires": {
+        "cerneCliCommand": "cerne context --json",
+        "contextSchema": "cerne.context.v1"
+      }
+    },
+    {
+      "id": "cerne-product-discovery",
+      "source": "skills/cerne-product-discovery",
+      "entrypoint": "SKILL.md",
+      "adapters": {
+        "codex": {
+          "installTarget": "~/.codex/skills/cerne-product-discovery",
+          "invoke": "$cerne-product-discovery"
+        },
+        "claude": {
+          "installTarget": "~/.claude/skills/cerne-product-discovery",
+          "invoke": "/cerne-product-discovery"
         }
       },
       "requires": {

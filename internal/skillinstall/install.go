@@ -73,7 +73,7 @@ func Install(agent string, options Options) (Result, error) {
 	if skillName == "" {
 		skillName = SkillName
 	}
-	if !SupportedSkill(skillName) || agent == "gemini" && skillName == SkillName {
+	if !SupportsSkill(agent, skillName) {
 		return result, failure("skill-missing", "skill não suportada para o agente", "use uma skill oficial suportada")
 	}
 	home := options.HomeDir
