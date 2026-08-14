@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,12 +10,22 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/WilliamSampaio/cerne-cli/internal/localization"
 )
 
 var (
 	ErrInvalidName       = errors.New("nome de projeto inválido")
 	ErrUnsafeDestination = errors.New("destino inseguro")
 )
+
+//go:embed knowledge-readme.md
+var knowledgeReadme string
+
+//go:embed knowledge-readme.pt-BR.md
+var knowledgeReadmePTBR string
+
+var openKnowledgeReadme = os.OpenFile
 
 type Result struct {
 	Name              string
@@ -53,7 +64,11 @@ type SourceInitFailure struct {
 func (failure SourceInitFailure) Error() string { return failure.Cause }
 
 func Init(parent, name string, initRepository func(string) error) (result Result, err error) {
-	return initWorkspace(parent, name, WorkflowDefinition{}, initRepository)
+	return InitInLanguage(parent, name, localization.English, initRepository)
+}
+
+func InitInLanguage(parent, name string, language localization.Language, initRepository func(string) error) (result Result, err error) {
+	return initWorkspace(parent, name, WorkflowDefinition{}, language, initRepository)
 }
 
 func InitWithSource(parent, name string, request SourceInitRequest, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
@@ -66,12 +81,16 @@ func InitWithSourceAndWorkflow(parent, name string, request SourceInitRequest, d
 }
 
 func InitWithSourceAndWorkflowAndAgent(parent, name string, request SourceInitRequest, definition WorkflowDefinition, agent string, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
+	return InitWithSourceAndWorkflowAndAgentInLanguage(parent, name, request, definition, agent, localization.English, initRepository, inspect, clone)
+}
+
+func InitWithSourceAndWorkflowAndAgentInLanguage(parent, name string, request SourceInitRequest, definition WorkflowDefinition, agent string, language localization.Language, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
 	if definition.Provider != "" {
 		if _, _, err := workflowPaths(filepath.Join(parent, name, "knowledge"), definition); err != nil {
 			return Result{}, WorkflowResult{}, errors.New("workflow inválido")
 		}
 	}
-	result, err := initWithSource(parent, name, request, definition, initRepository, inspect, clone)
+	result, err := initWithSource(parent, name, request, definition, language, initRepository, inspect, clone)
 	if err != nil || definition.Provider == "" {
 		return result, WorkflowResult{}, err
 	}
@@ -84,12 +103,12 @@ func InitWithSourceAndWorkflowAndAgent(parent, name string, request SourceInitRe
 	return result, workflow, err
 }
 
-func initWithSource(parent, name string, request SourceInitRequest, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
+func initWithSource(parent, name string, request SourceInitRequest, definition WorkflowDefinition, language localization.Language, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
 	switch request.Mode {
 	case SourceLocal:
-		return initWithLocalSource(parent, name, request.Input, definition, initRepository, inspect)
+		return initWithLocalSource(parent, name, request.Input, definition, language, initRepository, inspect)
 	case SourceClone:
-		return initWithClonedSource(parent, name, request, definition, initRepository, inspect, clone)
+		return initWithClonedSource(parent, name, request, definition, language, initRepository, inspect, clone)
 	default:
 		return Result{}, errors.New("modo de source inválido")
 	}
@@ -100,13 +119,17 @@ func InitWithWorkflow(parent, name string, definition WorkflowDefinition, initRe
 }
 
 func InitWithWorkflowAndAgent(parent, name string, definition WorkflowDefinition, agent string, initRepository func(string) error) (Result, WorkflowResult, error) {
+	return InitWithWorkflowAndAgentInLanguage(parent, name, definition, agent, localization.English, initRepository)
+}
+
+func InitWithWorkflowAndAgentInLanguage(parent, name string, definition WorkflowDefinition, agent string, language localization.Language, initRepository func(string) error) (Result, WorkflowResult, error) {
 	if definition.Provider == "" {
 		return Result{}, WorkflowResult{}, errors.New("workflow inválido")
 	}
 	if _, _, err := workflowPaths(filepath.Join(parent, name, "knowledge"), definition); err != nil {
 		return Result{}, WorkflowResult{}, errors.New("workflow inválido")
 	}
-	result, err := initWorkspace(parent, name, definition, initRepository)
+	result, err := initWorkspace(parent, name, definition, language, initRepository)
 	if err != nil {
 		return Result{}, WorkflowResult{}, err
 	}
@@ -119,11 +142,11 @@ func InitWithWorkflowAndAgent(parent, name string, definition WorkflowDefinition
 	return result, workflow, err
 }
 
-func initWorkspace(parent, name string, definition WorkflowDefinition, initRepository func(string) error) (result Result, err error) {
-	return initWorkspaceMode(parent, name, definition, "../source", true, initRepository)
+func initWorkspace(parent, name string, definition WorkflowDefinition, language localization.Language, initRepository func(string) error) (result Result, err error) {
+	return initWorkspaceMode(parent, name, definition, language, "../source", true, initRepository)
 }
 
-func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manifestSource string, createSource bool, initRepository func(string) error) (result Result, err error) {
+func initWorkspaceMode(parent, name string, definition WorkflowDefinition, language localization.Language, manifestSource string, createSource bool, initRepository func(string) error) (result Result, err error) {
 	if err := ValidateName(name); err != nil {
 		return Result{}, err
 	}
@@ -230,6 +253,25 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 		return Result{}, fmt.Errorf("não foi possível concluir o manifesto: %w", closeErr)
 	}
 
+	readmePath := filepath.Join(knowledge, "README.md")
+	readme, err := openKnowledgeReadme(readmePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return Result{}, fmt.Errorf("não foi possível criar o README do knowledge: %w", err)
+	}
+	template := knowledgeReadme
+	if language == localization.PortugueseBrazil {
+		template = knowledgeReadmePTBR
+	}
+	template = strings.ReplaceAll(template, "\r\n", "\n")
+	_, writeErr = io.WriteString(readme, strings.ReplaceAll(template, "{{PROJECT_NAME}}", name))
+	closeErr = readme.Close()
+	if writeErr != nil {
+		return Result{}, fmt.Errorf("não foi possível gravar o README do knowledge: %w", writeErr)
+	}
+	if closeErr != nil {
+		return Result{}, fmt.Errorf("não foi possível concluir o README do knowledge: %w", closeErr)
+	}
+
 	repositories := []string{knowledge}
 	if createSource {
 		repositories = append(repositories, source)
@@ -250,7 +292,7 @@ func initWorkspaceMode(parent, name string, definition WorkflowDefinition, manif
 	}, nil
 }
 
-func initWithLocalSource(parent, name, input string, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect) (Result, error) {
+func initWithLocalSource(parent, name, input string, definition WorkflowDefinition, language localization.Language, initRepository func(string) error, inspect LinkGitInspect) (Result, error) {
 	if inspect == nil {
 		return Result{}, sourceInitFailure("git-unavailable", "Git indisponível", "instale o Git e disponibilize-o no PATH", false)
 	}
@@ -269,7 +311,7 @@ func initWithLocalSource(parent, name, input string, definition WorkflowDefiniti
 	}
 	rootExisted := pathExists(root)
 	manifestSource := manifestLinkSource(knowledge, candidate)
-	result, err := initWorkspaceMode(parent, name, definition, manifestSource, false, initRepository)
+	result, err := initWorkspaceMode(parent, name, definition, language, manifestSource, false, initRepository)
 	if err != nil {
 		return Result{}, err
 	}
@@ -300,13 +342,13 @@ func sameRepositoryFacts(left, right LinkRepositoryFacts) bool {
 		samePath(left.WorktreeRoot, right.WorktreeRoot) && samePath(left.CommonDir, right.CommonDir)
 }
 
-func initWithClonedSource(parent, name string, request SourceInitRequest, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
+func initWithClonedSource(parent, name string, request SourceInitRequest, definition WorkflowDefinition, language localization.Language, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, error) {
 	if inspect == nil || clone == nil || request.Input == "" || request.OriginTransport == "" || request.OriginFingerprint == "" {
 		return Result{}, sourceInitFailure("source-clone-unavailable", "clone do source indisponível", "instale o Git e tente novamente", false)
 	}
 	root := filepath.Join(canonical(parent), name)
 	rootExisted := pathExists(root)
-	result, err := initWorkspaceMode(parent, name, definition, "../source", false, initRepository)
+	result, err := initWorkspaceMode(parent, name, definition, language, "../source", false, initRepository)
 	if err != nil {
 		return Result{}, err
 	}

@@ -7,7 +7,7 @@ type Language string
 const (
 	English          Language = "en"
 	PortugueseBrazil Language = "pt-BR"
-	Default                   = PortugueseBrazil
+	Default                   = English
 )
 
 type InvalidLanguageError struct{ Value string }

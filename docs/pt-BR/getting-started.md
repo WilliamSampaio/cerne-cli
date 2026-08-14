@@ -93,6 +93,7 @@ meu-projeto/
 ├── knowledge/
 │   ├── .git/
 │   ├── cerne.json
+│   ├── README.md
 │   ├── product/
 │   ├── specs/
 │   ├── decisions/
@@ -101,6 +102,9 @@ meu-projeto/
 └── source/
     └── .git/
 ```
+
+Comece por `knowledge/README.md`; ele usa o idioma efetivo `en` ou `pt-BR` e explica as coleções, os
+limites entre os repositórios e os comandos seguros de inspeção sem depender de workflow ou agente.
 
 Trabalhe com `knowledge` e `source` como repositórios separados: cada um tem seu próprio histórico,
 branches, commits e remotos. Não armazene credenciais ou segredos em nenhum deles.

@@ -120,8 +120,7 @@ cerne --lang en doctor
 CERNE_LANG=en cerne status
 ```
 
-A precedência é `--lang`, `CERNE_LANG`, preferência salva e, por fim, `pt-BR`. O padrão atual
-permanece `pt-BR` por compatibilidade e mudará para `en` na versão 1.0. Saídas estruturadas,
+A precedência é `--lang`, `CERNE_LANG`, preferência salva e, por fim, `en`. Saídas estruturadas,
 comandos, flags, identificadores, códigos de saída e a versão são neutros quanto ao idioma.
 
 ## Início rápido
@@ -140,6 +139,7 @@ meu-projeto/
 ├── knowledge/
 │   ├── .git/
 │   ├── cerne.json
+│   ├── README.md
 │   ├── product/
 │   ├── specs/
 │   ├── decisions/
@@ -151,6 +151,9 @@ meu-projeto/
 
 Os dois repositórios são locais, independentes e começam sem commits ou remotos. A raiz do
 workspace não é um repositório Git.
+
+`knowledge/README.md` usa o idioma efetivo `en` ou `pt-BR` e explica as coleções, os limites entre os
+repositórios e os primeiros comandos seguros sem depender de workflow ou agente selecionado.
 
 Como o Git não registra diretórios vazios, o Cerne cria um arquivo `.gitkeep` em cada diretório
 obrigatório de `knowledge`. Você pode removê-lo quando adicionar conteúdo ao diretório. O Cerne não

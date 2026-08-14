@@ -111,6 +111,11 @@ Name:
   letters, numbers, dot, hyphen, or underscore. Reserved names and a trailing dot
   are rejected.
 
+Knowledge:
+  Creates README.md with collection purposes, repository boundaries, and the
+  first safe commands for inspecting the workspace, using the invocation's
+  effective language.
+
 Source:
   Without a flag, creates source as an empty Git repository. --source links the
   root of a local non-bare working tree. --clone accepts local paths, file, HTTPS,
@@ -284,7 +289,7 @@ Options:
 
 Language:
   CERNE_LANG temporarily selects the language. Precedence is --lang, CERNE_LANG,
-  saved preference, then pt-BR. Use "cerne config --help" to persist the choice.
+  saved preference, then en. Use "cerne config --help" to persist the choice.
 
 Use "cerne <command> --help" for command details.
 `,
@@ -301,17 +306,14 @@ Storage:
   command refuses symlinks and replaces the file atomically.
 
 Precedence:
-  --lang, CERNE_LANG, saved preference, then pt-BR.
-
-Compatibility:
-  pt-BR remains the default in this release. en will be the default in Cerne 1.0.
+  --lang, CERNE_LANG, saved preference, then en.
 `,
 	messageInvalidLanguage:                                    "error: invalid language: %q\ncorrection: use en or pt-BR\n",
 	messageInvalidGlobalOption:                                "error: invalid global option\nusage: cerne [--lang <en|pt-BR>] <command> [arguments]\n",
 	messageConfigUsage:                                        "error: invalid argument\nusage: cerne config <set language <en|pt-BR>|get language|unset language>\n",
 	messageConfigSet:                                          "Saved language: %s\n",
 	messageConfigGet:                                          "Saved language: %s\n",
-	messageConfigGetUnset:                                     "Language is not set. Current default: pt-BR\n",
+	messageConfigGetUnset:                                     "Language is not set. Current default: en\n",
 	messageConfigUnset:                                        "Language preference removed.\n",
 	messageConfigUnsafe:                                       "error: unsafe user configuration\ncorrection: remove symlinks from ~/.cerne or ~/.cerne/config.json and try again\n",
 	messageConfigRead:                                         "error: could not read the user configuration\ncorrection: check the permissions of ~/.cerne/config.json\n",

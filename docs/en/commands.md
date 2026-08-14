@@ -29,15 +29,14 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 - `cerne --lang <en|pt-BR> ...` selects the language for one invocation without saving it.
 
 `CERNE_LANG` provides the same temporary override. Language precedence is `--lang`,
-`CERNE_LANG`, the saved preference, then `pt-BR`. The current default remains `pt-BR` for
-compatibility and will change to `en` in 1.0. Language selection changes only human-readable text;
+`CERNE_LANG`, the saved preference, then `en`. Language selection changes only human-readable text;
 commands, flags, JSON fields, identifiers, exit statuses, and `--version` remain stable.
 
 ## `cerne config <set language <en|pt-BR>|get language|unset language>`
 
 Manages the language preference stored in `~/.cerne/config.json` for the current user.
 `set` persists a supported language, `get` prints the saved value, and `unset` removes the
-preference so the compatibility default applies. Use a temporary override to repair an invalid
+preference so the default applies. Use a temporary override to repair an invalid
 regular configuration, for example:
 
 ```sh
@@ -51,6 +50,8 @@ Cerne refuses symbolic links and unsafe configuration paths instead of following
 Creates a new workspace below the current directory. The destination must not exist or must be an
 empty regular directory; symbolic links and non-empty destinations are rejected. Existing content
 is never replaced. If creation fails, Cerne rolls back only artifacts created by that attempt.
+Every new knowledge includes a workflow-neutral `README.md` in the effective `en` or `pt-BR`
+language, with collection purposes, repository boundaries, and safe inspection commands.
 
 Project names use 1–255 ASCII characters, start with a letter or number, and may continue with
 letters, numbers, `.`, `_`, or `-`. Windows reserved names and names ending in `.` are rejected.

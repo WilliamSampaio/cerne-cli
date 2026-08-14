@@ -29,8 +29,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 - `cerne --lang <en|pt-BR> ...` seleciona o idioma somente naquela execução, sem salvá-lo.
 
 `CERNE_LANG` oferece a mesma substituição temporária. A precedência é `--lang`, `CERNE_LANG`,
-preferência salva e, por fim, `pt-BR`. O padrão atual permanece `pt-BR` por compatibilidade e
-mudará para `en` na versão 1.0. A seleção altera apenas textos destinados a pessoas; comandos,
+preferência salva e, por fim, `en`. A seleção altera apenas textos destinados a pessoas; comandos,
 flags, campos JSON, identificadores, códigos de saída e `--version` permanecem estáveis.
 
 ## `cerne config <set language <en|pt-BR>|get language|unset language>`
@@ -51,6 +50,8 @@ O Cerne recusa links simbólicos e caminhos de configuração inseguros em vez d
 Cria um workspace abaixo do diretório atual. O destino deve estar ausente ou ser um diretório
 regular vazio; links simbólicos e destinos não vazios são recusados. Conteúdo existente nunca é
 substituído. Em caso de falha, o Cerne desfaz somente os artefatos criados naquela tentativa.
+Todo knowledge novo inclui um `README.md` neutro ao workflow no idioma efetivo `en` ou `pt-BR`, com
+a finalidade das coleções, os limites entre os repositórios e comandos seguros de inspeção.
 
 O nome usa de 1 a 255 caracteres ASCII, começa com letra ou número e pode continuar com letras,
 números, `.`, `_` ou `-`. Nomes reservados do Windows e nomes terminados em `.` são recusados.
