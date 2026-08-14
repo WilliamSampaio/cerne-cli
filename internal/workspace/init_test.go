@@ -10,7 +10,55 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/WilliamSampaio/cerne-cli/internal/localization"
 )
+
+func TestInitCreatesLocalizedKnowledgeReadme(t *testing.T) {
+	var portuguese string
+	for _, test := range []struct {
+		language localization.Language
+		title    string
+		docs     string
+	}{
+		{localization.English, "# example knowledge\n", "/docs/en/getting-started.md"},
+		{localization.PortugueseBrazil, "# Conhecimento de example\n", "/docs/pt-BR/getting-started.md"},
+	} {
+		result, err := InitInLanguage(t.TempDir(), "example", test.language, fakeInitRepository)
+		if err != nil {
+			t.Fatal(err)
+		}
+		readme := readText(t, filepath.Join(result.KnowledgePath, "README.md"))
+		if !strings.HasPrefix(readme, test.title) || !strings.Contains(readme, test.docs) {
+			t.Fatalf("README %s inesperado:\n%s", test.language, readme)
+		}
+		if test.language == localization.PortugueseBrazil {
+			portuguese = readme
+		}
+	}
+
+	parent := t.TempDir()
+	source := filepath.Join(parent, "existing-source")
+	if err := os.Mkdir(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := fakeInitRepository(source); err != nil {
+		t.Fatal(err)
+	}
+	withSource, _, err := InitWithSourceAndWorkflowAndAgentInLanguage(parent, "example", SourceInitRequest{Mode: SourceLocal, Input: source}, WorkflowDefinition{}, "", localization.PortugueseBrazil, fakeInitRepository, fakeLinkInspect(nil, nil), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withWorkflow, _, err := InitWithWorkflowAndAgentInLanguage(t.TempDir(), "example", readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json"), "", localization.PortugueseBrazil, fakeInitRepository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, result := range []Result{withSource, withWorkflow} {
+		if got := readText(t, filepath.Join(result.KnowledgePath, "README.md")); got != portuguese {
+			t.Fatalf("README pt-BR difere entre modos:\n%s", got)
+		}
+	}
+}
 
 func TestInitCreatesWorkspaceInAbsentOrEmptyDestination(t *testing.T) {
 	for _, existing := range []bool{false, true} {
@@ -46,6 +94,77 @@ func TestInitCreatesWorkspaceInAbsentOrEmptyDestination(t *testing.T) {
 				t.Fatalf("a raiz não deve ser repositório Git: %v", err)
 			}
 		})
+	}
+}
+
+func TestInitCreatesTheSameKnowledgeReadmeAcrossModes(t *testing.T) {
+	base, err := Init(t.TempDir(), "example", fakeInitRepository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := readText(t, filepath.Join(base.KnowledgePath, "README.md"))
+
+	t.Run("local source", func(t *testing.T) {
+		parent := t.TempDir()
+		source := filepath.Join(parent, "existing-source")
+		if err := os.Mkdir(source, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := fakeInitRepository(source); err != nil {
+			t.Fatal(err)
+		}
+		result, err := InitWithSource(parent, "example", SourceInitRequest{Mode: SourceLocal, Input: source}, fakeInitRepository, fakeLinkInspect(nil, nil), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := readText(t, filepath.Join(result.KnowledgePath, "README.md")); got != want {
+			t.Fatalf("README do source local difere:\n%s", got)
+		}
+	})
+
+	t.Run("clone", func(t *testing.T) {
+		request := SourceInitRequest{Mode: SourceClone, Input: "file:///origin", OriginTransport: "file", OriginFingerprint: strings.Repeat("0", 64)}
+		result, err := InitWithSource(t.TempDir(), "example", request, fakeInitRepository, fakeLinkInspect(nil, nil), func(_ string, staging string) error {
+			return os.Mkdir(filepath.Join(staging, ".git"), 0o755)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := readText(t, filepath.Join(result.KnowledgePath, "README.md")); got != want {
+			t.Fatalf("README do clone difere:\n%s", got)
+		}
+	})
+
+	t.Run("workflow", func(t *testing.T) {
+		for _, definition := range []WorkflowDefinition{
+			readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json"),
+			readyDefinition("beta", "beta/specs", "beta", "beta/config.yaml"),
+		} {
+			result, _, err := InitWithWorkflow(t.TempDir(), "example", definition, fakeInitRepository)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := readText(t, filepath.Join(result.KnowledgePath, "README.md")); got != want {
+				t.Fatalf("README do workflow %s difere:\n%s", definition.Provider, got)
+			}
+		}
+	})
+}
+
+func TestInitReadmeFailureRollsBackWorkspace(t *testing.T) {
+	original := openKnowledgeReadme
+	openKnowledgeReadme = func(string, int, os.FileMode) (*os.File, error) {
+		return nil, errors.New("injected readme failure")
+	}
+	defer func() { openKnowledgeReadme = original }()
+
+	parent := t.TempDir()
+	_, err := Init(parent, "example", fakeInitRepository)
+	if err == nil || !strings.Contains(err.Error(), "README do knowledge") {
+		t.Fatalf("erro = %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(parent, "example")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("workspace parcial permaneceu: %v", statErr)
 	}
 }
 
@@ -323,6 +442,9 @@ func TestInitWithCloneFailurePreservesKnowledgeAndCleansOnlyStaging(t *testing.T
 	if !strings.Contains(readText(t, result.AuditPath), `"failure": "clone-failed"`) {
 		t.Fatal("falha não auditada")
 	}
+	if !strings.HasPrefix(readText(t, filepath.Join(result.KnowledgePath, "README.md")), "# example knowledge\n") {
+		t.Fatal("README não foi preservado após início do clone")
+	}
 }
 
 func TestInitWithCloneNeverReplacesConcurrentSourceAndKeepsPromotedSourceOnAuditFailure(t *testing.T) {
@@ -434,6 +556,34 @@ func assertKnowledge(t *testing.T, knowledge string) {
 		if err != nil || !info.Mode().IsRegular() {
 			t.Fatalf("placeholder de %s ausente: %v", directory, err)
 		}
+	}
+
+	readme := readText(t, filepath.Join(knowledge, "README.md"))
+	for _, required := range []string{
+		"# example knowledge\n",
+		"## 1. Validate the workspace",
+		"cerne doctor\ncerne status\ncerne context",
+		"## 2. Read the context report",
+		"Workflow ready",
+		"Workflow pending",
+		"No workflow declared",
+		"## 3. Choose your first useful outcome",
+		"product/overview.md",
+		"cerne link --help",
+		"## 4. Record durable guardrails",
+		"## 5. Version each repository independently",
+		"https://github.com/WilliamSampaio/cerne-cli/blob/master/docs/en/getting-started.md",
+		"https://github.com/WilliamSampaio/cerne-cli/blob/master/docs/en/commands.md",
+		"https://github.com/WilliamSampaio/cerne-cli/blob/master/docs/en/commands.md#cerne-git-inspect",
+		"https://github.com/WilliamSampaio/cerne-cli/blob/master/docs/en/troubleshooting.md",
+		"Do not store secrets or credentials",
+	} {
+		if !strings.Contains(readme, required) {
+			t.Fatalf("README sem conteúdo obrigatório %q:\n%s", required, readme)
+		}
+	}
+	if strings.Contains(readme, "{{PROJECT_NAME}}") || !strings.HasSuffix(readme, "\n") {
+		t.Fatalf("README não foi renderizado corretamente:\n%s", readme)
 	}
 
 	data, err := os.ReadFile(filepath.Join(knowledge, "cerne.json"))

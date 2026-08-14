@@ -64,6 +64,11 @@ Nome:
   letras, números, ponto, hífen ou sublinhado. Nomes reservados e ponto final
   não são aceitos.
 
+Knowledge:
+  Cria README.md com a finalidade das coleções, os limites entre os repositórios
+  e os primeiros comandos seguros para inspecionar o workspace, usando o idioma
+  efetivo da invocação.
+
 Source:
   Sem flag, cria source como repositório Git vazio. --source vincula a raiz de
   um working tree Git local non-bare, resolvido a partir do diretório atual,
@@ -510,7 +515,7 @@ func TestCLIInitSuccess(t *testing.T) {
 
 	binary := buildCLI(t)
 	parent := t.TempDir()
-	command := exec.Command(binary, "init", "example")
+	command := exec.Command(binary, "--lang", "pt-BR", "init", "example")
 	command.Dir = parent
 	var stdout, stderr strings.Builder
 	command.Stdout = &stdout
@@ -529,6 +534,9 @@ func TestCLIInitSuccess(t *testing.T) {
 	if stderr.String() != "" {
 		t.Fatalf("stderr = %q", stderr.String())
 	}
+	if !strings.HasPrefix(readFile(t, filepath.Join(knowledge, "README.md")), "# Conhecimento de example\n") {
+		t.Fatal("README inicial do knowledge ausente")
+	}
 	if !samePath(gitOutput(t, knowledge, "rev-parse", "--show-toplevel"), knowledge) {
 		t.Fatal("raiz Git de knowledge incorreta")
 	}
@@ -542,6 +550,40 @@ func TestCLIInitSuccess(t *testing.T) {
 		if gitOutput(t, repository, "rev-list", "--all", "--count") != "0" {
 			t.Fatalf("%s possui commits", repository)
 		}
+	}
+}
+
+func TestCLIInitReadmeUsesEffectiveLanguage(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+
+	binary := buildCLI(t)
+	home := t.TempDir()
+	environment := skillHomeEnvironment(home)
+	status, _, stderr := executeCLI(t, binary, t.TempDir(), environment, "config", "set", "language", "pt-BR")
+	if status != 0 || stderr != "" {
+		t.Fatalf("config: status=%d stderr=%q", status, stderr)
+	}
+
+	parent := t.TempDir()
+	status, _, stderr = executeCLI(t, binary, parent, environment, "init", "portuguese")
+	portuguese := readFile(t, filepath.Join(parent, "portuguese", "knowledge", "README.md"))
+	if status != 0 || stderr != "" || !strings.HasPrefix(portuguese, "# Conhecimento de portuguese\n") ||
+		!strings.Contains(portuguese, "/docs/pt-BR/getting-started.md") {
+		t.Fatalf("README pt-BR: status=%d stderr=%q\n%s", status, stderr, portuguese)
+	}
+
+	status, _, stderr = executeCLI(t, binary, parent, environment, "--lang", "en", "init", "english")
+	english := readFile(t, filepath.Join(parent, "english", "knowledge", "README.md"))
+	if status != 0 || stderr != "" || !strings.HasPrefix(english, "# english knowledge\n") ||
+		!strings.Contains(english, "/docs/en/getting-started.md") {
+		t.Fatalf("README en: status=%d stderr=%q\n%s", status, stderr, english)
+	}
+
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), environment, "config", "get", "language")
+	if status != 0 || stdout != "Idioma salvo: pt-BR\n" || stderr != "" {
+		t.Fatalf("preferência mudou: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 }
 

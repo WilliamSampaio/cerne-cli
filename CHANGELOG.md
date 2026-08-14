@@ -5,6 +5,11 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+### Added
+
+- New workspaces include a workflow-neutral `knowledge/README.md` in the effective `en` or `pt-BR`
+  language, with collection guidance, repository boundaries, and safe first commands.
+
 ## 0.11.0 - 2026-08-13
 
 ### Changed

@@ -132,6 +132,11 @@ Nome:
   letras, números, ponto, hífen ou sublinhado. Nomes reservados e ponto final
   não são aceitos.
 
+Knowledge:
+  Cria README.md com a finalidade das coleções, os limites entre os repositórios
+  e os primeiros comandos seguros para inspecionar o workspace, usando o idioma
+  efetivo da invocação.
+
 Source:
   Sem flag, cria source como repositório Git vazio. --source vincula a raiz de
   um working tree Git local non-bare, resolvido a partir do diretório atual,
@@ -774,7 +779,7 @@ func runInit(args []string, stdout, stderr io.Writer, messages localizer) int {
 			request.OriginTransport = origin.Transport
 			request.OriginFingerprint = origin.Fingerprint
 		}
-		result, workflow, err := workspace.InitWithSourceAndWorkflowAndAgent(current, parsed.Name, request, definition, parsed.Agent, initRepository, adaptLink(inspect), clone)
+		result, workflow, err := workspace.InitWithSourceAndWorkflowAndAgentInLanguage(current, parsed.Name, request, definition, parsed.Agent, messages.language, initRepository, adaptLink(inspect), clone)
 		if err != nil {
 			var workflowFailure workspace.WorkflowFailure
 			if errors.As(err, &workflowFailure) {
@@ -804,7 +809,7 @@ func runInit(args []string, stdout, stderr io.Writer, messages localizer) int {
 		return 0
 	}
 	if parsed.Workflow != "" {
-		result, workflow, err := workspace.InitWithWorkflowAndAgent(current, parsed.Name, definition, parsed.Agent, initRepository)
+		result, workflow, err := workspace.InitWithWorkflowAndAgentInLanguage(current, parsed.Name, definition, parsed.Agent, messages.language, initRepository)
 		if err != nil {
 			if result.KnowledgePath == "" {
 				if errors.Is(err, workspace.ErrUnsafeDestination) {
@@ -829,7 +834,7 @@ func runInit(args []string, stdout, stderr io.Writer, messages localizer) int {
 		return 0
 	}
 
-	result, err := workspace.Init(current, parsed.Name, initRepository)
+	result, err := workspace.InitInLanguage(current, parsed.Name, messages.language, initRepository)
 	if err != nil {
 		if errors.Is(err, workspace.ErrUnsafeDestination) {
 			fmt.Fprint(stderr, messages.text("init.destination-unsafe"))

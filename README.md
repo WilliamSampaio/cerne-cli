@@ -139,6 +139,7 @@ my-project/
 ├── knowledge/
 │   ├── .git/
 │   ├── cerne.json
+│   ├── README.md
 │   ├── product/
 │   ├── specs/
 │   ├── decisions/
@@ -150,6 +151,9 @@ my-project/
 
 Both repositories are local, independent, and initially have no commits or remotes. The workspace
 root itself is not a Git repository.
+
+`knowledge/README.md` uses the effective `en` or `pt-BR` language and explains the collections,
+repository boundaries, and safe first commands without depending on a selected workflow or agent.
 
 Because Git does not track empty directories, Cerne creates a `.gitkeep` file in each required
 `knowledge` directory. You can remove it after adding content to that directory. Cerne does not

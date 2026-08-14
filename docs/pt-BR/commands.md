@@ -50,6 +50,8 @@ O Cerne recusa links simbólicos e caminhos de configuração inseguros em vez d
 Cria um workspace abaixo do diretório atual. O destino deve estar ausente ou ser um diretório
 regular vazio; links simbólicos e destinos não vazios são recusados. Conteúdo existente nunca é
 substituído. Em caso de falha, o Cerne desfaz somente os artefatos criados naquela tentativa.
+Todo knowledge novo inclui um `README.md` neutro ao workflow no idioma efetivo `en` ou `pt-BR`, com
+a finalidade das coleções, os limites entre os repositórios e comandos seguros de inspeção.
 
 O nome usa de 1 a 255 caracteres ASCII, começa com letra ou número e pode continuar com letras,
 números, `.`, `_` ou `-`. Nomes reservados do Windows e nomes terminados em `.` são recusados.

@@ -139,6 +139,7 @@ meu-projeto/
 ├── knowledge/
 │   ├── .git/
 │   ├── cerne.json
+│   ├── README.md
 │   ├── product/
 │   ├── specs/
 │   ├── decisions/
@@ -150,6 +151,9 @@ meu-projeto/
 
 Os dois repositórios são locais, independentes e começam sem commits ou remotos. A raiz do
 workspace não é um repositório Git.
+
+`knowledge/README.md` usa o idioma efetivo `en` ou `pt-BR` e explica as coleções, os limites entre os
+repositórios e os primeiros comandos seguros sem depender de workflow ou agente selecionado.
 
 Como o Git não registra diretórios vazios, o Cerne cria um arquivo `.gitkeep` em cada diretório
 obrigatório de `knowledge`. Você pode removê-lo quando adicionar conteúdo ao diretório. O Cerne não

@@ -111,6 +111,11 @@ Name:
   letters, numbers, dot, hyphen, or underscore. Reserved names and a trailing dot
   are rejected.
 
+Knowledge:
+  Creates README.md with collection purposes, repository boundaries, and the
+  first safe commands for inspecting the workspace, using the invocation's
+  effective language.
+
 Source:
   Without a flag, creates source as an empty Git repository. --source links the
   root of a local non-bare working tree. --clone accepts local paths, file, HTTPS,

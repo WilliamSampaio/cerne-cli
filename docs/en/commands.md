@@ -50,6 +50,8 @@ Cerne refuses symbolic links and unsafe configuration paths instead of following
 Creates a new workspace below the current directory. The destination must not exist or must be an
 empty regular directory; symbolic links and non-empty destinations are rejected. Existing content
 is never replaced. If creation fails, Cerne rolls back only artifacts created by that attempt.
+Every new knowledge includes a workflow-neutral `README.md` in the effective `en` or `pt-BR`
+language, with collection purposes, repository boundaries, and safe inspection commands.
 
 Project names use 1–255 ASCII characters, start with a letter or number, and may continue with
 letters, numbers, `.`, `_`, or `-`. Windows reserved names and names ending in `.` are rejected.
