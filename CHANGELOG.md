@@ -5,6 +5,8 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+## 0.12.0 - 2026-08-14
+
 ### Added
 
 - `cerne-product-discovery` for Codex and Claude evaluates product and feature ideas before

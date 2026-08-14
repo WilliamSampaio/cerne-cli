@@ -126,7 +126,7 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 		expected string
 	}{
 		{"--help", (localizer{language: localization.Default}).text(messageGlobalHelp)},
-		{"--version", "cerne 0.11.0\n"},
+		{"--version", "cerne 0.12.0\n"},
 	} {
 		t.Run(test.argument, func(t *testing.T) {
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(t.TempDir()), test.argument)
@@ -319,7 +319,7 @@ func TestCLIEnglishFailuresAndNeutralVersion(t *testing.T) {
 		}
 	}
 	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), environment, "--lang", "en", "--version")
-	if status != 0 || stdout != "cerne 0.11.0\n" || stderr != "" {
+	if status != 0 || stdout != "cerne 0.12.0\n" || stderr != "" {
 		t.Fatalf("version: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 }
