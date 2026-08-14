@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cerne Product Discovery"
+  short_description: "Evaluate ideas before specification"
+  default_prompt: "Use $cerne-product-discovery to evaluate this product idea before specification."

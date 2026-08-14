@@ -22,6 +22,13 @@ func TestLoadPackageValidatesManifestAdapterAndSchema(t *testing.T) {
 	if gitPkg.ID != GitWorkflowSkill || gitPkg.Skill != filepath.Join("skills", GitWorkflowSkill) {
 		t.Fatalf("git package = %#v", gitPkg)
 	}
+	productPkg, err := LoadPackage(root, "claude", ProductDiscoverySkill)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if productPkg.ID != ProductDiscoverySkill || productPkg.Skill != filepath.Join("skills", ProductDiscoverySkill) {
+		t.Fatalf("product package = %#v", productPkg)
+	}
 
 	tests := map[string]string{
 		"malformed":           `{`,
@@ -61,6 +68,7 @@ func packageFixture(t *testing.T, version string) string {
 	writeFile(t, filepath.Join(root, "skills", SkillName, "SKILL.md"), "# Cerne\n")
 	writeFile(t, filepath.Join(root, "skills", SkillName, "references", "context-contract.md"), "contract\n")
 	writeFile(t, filepath.Join(root, "skills", GitWorkflowSkill, "SKILL.md"), "# Git\n")
+	writeFile(t, filepath.Join(root, "skills", ProductDiscoverySkill, "SKILL.md"), "# Product\n")
 	return root
 }
 
@@ -83,6 +91,12 @@ func manifestWithSourceAndAdapters(version, source, adapters, contextSchema stri
     "entrypoint": "SKILL.md",
     "adapters": {` + adapters + `},
     "requires": {"contextSchema": "` + contextSchema + `"}
+  },{
+    "id": "cerne-product-discovery",
+    "source": "skills/cerne-product-discovery",
+    "entrypoint": "SKILL.md",
+    "adapters": {"codex":{},"claude":{}},
+    "requires": {"contextSchema": "cerne.context.v1"}
   },{
     "id": "cerne-git-workflow",
     "source": "skills/cerne-git-workflow",

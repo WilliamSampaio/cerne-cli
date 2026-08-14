@@ -5,7 +5,7 @@ var englishMessages = map[messageID]string{
 
 Usage:
   cerne skill install <codex|claude|gemini>
-  cerne skill install <codex|claude|gemini> <cerne-context|cerne-git-workflow>
+  cerne skill install <codex|claude|gemini> <cerne-context|cerne-product-discovery|cerne-git-workflow>
   cerne skill install --help
   cerne skill --help
 
@@ -22,6 +22,8 @@ Package:
 Destinations:
   codex:  ~/.codex/skills/cerne-context
   claude: ~/.claude/skills/cerne-context
+  codex:  ~/.codex/skills/cerne-product-discovery
+  claude: ~/.claude/skills/cerne-product-discovery
   codex:  ~/.codex/skills/cerne-git-workflow
   claude: ~/.claude/skills/cerne-git-workflow
   gemini: ~/.gemini/skills/cerne-git-workflow
@@ -37,6 +39,7 @@ Effects:
 
 Examples:
   cerne skill install codex
+  cerne skill install claude cerne-product-discovery
   cerne skill install gemini cerne-git-workflow
 `,
 	messageContextHelp: `Shows the verified structural context of a Cerne workspace.
@@ -320,7 +323,7 @@ Precedence:
 	messageConfigInvalid:                                      "error: invalid language configuration\ncorrection: use cerne --lang en config set language <en|pt-BR> to repair it\n",
 	messageConfigWrite:                                        "error: could not update the user configuration\ncorrection: check the permissions of ~/.cerne and try again\n",
 	messageHomeUnavailable:                                    "error: could not locate the home directory\ncorrection: configure an accessible home directory\n",
-	"skill.usage":                                             "error: invalid argument\nusage: cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]\n",
+	"skill.usage":                                             "error: invalid argument\nusage: cerne skill install <codex|claude|gemini> [cerne-context|cerne-product-discovery|cerne-git-workflow]\n",
 	"skill.installed":                                         "Installed skill: %s\n",
 	"skill.already":                                           "Skill already installed: %s\n",
 	"skill.upgraded":                                          "Upgraded skill: %s\n",

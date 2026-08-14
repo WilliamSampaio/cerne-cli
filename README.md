@@ -215,7 +215,20 @@ cerne status
 The command reports the branch, abbreviated commit, worktree state, staged files, modified files,
 and untracked files for both repositories. Pending changes are information, not an error.
 
-### 4. Coordinate an approved Git step (optional)
+### 4. Evaluate a product idea (optional)
+
+Install `cerne-product-discovery` for Codex or Claude and use it before turning an immature idea
+into a specification:
+
+```sh
+cerne skill install codex cerne-product-discovery
+```
+
+The skill challenges the problem, evidence, scope, and value without creating files by default. If
+the idea becomes ready and Spec Kit is configured, it asks for fresh authorization before starting
+`speckit-specify` with the discovery summary.
+
+### 5. Coordinate an approved Git step (optional)
 
 Install `cerne-git-workflow` with `cerne skill install <agent>`, then let the skill inspect first
 and ask for a separate confirmation before the agent runs any Git effect:
@@ -229,7 +242,7 @@ sanitized snapshot (`state_id`, repositories, branches, remotes, and changed pat
 [the command reference](docs/en/commands.md) for the full JSON/audit contract.
 The Cerne audit covers inspection only; native effect evidence belongs to the agent or harness.
 
-### 5. Link an existing source repository (optional)
+### 6. Link an existing source repository (optional)
 
 `init` already configures the empty `source` repository. Use `--replace` to point the manifest to
 another local repository:
@@ -352,9 +365,10 @@ Release history is documented in [CHANGELOG.md](CHANGELOG.md).
 ## Roadmap and scope
 
 The current scope is workspace creation from an empty, linked, or cloned source, optional workflow
-bootstrap, validation, local status, and source linking. Future work may add auditable agent coordination for product, documentation,
-implementation, validation, and maintenance while remaining independent of specific AI models,
-agents, and providers.
+bootstrap, validation, local status, source linking, and opt-in product discovery for Codex and
+Claude. Future work may add broader auditable agent coordination for documentation, implementation,
+validation, and maintenance while remaining independent of specific AI models, agents, and
+providers.
 
 Remote hosting management, automatic commits, push, pull requests, merge, publication,
 deployment, GUI, JSON output, and AI execution are not part of the current CLI.

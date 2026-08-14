@@ -16,12 +16,37 @@ func TestInstallUsesEmbeddedPackageByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Outcome != "installed" || result.Version != "0.4.2" || result.Skill != SkillName {
+	if result.Outcome != "installed" || result.Version != "0.5.0" || result.Skill != SkillName {
 		t.Fatalf("result = %#v", result)
 	}
 	skill := readText(t, filepath.Join(result.Destination, "SKILL.md"))
 	if !strings.Contains(skill, "name: cerne-context") {
 		t.Fatal("embedded skill not installed")
+	}
+}
+
+func TestInstallNamedProductDiscoverySkill(t *testing.T) {
+	for _, agent := range []string{"codex", "claude"} {
+		t.Run(agent, func(t *testing.T) {
+			home := t.TempDir()
+			result, err := Install(agent, Options{HomeDir: home, PackageDir: packageFixture(t, "1.0.0"), Skill: ProductDiscoverySkill})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Skill != ProductDiscoverySkill || result.Outcome != "installed" {
+				t.Fatalf("result = %#v", result)
+			}
+			if readText(t, filepath.Join(result.Destination, "SKILL.md")) != "# Product\n" {
+				t.Fatal("product discovery skill not copied")
+			}
+		})
+	}
+	home := t.TempDir()
+	if _, err := Install("gemini", Options{HomeDir: home, PackageDir: packageFixture(t, "1.0.0"), Skill: ProductDiscoverySkill}); err == nil {
+		t.Fatal("gemini should reject product discovery skill")
+	}
+	if _, err := os.Stat(filepath.Join(home, ".cerne", "audit")); !os.IsNotExist(err) {
+		t.Fatalf("rejected product skill created audit: %v", err)
 	}
 }
 
