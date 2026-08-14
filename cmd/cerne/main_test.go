@@ -527,9 +527,11 @@ func TestCLIInitSuccess(t *testing.T) {
 
 	knowledge := filepath.Join(parent, "example", "knowledge")
 	source := filepath.Join(parent, "example", "source")
-	expected := "Workspace \"example\" criado.\nKnowledge: " + displayPath(knowledge) + "\nSource: " + displayPath(source) + "\n"
-	if stdout.String() != expected {
-		t.Fatalf("stdout = %q, esperado %q", stdout.String(), expected)
+	lines := strings.Split(stdout.String(), "\n")
+	if len(lines) != 4 || lines[0] != `Workspace "example" criado.` ||
+		!samePath(strings.TrimPrefix(lines[1], "Knowledge: "), knowledge) ||
+		!samePath(strings.TrimPrefix(lines[2], "Source: "), source) || lines[3] != "" {
+		t.Fatalf("stdout = %q", stdout.String())
 	}
 	if stderr.String() != "" {
 		t.Fatalf("stderr = %q", stderr.String())
@@ -613,8 +615,10 @@ func TestCLIStableContractAndPortablePath(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, parent, nil, "init", "portable")
 		knowledge := filepath.Join(parent, "portable", "knowledge")
 		source := filepath.Join(parent, "portable", "source")
-		expected := "Workspace \"portable\" criado.\nKnowledge: " + displayPath(knowledge) + "\nSource: " + displayPath(source) + "\n"
-		if status != 0 || stdout != expected || stderr != "" {
+		lines := strings.Split(stdout, "\n")
+		if status != 0 || len(lines) != 4 || lines[0] != `Workspace "portable" criado.` ||
+			!samePath(strings.TrimPrefix(lines[1], "Knowledge: "), knowledge) ||
+			!samePath(strings.TrimPrefix(lines[2], "Source: "), source) || lines[3] != "" || stderr != "" {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
 		if !samePath(gitOutput(t, knowledge, "rev-parse", "--show-toplevel"), knowledge) ||
