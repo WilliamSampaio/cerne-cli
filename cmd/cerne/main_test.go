@@ -455,7 +455,7 @@ func TestCLIContextJSONContract(t *testing.T) {
 	}
 	root = canonicalCLIPath(t, root)
 	before := snapshotTree(t, root)
-	status, stdout, stderr := executeCLI(t, binary, filepath.Join(root, "source", "sub"), replaceEnvironment(os.Environ(), "PATH", t.TempDir()), "context", "--json")
+	status, stdout, stderr := executeCLI(t, binary, filepath.Join(root, "source", "sub"), replaceEnvironment(portugueseTestEnvironment(), "PATH", t.TempDir()), "context", "--json")
 	if status != 0 || stderr != "" || !strings.HasSuffix(stdout, "\n") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
@@ -660,7 +660,7 @@ func TestCLIFailures(t *testing.T) {
 
 	t.Run("Git missing", func(t *testing.T) {
 		parent := t.TempDir()
-		environment := replaceEnvironment(os.Environ(), "PATH", t.TempDir())
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", t.TempDir())
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "target")
 		if status != 1 || stdout != "" {
 			t.Fatalf("status = %d, stdout = %q", status, stdout)
@@ -829,7 +829,7 @@ func TestCLIInitClonePopulatedAndEmptyLocalOrigins(t *testing.T) {
 
 func TestCLIInitSourceSelectionRejectsInvalidShapesAndOriginsWithoutEffects(t *testing.T) {
 	binary := buildCLI(t)
-	environment := replaceEnvironment(os.Environ(), "PATH", t.TempDir())
+	environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", t.TempDir())
 	for _, args := range [][]string{
 		{"init", "example", "--source"}, {"init", "example", "--clone"},
 		{"init", "example", "--source", "path", "--clone", "origin"},
@@ -873,7 +873,7 @@ func TestCLIInitCombinesWorkflowWithEitherSourceMode(t *testing.T) {
 			gitOutput(t, source, "init", "--quiet")
 			before := snapshotTree(t, source)
 			tools := buildWorkflowTools(t, test.provider, false)
-			environment := replaceEnvironment(os.Environ(), "PATH", tools)
+			environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
 			environment = replaceEnvironment(environment, "CERNE_TEST_REAL_GIT", realGit)
 			args := []string{"init", "example", "--workflow", test.provider, "--source", source}
 			if test.clone {
@@ -914,7 +914,7 @@ func TestCLIInitSourceSelectionOperationalFailures(t *testing.T) {
 		if err := os.Mkdir(source, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		environment := replaceEnvironment(os.Environ(), "PATH", t.TempDir())
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", t.TempDir())
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "example", "--source", source)
 		if status != 1 || stdout != "" || !strings.Contains(stderr, "Git") || !strings.Contains(stderr, "correção:") {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
@@ -935,7 +935,7 @@ func TestCLIInitSourceSelectionOperationalFailures(t *testing.T) {
 			t.Fatal(err)
 		}
 		tools := buildWorkflowTools(t, "", true)
-		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
 		environment = replaceEnvironment(environment, "CERNE_TEST_REAL_GIT", realGit)
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "example", "--clone", origin)
 		root := filepath.Join(parent, "example")
@@ -965,7 +965,7 @@ func TestCLIWorkflowInitPendingResumeIdempotentAndFailure(t *testing.T) {
 	t.Run("configured speckit", func(t *testing.T) {
 		tools := buildWorkflowTools(t, "speckit", false)
 		parent := t.TempDir()
-		status, stdout, stderr := executeCLI(t, binary, parent, replaceEnvironment(os.Environ(), "PATH", tools), "init", "spec", "--workflow", "speckit")
+		status, stdout, stderr := executeCLI(t, binary, parent, replaceEnvironment(portugueseTestEnvironment(), "PATH", tools), "init", "spec", "--workflow", "speckit")
 		knowledge := filepath.Join(parent, "spec", "knowledge")
 		if status != 0 || !strings.HasSuffix(stdout, "Workflow: speckit\nSetup: concluído\n") || stderr != "" {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
@@ -980,7 +980,7 @@ func TestCLIWorkflowInitPendingResumeIdempotentAndFailure(t *testing.T) {
 	t.Run("configured openspec", func(t *testing.T) {
 		tools := buildWorkflowTools(t, "openspec", false)
 		parent := t.TempDir()
-		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "example", "--workflow", "openspec")
 		knowledge := filepath.Join(parent, "example", "knowledge")
 		lines := strings.Split(stdout, "\n")
@@ -1004,7 +1004,7 @@ func TestCLIWorkflowInitPendingResumeIdempotentAndFailure(t *testing.T) {
 	t.Run("pending resume and no-op", func(t *testing.T) {
 		tools := buildWorkflowTools(t, "", false)
 		parent := t.TempDir()
-		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "pending", "--workflow", "speckit")
 		root := filepath.Join(parent, "pending")
 		if status != 0 || !strings.Contains(stdout, "Setup: pendente") || !strings.Contains(stderr, `aviso: executável "specify" não encontrado`) {
@@ -1028,7 +1028,7 @@ func TestCLIWorkflowInitPendingResumeIdempotentAndFailure(t *testing.T) {
 	t.Run("safe provider failure preserves base", func(t *testing.T) {
 		tools := buildWorkflowTools(t, "speckit", true)
 		parent := t.TempDir()
-		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
 		environment = append(environment, "CERNE_SECRET_TOKEN=SECRET-value")
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "failed", "--workflow", "speckit")
 		root := filepath.Join(parent, "failed")
@@ -1060,7 +1060,7 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 	t.Run("init codex creates root bridge and keeps manifest neutral", func(t *testing.T) {
 		tools := buildWorkflowTools(t, "speckit", false)
 		parent := t.TempDir()
-		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "codex-project", "--workflow", "speckit", "--agent", "codex")
 		root := filepath.Join(parent, "codex-project")
 		knowledge := filepath.Join(root, "knowledge")
@@ -1094,7 +1094,7 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 	t.Run("workflow setup claude refreshes local discovery", func(t *testing.T) {
 		tools := buildWorkflowTools(t, "speckit", false)
 		parent := t.TempDir()
-		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
 		status, _, stderr := executeCLI(t, binary, parent, environment, "init", "restored", "--workflow", "speckit", "--agent", "codex")
 		if status != 0 || stderr != "" {
 			t.Fatalf("init status=%d stderr=%q", status, stderr)
@@ -1120,7 +1120,7 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 	t.Run("missing provider creates no fake bridge", func(t *testing.T) {
 		tools := buildWorkflowTools(t, "", false)
 		parent := t.TempDir()
-		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "pending", "--workflow", "speckit", "--agent", "codex")
 		root := filepath.Join(parent, "pending")
 		if status != 0 || !strings.Contains(stdout, "Setup: pendente") || strings.Contains(stdout, "Agent:") ||
@@ -1142,7 +1142,7 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 	t.Run("provider failure with agent creates no fake bridge", func(t *testing.T) {
 		tools := buildWorkflowTools(t, "speckit", true)
 		parent := t.TempDir()
-		environment := replaceEnvironment(os.Environ(), "PATH", tools)
+		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
 		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "failed", "--workflow", "speckit", "--agent", "codex")
 		root := filepath.Join(parent, "failed")
 		if status != 1 || stdout != "" || strings.Contains(stderr, "SECRET") || !strings.Contains(stderr, "provider não concluiu") {
@@ -1240,7 +1240,7 @@ func TestCLIDoctorHealthyWarningAndInvalidReports(t *testing.T) {
 
 	t.Run("Git unavailable is diagnostic", func(t *testing.T) {
 		root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
-		env := replaceEnvironment(os.Environ(), "PATH", t.TempDir())
+		env := replaceEnvironment(portugueseTestEnvironment(), "PATH", t.TempDir())
 		status, stdout, stderr := executeCLI(t, binary, root, env, "doctor")
 		if status != 1 || stderr != "" || countReportLines(stdout) != 10 ||
 			!strings.Contains(stdout, "✗ Git: indisponível; correção: instale o Git") {
@@ -1701,8 +1701,13 @@ func initWorkspaceWithCLI(t *testing.T, binary, parent, name string) string {
 }
 
 func skillHomeEnvironment(home string) []string {
-	environment := replaceEnvironment(os.Environ(), "HOME", home)
+	environment := removeEnvironment(os.Environ(), "CERNE_LANG")
+	environment = replaceEnvironment(environment, "HOME", home)
 	return replaceEnvironment(environment, "USERPROFILE", home)
+}
+
+func portugueseTestEnvironment() []string {
+	return replaceEnvironment(os.Environ(), "CERNE_LANG", string(localization.PortugueseBrazil))
 }
 
 func auditEntries(t *testing.T, home string) []os.DirEntry {
@@ -1915,9 +1920,10 @@ func executeCLI(t *testing.T, binary, directory string, environment []string, ar
 	t.Helper()
 	command := exec.Command(binary, args...)
 	command.Dir = directory
-	if environment != nil {
-		command.Env = environment
+	if environment == nil {
+		environment = portugueseTestEnvironment()
 	}
+	command.Env = environment
 	var stdout, stderr strings.Builder
 	command.Stdout = &stdout
 	command.Stderr = &stderr
@@ -1933,14 +1939,18 @@ func executeCLI(t *testing.T, binary, directory string, environment []string, ar
 }
 
 func replaceEnvironment(environment []string, name, value string) []string {
+	return append(removeEnvironment(environment, name), name+"="+value)
+}
+
+func removeEnvironment(environment []string, name string) []string {
 	prefix := name + "="
-	replaced := make([]string, 0, len(environment)+1)
+	filtered := make([]string, 0, len(environment))
 	for _, entry := range environment {
 		if !strings.EqualFold(strings.SplitN(entry, "=", 2)[0]+"=", prefix) {
-			replaced = append(replaced, entry)
+			filtered = append(filtered, entry)
 		}
 	}
-	return append(replaced, prefix+value)
+	return filtered
 }
 
 func gitOutput(t *testing.T, repository string, args ...string) string {
@@ -2029,8 +2039,7 @@ func TestCLIRestoreCloneEndToEnd(t *testing.T) {
 		"policies/.gitkeep": "", "runs/.gitkeep": "",
 	})
 	source := createRestoreGitRepository(t, map[string]string{"README.md": "source\n"})
-	environment := replaceEnvironment(os.Environ(), "HOME", home)
-	environment = replaceEnvironment(environment, "USERPROFILE", home)
+	environment := skillHomeEnvironment(home)
 	status, stdout, stderr := executeCLI(t, binary, parent, environment, "restore", knowledge, "--clone", source)
 	expected := "Restored workspace \"example\".\nKnowledge: " + displayPath(filepath.Join(parent, "example", "knowledge")) +
 		"\nCloned source: " + displayPath(filepath.Join(parent, "example", "source")) + "\n"
@@ -2057,8 +2066,7 @@ func TestCLIRestoreLocalSourceUpdatesOnlyManifestReference(t *testing.T) {
 	})
 	source := createRestoreGitRepository(t, map[string]string{"README.md": "untouched\n"})
 	before := snapshotTreeWithoutGit(t, source)
-	environment := replaceEnvironment(os.Environ(), "HOME", home)
-	environment = replaceEnvironment(environment, "USERPROFILE", home)
+	environment := skillHomeEnvironment(home)
 	status, stdout, stderr := executeCLI(t, binary, parent, environment, "restore", knowledge, "--source", source)
 	if status != 0 || stderr != "" || !strings.Contains(stdout, "Linked source: "+displayPath(source)+"\n") ||
 		!strings.HasSuffix(stdout, "Manifest: source reference updated.\n") {
@@ -2076,8 +2084,7 @@ func TestCLIRestoreLocalSourceUpdatesOnlyManifestReference(t *testing.T) {
 func TestCLIRestoreRejectsInvalidOriginBeforeAudit(t *testing.T) {
 	binary := buildCLI(t)
 	parent, home := t.TempDir(), t.TempDir()
-	environment := replaceEnvironment(os.Environ(), "HOME", home)
-	environment = replaceEnvironment(environment, "USERPROFILE", home)
+	environment := skillHomeEnvironment(home)
 	secret := "https://user:password@example.invalid/knowledge.git"
 	status, stdout, stderr := executeCLI(t, binary, parent, environment, "restore", secret, "--clone", "source")
 	if status != 2 || stdout != "" || strings.Contains(stderr, secret) || strings.Contains(stderr, "password") {
