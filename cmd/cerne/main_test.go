@@ -120,11 +120,11 @@ func TestCLIGlobalHelpAndVersion(t *testing.T) {
 		argument string
 		expected string
 	}{
-		{"--help", expectedGlobalHelp},
+		{"--help", (localizer{language: localization.Default}).text(messageGlobalHelp)},
 		{"--version", "cerne 0.11.0\n"},
 	} {
 		t.Run(test.argument, func(t *testing.T) {
-			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, test.argument)
+			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(t.TempDir()), test.argument)
 			if status != 0 || stdout != test.expected || stderr != "" {
 				t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 			}
@@ -154,7 +154,7 @@ func TestCLIConfigLanguage(t *testing.T) {
 	environment := skillHomeEnvironment(home)
 
 	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), environment, "config", "set", "language", "en")
-	if status != 0 || stdout != "Idioma salvo: en\n" || stderr != "" {
+	if status != 0 || stdout != "Saved language: en\n" || stderr != "" {
 		t.Fatalf("set: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 	if got := readTestFile(t, filepath.Join(home, ".cerne", "config.json")); got != "{\n  \"language\": \"en\"\n}\n" {
@@ -175,7 +175,7 @@ func TestCLIConfigLanguage(t *testing.T) {
 		t.Fatalf("unset: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), environment, "config", "get", "language")
-	if status != 0 || stdout != "Idioma não definido. Padrão atual: pt-BR\n" || stderr != "" {
+	if status != 0 || stdout != "Language is not set. Current default: en\n" || stderr != "" {
 		t.Fatalf("get unset: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 }
@@ -209,14 +209,14 @@ func TestCLIRejectsInvalidLanguageWithoutChangingConfig(t *testing.T) {
 	home := t.TempDir()
 	environment := skillHomeEnvironment(home)
 	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), environment, "config", "set", "language", "es")
-	if status != 2 || stdout != "" || stderr != "erro: idioma inválido: \"es\"\ncorreção: use en ou pt-BR\n" {
+	if status != 2 || stdout != "" || stderr != "error: invalid language: \"es\"\ncorrection: use en or pt-BR\n" {
 		t.Fatalf("set: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".cerne")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("uso inválido criou configuração: %v", err)
 	}
 	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), environment, "--lang", "es", "--help")
-	if status != 2 || stdout != "" || stderr != "erro: idioma inválido: \"es\"\ncorreção: use en ou pt-BR\n" {
+	if status != 2 || stdout != "" || stderr != "error: invalid language: \"es\"\ncorrection: use en or pt-BR\n" {
 		t.Fatalf("flag: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 }
@@ -339,7 +339,7 @@ func TestSkillInstallCommand(t *testing.T) {
 		for _, agent := range []string{"codex", "claude", "gemini"} {
 			home := t.TempDir()
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), "skill", "install", agent)
-			if status != 0 || stderr != "" || !strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Versão: 0.4.2\n") {
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Agent: "+agent+"\n") || !strings.Contains(stdout, "Version: 0.4.2\n") {
 				t.Fatalf("%s: status=%d stdout=%q stderr=%q", agent, status, stdout, stderr)
 			}
 			root := map[string]string{"codex": ".codex", "claude": ".claude", "gemini": ".gemini"}[agent]
@@ -349,7 +349,7 @@ func TestSkillInstallCommand(t *testing.T) {
 			}
 			for _, skill := range want {
 				target := filepath.Join(home, root, "skills", skill)
-				if !strings.Contains(stdout, "Skill instalada: "+skill+"\n") || !strings.Contains(stdout, "Destino: "+target+"\n") {
+				if !strings.Contains(stdout, "Installed skill: "+skill+"\n") || !strings.Contains(stdout, "Destination: "+target+"\n") {
 					t.Fatalf("%s/%s não apareceu no output: %q", agent, skill, stdout)
 				}
 				if !strings.Contains(readTestFile(t, filepath.Join(target, "SKILL.md")), "name: "+skill) {
@@ -368,8 +368,8 @@ func TestSkillInstallCommand(t *testing.T) {
 				"claude": ".claude",
 				"gemini": ".gemini",
 			}[agent], "skills", "cerne-git-workflow")
-			if status != 0 || stderr != "" || !strings.Contains(stdout, "Skill instalada: cerne-git-workflow\n") ||
-				!strings.Contains(stdout, "Agente: "+agent+"\n") || !strings.Contains(stdout, "Destino: "+target+"\n") {
+			if status != 0 || stderr != "" || !strings.Contains(stdout, "Installed skill: cerne-git-workflow\n") ||
+				!strings.Contains(stdout, "Agent: "+agent+"\n") || !strings.Contains(stdout, "Destination: "+target+"\n") {
 				t.Fatalf("%s: status=%d stdout=%q stderr=%q", agent, status, stdout, stderr)
 			}
 			if !strings.Contains(readTestFile(t, filepath.Join(target, "SKILL.md")), "name: cerne-git-workflow") {
@@ -389,7 +389,7 @@ func TestSkillInstallCommand(t *testing.T) {
 		} {
 			home := t.TempDir()
 			status, stdout, stderr := executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(home), args...)
-			if status != 2 || stdout != "" || stderr != "erro: argumento inválido\nuso: cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]\n" {
+			if status != 2 || stdout != "" || stderr != "error: invalid argument\nusage: cerne skill install <codex|claude|gemini> [cerne-context|cerne-git-workflow]\n" {
 				t.Fatalf("%v: status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
 			}
 			if _, err := os.Stat(filepath.Join(home, ".cerne", "audit")); !os.IsNotExist(err) {
@@ -408,13 +408,13 @@ func TestWorkspaceCommandsDoNotInstallGlobalSkills(t *testing.T) {
 		env := skillHomeEnvironment(home)
 		env = replaceEnvironment(env, "PATH", tools)
 		status, stdout, stderr := executeCLI(t, binary, parent, env, "init", "app", "--workflow", "speckit", "--agent", "codex")
-		if status != 0 || stderr != "" || !strings.Contains(stdout, "Descoberta: pronta") {
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "Discovery: ready") {
 			t.Fatalf("init: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		assertNoGlobalSkills(t, home)
 
 		status, stdout, stderr = executeCLI(t, binary, filepath.Join(parent, "app"), env, "workflow", "setup", "--agent", "claude")
-		if status != 0 || stderr != "" || !strings.Contains(stdout, "Descoberta: pronta") {
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "Discovery: ready") {
 			t.Fatalf("workflow setup: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		assertNoGlobalSkills(t, home)
@@ -429,7 +429,7 @@ func TestWorkspaceCommandsDoNotInstallGlobalSkills(t *testing.T) {
 		})
 		source := createRestoreGitRepository(t, map[string]string{"README.md": "source\n"})
 		status, stdout, stderr := executeCLI(t, binary, parent, skillHomeEnvironment(home), "restore", knowledge, "--source", source)
-		if status != 0 || stderr != "" || !strings.Contains(stdout, "Source vinculado:") {
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "Linked source:") {
 			t.Fatalf("restore: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		assertNoGlobalSkills(t, home)
@@ -1255,7 +1255,7 @@ func TestCLIDoctorPreReportFailure(t *testing.T) {
 	var stdout, stderr strings.Builder
 	status := runDoctor(nil, &stdout, &stderr, localizer{language: localization.Default})
 	if status != 1 || stdout.String() != "" ||
-		!strings.Contains(stderr.String(), "correção: execute o comando em um diretório acessível") ||
+		!strings.Contains(stderr.String(), "correction: run the command in an accessible directory") ||
 		strings.Contains(stderr.String(), "Workspace ") {
 		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout.String(), stderr.String())
 	}
@@ -1430,7 +1430,7 @@ func TestCLIStatusPreReportFailure(t *testing.T) {
 	var stdout, stderr strings.Builder
 	status := runStatus(nil, &stdout, &stderr, localizer{language: localization.Default})
 	if status != 1 || stdout.String() != "" ||
-		!strings.Contains(stderr.String(), "correção: execute o comando em um diretório acessível") {
+		!strings.Contains(stderr.String(), "correction: run the command in an accessible directory") {
 		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout.String(), stderr.String())
 	}
 }
@@ -1577,7 +1577,7 @@ func TestCLILinkPreReportFailure(t *testing.T) {
 	var stdout, stderr strings.Builder
 	status := runLink([]string{"."}, &stdout, &stderr, localizer{language: localization.Default})
 	if status != 1 || stdout.String() != "" ||
-		!strings.Contains(stderr.String(), "correção: execute o comando em um diretório acessível") {
+		!strings.Contains(stderr.String(), "correction: run the command in an accessible directory") {
 		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout.String(), stderr.String())
 	}
 }
@@ -1990,8 +1990,8 @@ func TestCLIRestoreCloneEndToEnd(t *testing.T) {
 	environment := replaceEnvironment(os.Environ(), "HOME", home)
 	environment = replaceEnvironment(environment, "USERPROFILE", home)
 	status, stdout, stderr := executeCLI(t, binary, parent, environment, "restore", knowledge, "--clone", source)
-	expected := "Workspace \"example\" restaurado.\nKnowledge: " + displayPath(filepath.Join(parent, "example", "knowledge")) +
-		"\nSource clonado: " + displayPath(filepath.Join(parent, "example", "source")) + "\n"
+	expected := "Restored workspace \"example\".\nKnowledge: " + displayPath(filepath.Join(parent, "example", "knowledge")) +
+		"\nCloned source: " + displayPath(filepath.Join(parent, "example", "source")) + "\n"
 	if status != 0 || stdout != expected || stderr != "" {
 		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 	}
@@ -2018,8 +2018,8 @@ func TestCLIRestoreLocalSourceUpdatesOnlyManifestReference(t *testing.T) {
 	environment := replaceEnvironment(os.Environ(), "HOME", home)
 	environment = replaceEnvironment(environment, "USERPROFILE", home)
 	status, stdout, stderr := executeCLI(t, binary, parent, environment, "restore", knowledge, "--source", source)
-	if status != 0 || stderr != "" || !strings.Contains(stdout, "Source vinculado: "+displayPath(source)+"\n") ||
-		!strings.HasSuffix(stdout, "Manifesto: referência de source atualizada.\n") {
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "Linked source: "+displayPath(source)+"\n") ||
+		!strings.HasSuffix(stdout, "Manifest: source reference updated.\n") {
 		t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 	}
 	if after := snapshotTreeWithoutGit(t, source); !reflect.DeepEqual(before, after) {

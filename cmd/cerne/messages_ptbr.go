@@ -35,7 +35,7 @@ Opções:
 
 Idioma:
   CERNE_LANG seleciona temporariamente o idioma. A ordem é --lang, CERNE_LANG,
-  preferência salva e pt-BR. Use "cerne config --help" para persistir a escolha.
+  preferência salva e en. Use "cerne config --help" para persistir a escolha.
 
 Use "cerne <comando> --help" para detalhes de um comando.
 `,
@@ -52,17 +52,14 @@ Armazenamento:
   recusa symlinks e substitui o arquivo de forma atômica.
 
 Precedência:
-  --lang, CERNE_LANG, preferência salva e pt-BR.
-
-Compatibilidade:
-  pt-BR permanece o padrão nesta versão. en será o padrão no Cerne 1.0.
+  --lang, CERNE_LANG, preferência salva e en.
 `,
 	messageInvalidLanguage:                                    "erro: idioma inválido: %q\ncorreção: use en ou pt-BR\n",
 	messageInvalidGlobalOption:                                "erro: opção global inválida\nuso: cerne [--lang <en|pt-BR>] <comando> [argumentos]\n",
 	messageConfigUsage:                                        "erro: argumento inválido\nuso: cerne config <set language <en|pt-BR>|get language|unset language>\n",
 	messageConfigSet:                                          "Idioma salvo: %s\n",
 	messageConfigGet:                                          "Idioma salvo: %s\n",
-	messageConfigGetUnset:                                     "Idioma não definido. Padrão atual: pt-BR\n",
+	messageConfigGetUnset:                                     "Idioma não definido. Padrão atual: en\n",
 	messageConfigUnset:                                        "Preferência de idioma removida.\n",
 	messageConfigUnsafe:                                       "erro: configuração do usuário insegura\ncorreção: remova symlinks de ~/.cerne ou ~/.cerne/config.json e tente novamente\n",
 	messageConfigRead:                                         "erro: não foi possível ler a configuração do usuário\ncorreção: verifique as permissões de ~/.cerne/config.json\n",

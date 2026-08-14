@@ -120,8 +120,7 @@ cerne --lang en doctor
 CERNE_LANG=en cerne status
 ```
 
-A precedência é `--lang`, `CERNE_LANG`, preferência salva e, por fim, `pt-BR`. O padrão atual
-permanece `pt-BR` por compatibilidade e mudará para `en` na versão 1.0. Saídas estruturadas,
+A precedência é `--lang`, `CERNE_LANG`, preferência salva e, por fim, `en`. Saídas estruturadas,
 comandos, flags, identificadores, códigos de saída e a versão são neutros quanto ao idioma.
 
 ## Início rápido

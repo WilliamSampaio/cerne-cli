@@ -29,10 +29,8 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 - `cerne --lang <en|pt-BR> ...` selecciona el idioma para una sola ejecución sin guardarlo.
 
 `CERNE_LANG` ofrece la misma sustitución temporal. La precedencia es `--lang`, `CERNE_LANG`, la
-preferencia guardada y, por último, `pt-BR`. El valor predeterminado actual sigue siendo `pt-BR`
-por compatibilidad y cambiará a `en` en la versión 1.0. La selección solo modifica mensajes para
-personas; comandos, flags, campos JSON, identificadores, códigos de salida y `--version` permanecen
-estables.
+preferencia guardada y, por último, `en`. La selección solo modifica mensajes para personas;
+comandos, flags, campos JSON, identificadores, códigos de salida y `--version` permanecen estables.
 
 ## `cerne config <set language <en|pt-BR>|get language|unset language>`
 

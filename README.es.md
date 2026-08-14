@@ -122,10 +122,9 @@ cerne --lang pt-BR doctor
 CERNE_LANG=en cerne status
 ```
 
-La precedencia es `--lang`, `CERNE_LANG`, la preferencia guardada y, por último, `pt-BR`. El valor
-predeterminado actual sigue siendo `pt-BR` por compatibilidad y cambiará a `en` en la versión 1.0.
-Las salidas estructuradas, comandos, flags, identificadores, códigos de salida y la versión son
-neutros respecto al idioma.
+La precedencia es `--lang`, `CERNE_LANG`, la preferencia guardada y, por último, `en`. Las salidas
+estructuradas, comandos, flags, identificadores, códigos de salida y la versión son neutros respecto
+al idioma.
 
 ## Inicio rápido
 

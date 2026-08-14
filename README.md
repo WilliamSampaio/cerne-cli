@@ -120,8 +120,7 @@ cerne --lang pt-BR doctor
 CERNE_LANG=en cerne status
 ```
 
-Precedence is `--lang`, `CERNE_LANG`, the saved preference, then `pt-BR`. The current default
-remains `pt-BR` for compatibility and will change to `en` in 1.0. Structured output, commands,
+Precedence is `--lang`, `CERNE_LANG`, the saved preference, then `en`. Structured output, commands,
 flags, identifiers, exit statuses, and version output are language-neutral.
 
 ## Quick start
