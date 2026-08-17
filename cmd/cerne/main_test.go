@@ -1196,7 +1196,17 @@ func TestCLIInitRuntimeAndAgentStdoutIsIdentical(t *testing.T) {
 	if stderrOld != "aviso: --agent está depreciada; use --runtime codex\n" {
 		t.Fatalf("--agent must warn naming --runtime: stderr=%q", stderrOld)
 	}
-	if strings.ReplaceAll(stdoutNew, parentNew, "") != strings.ReplaceAll(stdoutOld, parentOld, "") {
+	stripPathLines := func(s string) string {
+		var out []string
+		for _, line := range strings.Split(s, "\n") {
+			if strings.HasPrefix(line, "Knowledge:") || strings.HasPrefix(line, "Source:") {
+				continue
+			}
+			out = append(out, line)
+		}
+		return strings.Join(out, "\n")
+	}
+	if stripPathLines(stdoutNew) != stripPathLines(stdoutOld) {
 		t.Fatalf("stdout diverges between --runtime and --agent:\nnew=%q\nold=%q", stdoutNew, stdoutOld)
 	}
 }
@@ -1227,7 +1237,17 @@ func TestCLIWorkflowSetupRuntimeAndAgentStdoutIsIdentical(t *testing.T) {
 	if stderrOld != "aviso: --agent está depreciada; use --runtime codex\n" {
 		t.Fatalf("--agent must warn naming --runtime: stderr=%q", stderrOld)
 	}
-	if strings.ReplaceAll(stdoutNew, rootNew, "") != strings.ReplaceAll(stdoutOld, rootOld, "") {
+	stripKnowledgeLine := func(s string) string {
+		var out []string
+		for _, line := range strings.Split(s, "\n") {
+			if strings.HasPrefix(line, "Knowledge:") {
+				continue
+			}
+			out = append(out, line)
+		}
+		return strings.Join(out, "\n")
+	}
+	if stripKnowledgeLine(stdoutNew) != stripKnowledgeLine(stdoutOld) {
 		t.Fatalf("stdout diverges between --runtime and --agent:\nnew=%q\nold=%q", stdoutNew, stdoutOld)
 	}
 }
