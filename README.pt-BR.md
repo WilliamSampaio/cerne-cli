@@ -40,7 +40,7 @@ hospedagem, publica ou realiza deploy. Só acessa uma origem Git com `init --clo
 
 O executável `specify`, do Spec Kit, ou `openspec`, do OpenSpec, é opcional e necessário somente
 quando esse workflow é selecionado. O Cerne nunca instala nem atualiza essas ferramentas.
-Com Spec Kit, `--agent codex|claude` também pode preparar a descoberta local de comandos na raiz do
+Com Spec Kit, `--runtime codex|claude` também pode preparar a descoberta local de comandos na raiz do
 workspace; a escolha do agente não é gravada em `knowledge/cerne.json`.
 
 ## Instalação
@@ -67,10 +67,10 @@ Para instalar as skills opcionais de um agente no mesmo fluxo explícito:
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL \
   https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh |
-  sh -s -- --agent codex
+  sh -s -- --runtime codex
 ```
 
-`--agent codex` e `--agent claude` instalam todas as skills oficiais compatíveis. `--agent gemini`
+`--runtime codex` e `--runtime claude` instalam todas as skills oficiais compatíveis. `--runtime gemini`
 instala somente a skill de fluxo Git.
 
 O instalador escreve somente `~/.local/bin/cerne`, verifica checksums da release antes de substituir
@@ -176,7 +176,7 @@ Para inicializar um workflow opcional de especificação durante a criação:
 
 ```sh
 cerne init meu-projeto --workflow speckit
-cerne init meu-projeto --workflow speckit --agent codex
+cerne init meu-projeto --workflow speckit --runtime codex
 cerne init meu-projeto --workflow openspec
 cerne init meu-projeto --clone https://host/organizacao/aplicacao.git --workflow speckit
 ```
@@ -188,7 +188,7 @@ superior `knowledge/specs`. Produto, decisões, políticas e execuções permane
 Se o executável estiver ausente, o `init` ainda conclui, registra a escolha e avisa em stderr.
 Depois de instalar a ferramenta, execute `cerne workflow setup` de qualquer diretório dentro do
 workspace. O setup é idempotente; estruturas parciais ou com Git aninhado são recusadas.
-Quando `--agent codex` ou `--agent claude` é usado com Spec Kit, o Cerne também pede ao Spec Kit
+Quando `--runtime codex` ou `--runtime claude` é usado com Spec Kit, o Cerne também pede ao Spec Kit
 para criar a integração correspondente dentro de `knowledge` e grava pequenas pontes na raiz do
 workspace em `.agents/skills` ou `.claude/skills`. Essas pontes apontam de volta para `knowledge` e
 não contêm conhecimento privado, remotos, credenciais, dumps de ambiente ou paths absolutos. Para o
@@ -234,7 +234,7 @@ Instale `cerne-git-workflow` com `cerne skill install <agent>` e deixe a skill i
 e pedir uma confirmação separada antes de o agente executar qualquer efeito Git:
 
 ```sh
-cerne git inspect --agent codex --task task-1 --json
+cerne git inspect --runtime codex --task task-1 --json
 ```
 
 Branch, commit, push e Pull Request são etapas separadas executadas pelo agente. O Cerne só fornece

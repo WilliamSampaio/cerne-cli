@@ -20,11 +20,11 @@ func TestInspectGitSnapshotStateAndAudit(t *testing.T) {
 		filepath.Join(root, "source"):    fakeWorkflowRepo(filepath.Join(root, "source"), "main", "b"),
 	}, nil)
 
-	first, err := InspectGit(root, GitInspectRequest{Agent: "codex", TaskID: "task-1", Home: home}, inspector)
+	first, err := InspectGit(root, GitInspectRequest{Runtime: "codex", TaskID: "task-1", Home: home}, inspector)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := InspectGit(root, GitInspectRequest{Agent: "codex", TaskID: "task-1", Home: home}, inspector)
+	second, err := InspectGit(root, GitInspectRequest{Runtime: "codex", TaskID: "task-1", Home: home}, inspector)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestInspectGitSnapshotStateAndAudit(t *testing.T) {
 		filepath.Join(root, "knowledge"): fakeWorkflowRepo(filepath.Join(root, "knowledge"), "main", "changed"),
 		filepath.Join(root, "source"):    fakeWorkflowRepo(filepath.Join(root, "source"), "main", "b"),
 	}, nil)
-	changed, err := InspectGit(root, GitInspectRequest{Agent: "codex", TaskID: "task-1", Home: home}, changedInspector)
+	changed, err := InspectGit(root, GitInspectRequest{Runtime: "codex", TaskID: "task-1", Home: home}, changedInspector)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,10 +53,58 @@ func TestInspectGitSnapshotStateAndAudit(t *testing.T) {
 	}
 }
 
+func TestInspectGitAuditUsesRuntimeFieldAndPreservesOlderRecords(t *testing.T) {
+	root := newGitWorkflowWorkspace(t)
+	home := t.TempDir()
+	inspector := fakeWorkflowInspector(map[string]gitexec.WorkflowRepository{
+		filepath.Join(root, "knowledge"): fakeWorkflowRepo(filepath.Join(root, "knowledge"), "main", "a"),
+		filepath.Join(root, "source"):    fakeWorkflowRepo(filepath.Join(root, "source"), "main", "b"),
+	}, nil)
+
+	auditDir := filepath.Join(home, ".cerne", "audit")
+	if err := os.MkdirAll(auditDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	older := `{"schema_version": 1, "executor": "cerne-cli", "agent": "codex", "task_id": "task-0", "operation": "inspect", "authorization": "not-required", "status": "succeeded", "started_at": "2026-01-01T00:00:00Z"}` + "\n"
+	olderPath := filepath.Join(auditDir, "git-older.json")
+	if err := os.WriteFile(olderPath, []byte(older), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot, err := InspectGit(root, GitInspectRequest{Runtime: "codex", TaskID: "task-1", Home: home}, inspector)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.SchemaVersion != 1 {
+		t.Fatalf("public snapshot schema_version changed: %d", snapshot.SchemaVersion)
+	}
+
+	audit := readGitAudit(t, home, snapshot.AuditID)
+	if audit.SchemaVersion != 2 || audit.Runtime != "codex" {
+		t.Fatalf("audit = %#v", audit)
+	}
+	rawBytes, err := os.ReadFile(filepath.Join(auditDir, "git-"+snapshot.AuditID+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := string(rawBytes)
+	if !strings.Contains(raw, `"runtime": "codex"`) || strings.Contains(raw, `"agent"`) {
+		t.Fatalf("new audit record does not use the runtime field: %s", raw)
+	}
+
+	gotBytes, err := os.ReadFile(olderPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(gotBytes) != older {
+		t.Fatalf("older audit record was rewritten: %s", gotBytes)
+	}
+}
+
 func TestInspectGitInvalidAndAuditFailures(t *testing.T) {
 	root := newGitWorkflowWorkspace(t)
 	t.Run("invalid usage", func(t *testing.T) {
-		_, err := InspectGit(root, GitInspectRequest{Agent: "Codex", TaskID: "bad task", Home: t.TempDir()}, fakeWorkflowInspector(nil, nil))
+		_, err := InspectGit(root, GitInspectRequest{Runtime: "Codex", TaskID: "bad task", Home: t.TempDir()}, fakeWorkflowInspector(nil, nil))
 		var failure GitFailure
 		if !errors.As(err, &failure) || failure.Code != "validation_failed" {
 			t.Fatalf("err = %#v", err)
@@ -66,7 +114,7 @@ func TestInspectGitInvalidAndAuditFailures(t *testing.T) {
 		failures := map[string]error{
 			filepath.Join(root, "source"): errors.New("not git"),
 		}
-		snapshot, err := InspectGit(root, GitInspectRequest{Agent: "codex", TaskID: "task", Home: t.TempDir()}, fakeWorkflowInspector(nil, failures))
+		snapshot, err := InspectGit(root, GitInspectRequest{Runtime: "codex", TaskID: "task", Home: t.TempDir()}, fakeWorkflowInspector(nil, failures))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,7 +131,7 @@ func TestInspectGitInvalidAndAuditFailures(t *testing.T) {
 			t.Skip(err)
 		}
 		queries := 0
-		_, err := InspectGit(root, GitInspectRequest{Agent: "codex", TaskID: "task", Home: home}, func(string) (gitexec.WorkflowRepository, error) {
+		_, err := InspectGit(root, GitInspectRequest{Runtime: "codex", TaskID: "task", Home: home}, func(string) (gitexec.WorkflowRepository, error) {
 			queries++
 			return gitexec.WorkflowRepository{}, nil
 		})
@@ -104,7 +152,7 @@ func TestInspectGitInvalidAndAuditFailures(t *testing.T) {
 			return os.Rename(temp, target)
 		}
 		t.Cleanup(func() { replaceGitAudit = original })
-		snapshot, err := InspectGit(root, GitInspectRequest{Agent: "codex", TaskID: "task", Home: home}, fakeWorkflowInspector(map[string]gitexec.WorkflowRepository{
+		snapshot, err := InspectGit(root, GitInspectRequest{Runtime: "codex", TaskID: "task", Home: home}, fakeWorkflowInspector(map[string]gitexec.WorkflowRepository{
 			filepath.Join(root, "knowledge"): fakeWorkflowRepo(filepath.Join(root, "knowledge"), "main", "a"),
 			filepath.Join(root, "source"):    fakeWorkflowRepo(filepath.Join(root, "source"), "main", "b"),
 		}, nil))
@@ -125,7 +173,7 @@ func TestInspectGitAuditPermissions(t *testing.T) {
 	}
 	root := newGitWorkflowWorkspace(t)
 	home := t.TempDir()
-	snapshot, err := InspectGit(root, GitInspectRequest{Agent: "codex", TaskID: "task", Home: home}, fakeWorkflowInspector(map[string]gitexec.WorkflowRepository{
+	snapshot, err := InspectGit(root, GitInspectRequest{Runtime: "codex", TaskID: "task", Home: home}, fakeWorkflowInspector(map[string]gitexec.WorkflowRepository{
 		filepath.Join(root, "knowledge"): fakeWorkflowRepo(filepath.Join(root, "knowledge"), "main", "a"),
 		filepath.Join(root, "source"):    fakeWorkflowRepo(filepath.Join(root, "source"), "main", "b"),
 	}, nil))

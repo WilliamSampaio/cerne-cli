@@ -21,7 +21,7 @@ type Options struct {
 }
 
 type Result struct {
-	Agent       string
+	Runtime     string
 	Skill       string
 	Version     string
 	Destination string
@@ -40,7 +40,7 @@ func (f Failure) Error() string { return f.Cause }
 type marker struct {
 	Package string   `json:"package"`
 	Version string   `json:"version"`
-	Agent   string   `json:"agent"`
+	Runtime string   `json:"agent"`
 	Skill   string   `json:"skill"`
 	Files   []string `json:"files"`
 }
@@ -48,7 +48,7 @@ type marker struct {
 type auditRecord struct {
 	SchemaVersion  int    `json:"schema_version"`
 	Operation      string `json:"operation"`
-	Agent          string `json:"agent"`
+	Runtime        string `json:"runtime"`
 	Skill          string `json:"skill"`
 	Package        string `json:"package"`
 	PackageVersion string `json:"package_version"`
@@ -66,7 +66,7 @@ var (
 
 func Install(agent string, options Options) (Result, error) {
 	var result Result
-	if !SupportedAgent(agent) {
+	if !SupportedRuntime(agent) {
 		return result, ErrInvalidAgent
 	}
 	skillName := options.Skill
@@ -88,7 +88,7 @@ func Install(agent string, options Options) (Result, error) {
 	if err != nil {
 		return result, failure("destination-invalid", "destino do agente inválido", "configure um diretório pessoal acessível")
 	}
-	result.Agent = agent
+	result.Runtime = agent
 	result.Skill = skillName
 	result.Destination = destination
 	now := time.Now
@@ -130,7 +130,7 @@ func Install(agent string, options Options) (Result, error) {
 		return fail(err)
 	}
 	sameContent := false
-	if exists && current.Package == PackageName && current.Skill == skillName && current.Agent == agent && current.Version == pkg.Version {
+	if exists && current.Package == PackageName && current.Skill == skillName && current.Runtime == agent && current.Version == pkg.Version {
 		sameContent = managedContentEqual(destination, pkg, current)
 	}
 	if sameContent {
@@ -193,7 +193,7 @@ func stagePackage(pkg Package, home, destination, agent string) (string, error) 
 			return "", err
 		}
 	}
-	m := marker{Package: PackageName, Version: pkg.Version, Agent: agent, Skill: pkg.ID, Files: pkg.Files}
+	m := marker{Package: PackageName, Version: pkg.Version, Runtime: agent, Skill: pkg.ID, Files: pkg.Files}
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		os.RemoveAll(staging)
@@ -263,10 +263,10 @@ func readMarker(destination, agent string) (marker, bool, error) {
 		return marker{}, false, failure("unknown-destination", "destino existente não é gerenciado pelo Cerne", "remova ou mova o conteúdo existente antes de instalar")
 	}
 	var m marker
-	if err := json.Unmarshal(data, &m); err != nil || m.Package != PackageName || !SupportedSkill(m.Skill) || m.Agent == "" {
+	if err := json.Unmarshal(data, &m); err != nil || m.Package != PackageName || !SupportedSkill(m.Skill) || m.Runtime == "" {
 		return marker{}, false, failure("unknown-destination", "destino existente não é gerenciado pelo Cerne", "remova ou mova o conteúdo existente antes de instalar")
 	}
-	if m.Agent != agent || !validSemver(m.Version) || len(m.Files) == 0 {
+	if m.Runtime != agent || !validSemver(m.Version) || len(m.Files) == 0 {
 		return marker{}, false, failure("unknown-destination", "destino existente não é gerenciado pelo Cerne", "remova ou mova o conteúdo existente antes de instalar")
 	}
 	for _, file := range m.Files {
@@ -418,7 +418,7 @@ func startAudit(home, agent, skillName, destination string, now func() time.Time
 	}
 	path := filepath.Join(auditDir, "skill-install-"+randomID()+".json")
 	record := auditRecord{
-		SchemaVersion: 1, Operation: "skill.install", Agent: agent, Skill: skillName, Package: PackageName,
+		SchemaVersion: 2, Operation: "skill.install", Runtime: agent, Skill: skillName, Package: PackageName,
 		Destination: destination, Status: "started", StartedAt: now().UTC().Format(time.RFC3339),
 	}
 	a := audit{path: path}

@@ -17,9 +17,9 @@ import (
 )
 
 type GitInspectRequest struct {
-	Agent  string
-	TaskID string
-	Home   string
+	Runtime string
+	TaskID  string
+	Home    string
 }
 
 type WorkspaceGitSnapshot struct {
@@ -74,7 +74,7 @@ func (failure GitFailure) Error() string { return failure.Cause }
 type gitAuditRecord struct {
 	SchemaVersion int         `json:"schema_version"`
 	Executor      string      `json:"executor"`
-	Agent         string      `json:"agent"`
+	Runtime       string      `json:"runtime"`
 	TaskID        string      `json:"task_id"`
 	Operation     string      `json:"operation"`
 	Authorization string      `json:"authorization"`
@@ -100,7 +100,7 @@ type gitPhase struct {
 var replaceGitAudit = atomicReplaceFile
 
 func InspectGit(start string, request GitInspectRequest, inspect gitexec.WorkflowInspector) (WorkspaceGitSnapshot, error) {
-	if !supportedGitAgent(request.Agent) || !validTaskID(request.TaskID) || request.Home == "" || inspect == nil {
+	if !supportedGitRuntime(request.Runtime) || !validTaskID(request.TaskID) || request.Home == "" || inspect == nil {
 		return WorkspaceGitSnapshot{}, gitFailure("validation_failed", "argumento inválido", "informe agente, tarefa e formato válidos")
 	}
 	root, manifestPath, err := locateWorkspace(start)
@@ -115,7 +115,7 @@ func InspectGit(start string, request GitInspectRequest, inspect gitexec.Workflo
 	if err != nil {
 		return invalidGitSnapshot(err), nil
 	}
-	audit, auditID, err := startGitAudit(request.Home, request.Agent, request.TaskID, "inspect", "not-required", participants)
+	audit, auditID, err := startGitAudit(request.Home, request.Runtime, request.TaskID, "inspect", "not-required", participants)
 	if err != nil {
 		return WorkspaceGitSnapshot{}, gitFailure("audit_unavailable", "audit_unavailable", "verifique ~/.cerne/audit")
 	}
@@ -194,7 +194,7 @@ func snapshotStateID(snapshot WorkspaceGitSnapshot) string {
 	return digest(lines...)
 }
 
-func supportedGitAgent(agent string) bool {
+func supportedGitRuntime(agent string) bool {
 	return agent == "codex" || agent == "claude" || agent == "gemini"
 }
 
@@ -224,9 +224,9 @@ func startGitAudit(home, agent, taskID, operation, authorization string, partici
 	}
 	id := randomGitID()
 	record := gitAuditRecord{
-		SchemaVersion: 1,
+		SchemaVersion: 2,
 		Executor:      "cerne-cli",
-		Agent:         agent,
+		Runtime:       agent,
 		TaskID:        taskID,
 		Operation:     operation,
 		Authorization: authorization,

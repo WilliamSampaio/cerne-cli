@@ -40,7 +40,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 
 curl --proto '=https' --tlsv1.2 -fsSL \
   https://github.com/WilliamSampaio/cerne-cli/releases/latest/download/install.sh |
-  sh -s -- --agent codex
+  sh -s -- --runtime codex
 ```
 
 O instalador escreve somente `~/.local/bin/cerne`, nunca usa `sudo` e nunca edita arquivos de

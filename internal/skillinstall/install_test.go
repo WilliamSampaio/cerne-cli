@@ -130,6 +130,64 @@ func TestInstallSameVersionIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestInstallRecognizesMarkerWrittenByPreviousBinary(t *testing.T) {
+	home := t.TempDir()
+	pkg := packageFixture(t, "1.0.0")
+	first, err := Install("claude", Options{HomeDir: home, PackageDir: pkg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	markerPath := filepath.Join(first.Destination, ".cerne-install.json")
+	data, err := os.ReadFile(markerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"agent": "claude"`) {
+		t.Fatalf("marker does not preserve the on-disk \"agent\" field: %s", data)
+	}
+	target := filepath.Join(first.Destination, "SKILL.md")
+	before, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := Install("claude", Options{HomeDir: home, PackageDir: pkg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Outcome != "already" || !after.ModTime().Equal(before.ModTime()) {
+		t.Fatalf("marker written before the runtime rename was not recognized as managed: %#v", second)
+	}
+}
+
+func TestInstallAuditUsesRuntimeFieldAndPreservesOlderRecords(t *testing.T) {
+	home := t.TempDir()
+	auditDir := filepath.Join(home, ".cerne", "audit")
+	if err := os.MkdirAll(auditDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	older := `{"schema_version": 1, "operation": "skill.install", "agent": "codex", "skill": "cerne-context", "package": "cerne-skills", "destination": "/old", "status": "succeeded", "error_code": "", "started_at": "2026-01-01T00:00:00Z"}` + "\n"
+	olderPath := filepath.Join(auditDir, "skill-install-older.json")
+	if err := os.WriteFile(olderPath, []byte(older), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := Install("codex", Options{HomeDir: home, PackageDir: packageFixture(t, "1.0.0")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	audit := readText(t, result.AuditPath)
+	if !strings.Contains(audit, `"schema_version": 2`) || !strings.Contains(audit, `"runtime": "codex"`) || strings.Contains(audit, `"agent"`) {
+		t.Fatalf("new audit record does not use the runtime field: %s", audit)
+	}
+	if got := readText(t, olderPath); got != older {
+		t.Fatalf("older audit record was rewritten: %s", got)
+	}
+}
+
 func TestInstallSameVersionRefreshesChangedManagedFiles(t *testing.T) {
 	home := t.TempDir()
 	pkg := packageFixture(t, "1.0.0")

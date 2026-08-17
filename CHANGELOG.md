@@ -5,6 +5,21 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+### Changed
+
+- `cerne init`, `cerne workflow setup`, `cerne git inspect`, and the standalone installer now
+  accept `--runtime <codex|claude|gemini>` in place of `--agent`. `--agent` is deprecated but still
+  accepted with the same effect and values through this MINOR release; it now emits a deprecation
+  warning on stderr naming `--runtime`, and using both options together is rejected as invalid
+  usage. Help text, documentation, and failure messages present only `--runtime`. Git-inspection and
+  skill-installation audit records now use the `runtime` field and `schema_version: 2`; records
+  written by older Cerne versions remain readable and are never rewritten. Stored workspace
+  manifests are unaffected and require no migration.
+
+  **Migration**: replace `--agent` with `--runtime` in scripts and CI. `--agent` will be removed in
+  a future MINOR release; until then both options accept the same values and produce the same
+  effect.
+
 ## 0.12.0 - 2026-08-14
 
 ### Added

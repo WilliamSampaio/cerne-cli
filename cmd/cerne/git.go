@@ -13,7 +13,7 @@ import (
 const gitHelp = `Coordena operações Git seguras em um workspace Cerne.
 
 Uso:
-  cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json
+  cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json
   cerne git --help
 
 Autorização:
@@ -40,10 +40,13 @@ func runGit(args []string, stdout, stderr io.Writer, messages localizer, home st
 }
 
 func runGitInspect(args []string, stdout, stderr io.Writer, home string, messages localizer) int {
-	agent, task, ok := parseGitInspectArgs(args)
+	parsed, ok := parseGitInspectArgs(args)
 	if !ok {
 		fmt.Fprint(stderr, messages.text("git.inspect.usage"))
 		return 2
+	}
+	if parsed.RuntimeDeprecated {
+		fmt.Fprint(stderr, messages.text("git.inspect.agent-deprecated", parsed.Runtime))
 	}
 	current, err := currentDirectory()
 	if err != nil {
@@ -55,7 +58,7 @@ func runGitInspect(args []string, stdout, stderr io.Writer, home string, message
 		fmt.Fprint(stderr, messages.text("common.git"))
 		return 1
 	}
-	snapshot, err := workspace.InspectGit(current, workspace.GitInspectRequest{Agent: agent, TaskID: task, Home: home}, inspect)
+	snapshot, err := workspace.InspectGit(current, workspace.GitInspectRequest{Runtime: parsed.Runtime, TaskID: parsed.Task, Home: home}, inspect)
 	if err != nil {
 		var failure workspace.GitFailure
 		if errors.As(err, &failure) {
@@ -80,33 +83,49 @@ func runGitInspect(args []string, stdout, stderr io.Writer, home string, message
 	return 0
 }
 
-func parseGitInspectArgs(args []string) (string, string, bool) {
-	var agent, task string
+type gitInspectArguments struct {
+	Runtime           string
+	Task              string
+	RuntimeDeprecated bool
+}
+
+func parseGitInspectArgs(args []string) (gitInspectArguments, bool) {
+	var parsed gitInspectArguments
 	jsonOutput := false
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
-		case "--agent":
-			if agent != "" || i+1 >= len(args) || args[i+1] == "" {
-				return "", "", false
+		case "--runtime":
+			if parsed.Runtime != "" || i+1 >= len(args) || args[i+1] == "" {
+				return gitInspectArguments{}, false
 			}
-			agent = args[i+1]
+			parsed.Runtime = args[i+1]
+			i++
+		case "--agent":
+			if parsed.Runtime != "" || i+1 >= len(args) || args[i+1] == "" {
+				return gitInspectArguments{}, false
+			}
+			parsed.Runtime = args[i+1]
+			parsed.RuntimeDeprecated = true
 			i++
 		case "--task":
-			if task != "" || i+1 >= len(args) || args[i+1] == "" {
-				return "", "", false
+			if parsed.Task != "" || i+1 >= len(args) || args[i+1] == "" {
+				return gitInspectArguments{}, false
 			}
-			task = args[i+1]
+			parsed.Task = args[i+1]
 			i++
 		case "--json":
 			if jsonOutput {
-				return "", "", false
+				return gitInspectArguments{}, false
 			}
 			jsonOutput = true
 		default:
-			return "", "", false
+			return gitInspectArguments{}, false
 		}
 	}
-	return agent, task, jsonOutput && supportedGitAgent(agent) && validGitTaskID(task)
+	if !jsonOutput || !supportedGitAgent(parsed.Runtime) || !validGitTaskID(parsed.Task) {
+		return gitInspectArguments{}, false
+	}
+	return parsed, true
 }
 
 func supportedGitAgent(agent string) bool {

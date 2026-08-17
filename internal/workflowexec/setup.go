@@ -40,7 +40,7 @@ func Resolve(provider string) (workspace.WorkflowDefinition, error) {
 			}
 			return []string{"init", "--here", "--force", "--integration", "generic", "--integration-options=--commands-dir .specify/commands", "--ignore-agent-tools", "--script", script}
 		}
-		definition.Agents = speckitAgents(nil)
+		definition.Agents = speckitRuntimes(nil)
 	case "openspec":
 		arguments = func(knowledge string) []string {
 			return []string{"init", knowledge, "--tools", "none", "--profile", "core", "--no-animation"}
@@ -63,7 +63,7 @@ func Resolve(provider string) (workspace.WorkflowDefinition, error) {
 		return nil
 	}
 	if provider == "speckit" {
-		definition.Agents = speckitAgents(func(arguments []string, knowledge string) error {
+		definition.Agents = speckitRuntimes(func(arguments []string, knowledge string) error {
 			if err := runWorkflowProvider(executable, arguments, knowledge, provider); err != nil {
 				return errors.New("provider falhou")
 			}
@@ -93,13 +93,13 @@ func Describe(provider string) (workspace.WorkflowDefinition, error) {
 	}
 }
 
-func speckitAgents(run func([]string, string) error) map[string]workspace.WorkflowAgentTarget {
-	agents := map[string]workspace.WorkflowAgentTarget{
+func speckitRuntimes(run func([]string, string) error) map[string]workspace.WorkflowRuntimeTarget {
+	runtimes := map[string]workspace.WorkflowRuntimeTarget{
 		"codex":  {Name: "codex", DiscoveryRoot: ".agents/skills", IntegrationRoots: []string{".agents/skills", "skills"}},
 		"claude": {Name: "claude", DiscoveryRoot: ".claude/skills"},
 	}
 	if run != nil {
-		agents["codex"] = workspace.WorkflowAgentTarget{
+		runtimes["codex"] = workspace.WorkflowRuntimeTarget{
 			Name:             "codex",
 			DiscoveryRoot:    ".agents/skills",
 			IntegrationRoots: []string{".agents/skills", "skills"},
@@ -107,7 +107,7 @@ func speckitAgents(run func([]string, string) error) map[string]workspace.Workfl
 				return run([]string{"integration", "install", "codex", "--force", "--integration-options=--skills"}, knowledge)
 			},
 		}
-		agents["claude"] = workspace.WorkflowAgentTarget{
+		runtimes["claude"] = workspace.WorkflowRuntimeTarget{
 			Name:          "claude",
 			DiscoveryRoot: ".claude/skills",
 			Setup: func(knowledge string) error {
@@ -115,7 +115,7 @@ func speckitAgents(run func([]string, string) error) map[string]workspace.Workfl
 			},
 		}
 	}
-	return agents
+	return runtimes
 }
 
 func workflowEnvironment(environment []string, provider, profile string) []string {

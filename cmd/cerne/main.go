@@ -126,7 +126,7 @@ Uso:
   cerne init <project-name> --source <caminho>
   cerne init <project-name> --clone <origem>
   cerne init <project-name> --workflow <speckit|openspec>
-  cerne init <project-name> --workflow speckit --agent <codex|claude>
+  cerne init <project-name> --workflow speckit --runtime <codex|claude>
   cerne init <project-name> --source <caminho> --workflow <speckit|openspec>
   cerne init <project-name> --clone <origem> --workflow <speckit|openspec>
 
@@ -158,7 +158,7 @@ Clone:
 Workflow:
   Sem a opção, mantém o layout padrão em knowledge/specs. Spec Kit também usa
   specs e cria .specify. OpenSpec usa openspec/specs e cria openspec.
-  --agent codex|claude pode acompanhar somente --workflow speckit. A escolha
+  --runtime codex|claude pode acompanhar somente --workflow speckit. A escolha
   é local, cria descoberta na raiz do workspace e não entra no manifesto.
   O Cerne usa somente instalações locais existentes, sem instalar agentes,
   atualizar providers ou fornecer credenciais. Se ausente, o setup fica pendente.
@@ -186,7 +186,7 @@ Exemplos:
   cerne init exemplo --source ../aplicacao
   cerne init exemplo --clone https://host/organizacao/aplicacao.git
   cerne init exemplo --workflow speckit
-  cerne init exemplo --workflow speckit --agent codex
+  cerne init exemplo --workflow speckit --runtime codex
   cerne init exemplo --clone https://host/organizacao/aplicacao.git --workflow speckit
 `
 
@@ -194,7 +194,7 @@ const workflowHelp = `Inicializa o workflow já declarado no manifesto do worksp
 
 Uso:
   cerne workflow setup
-  cerne workflow setup --agent <codex|claude>
+  cerne workflow setup --runtime <codex|claude>
   cerne workflow --help
 
 Localização:
@@ -203,7 +203,7 @@ Localização:
 Comportamento:
   Executa somente o provider declarado e já instalado dentro de knowledge.
   Um layout pronto não é alterado. Um layout parcial é recusado.
-  --agent codex|claude prepara descoberta local para Spec Kit na raiz do
+  --runtime codex|claude prepara descoberta local para Spec Kit na raiz do
   workspace sem persistir agente no manifesto.
 
 Saídas:
@@ -217,7 +217,7 @@ Efeitos:
 
 Exemplo:
   cerne workflow setup
-  cerne workflow setup --agent claude
+  cerne workflow setup --runtime claude
 `
 
 const doctorHelp = `Analisa o workspace Cerne atual sem modificar arquivos ou repositórios.
@@ -480,7 +480,7 @@ func runSkill(args []string, stdout, stderr io.Writer, messages localizer) int {
 		fmt.Fprint(stdout, messages.text(messageSkillHelp))
 		return 0
 	}
-	if (len(args) != 2 && len(args) != 3) || args[0] != "install" || !skillinstall.SupportedAgent(args[1]) {
+	if (len(args) != 2 && len(args) != 3) || args[0] != "install" || !skillinstall.SupportedRuntime(args[1]) {
 		fmt.Fprint(stderr, messages.text("skill.usage"))
 		return 2
 	}
@@ -519,7 +519,7 @@ func runSkill(args []string, stdout, stderr io.Writer, messages localizer) int {
 		default:
 			fmt.Fprint(stdout, messages.text("skill.installed", result.Skill))
 		}
-		fmt.Fprint(stdout, messages.text("skill.result", result.Agent, result.Version, result.Destination))
+		fmt.Fprint(stdout, messages.text("skill.result", result.Runtime, result.Version, result.Destination))
 	}
 	return 0
 }
@@ -726,6 +726,9 @@ func runInit(args []string, stdout, stderr io.Writer, messages localizer) int {
 	if !ok {
 		return initUsageError(stderr, messages, "init.invalid-argument")
 	}
+	if parsed.RuntimeDeprecated {
+		fmt.Fprint(stderr, messages.text("init.agent-deprecated", parsed.Runtime))
+	}
 	if err := workspace.ValidateName(parsed.Name); err != nil {
 		return initUsageError(stderr, messages, "init.invalid-name")
 	}
@@ -782,12 +785,12 @@ func runInit(args []string, stdout, stderr io.Writer, messages localizer) int {
 			request.OriginTransport = origin.Transport
 			request.OriginFingerprint = origin.Fingerprint
 		}
-		result, workflow, err := workspace.InitWithSourceAndWorkflowAndAgentInLanguage(current, parsed.Name, request, definition, parsed.Agent, messages.language, initRepository, adaptLink(inspect), clone)
+		result, workflow, err := workspace.InitWithSourceAndWorkflowAndRuntimeInLanguage(current, parsed.Name, request, definition, parsed.Runtime, messages.language, initRepository, adaptLink(inspect), clone)
 		if err != nil {
 			var workflowFailure workspace.WorkflowFailure
 			if errors.As(err, &workflowFailure) {
 				fmt.Fprint(stderr, messages.text("init.workflow.failure", parsed.Workflow, workflowCause(messages, err)))
-				fmt.Fprint(stderr, messages.text("init.workflow.correction", parsed.Workflow, workflowSetupCommand(parsed.Agent), filepath.Dir(result.KnowledgePath)))
+				fmt.Fprint(stderr, messages.text("init.workflow.correction", parsed.Workflow, workflowSetupCommand(parsed.Runtime), filepath.Dir(result.KnowledgePath)))
 				return 1
 			}
 			renderSourceInitFailure(stderr, messages, err)
@@ -801,18 +804,18 @@ func runInit(args []string, stdout, stderr io.Writer, messages localizer) int {
 		}
 		if parsed.Workflow != "" {
 			fmt.Fprint(stdout, messages.text("init.workflow.result", parsed.Workflow, workflowState(messages, workflow.State)))
-			if parsed.Agent != "" && workflow.State != workspace.WorkflowPending {
-				fmt.Fprint(stdout, messages.text("agent.discovery", parsed.Agent))
+			if parsed.Runtime != "" && workflow.State != workspace.WorkflowPending {
+				fmt.Fprint(stdout, messages.text("agent.discovery", parsed.Runtime))
 			}
 			if workflow.State == workspace.WorkflowPending {
 				fmt.Fprint(stderr, messages.text("workflow.pending.warning", definition.Executor, parsed.Workflow))
-				fmt.Fprint(stderr, messages.text("workflow.pending.correction", parsed.Workflow, workflowSetupCommand(parsed.Agent)))
+				fmt.Fprint(stderr, messages.text("workflow.pending.correction", parsed.Workflow, workflowSetupCommand(parsed.Runtime)))
 			}
 		}
 		return 0
 	}
 	if parsed.Workflow != "" {
-		result, workflow, err := workspace.InitWithWorkflowAndAgentInLanguage(current, parsed.Name, definition, parsed.Agent, messages.language, initRepository)
+		result, workflow, err := workspace.InitWithWorkflowAndRuntimeInLanguage(current, parsed.Name, definition, parsed.Runtime, messages.language, initRepository)
 		if err != nil {
 			if result.KnowledgePath == "" {
 				if errors.Is(err, workspace.ErrUnsafeDestination) {
@@ -823,16 +826,16 @@ func runInit(args []string, stdout, stderr io.Writer, messages localizer) int {
 				return 1
 			}
 			fmt.Fprint(stderr, messages.text("init.workflow.failure", parsed.Workflow, workflowCause(messages, err)))
-			fmt.Fprint(stderr, messages.text("init.workflow.correction", parsed.Workflow, workflowSetupCommand(parsed.Agent), filepath.Dir(result.KnowledgePath)))
+			fmt.Fprint(stderr, messages.text("init.workflow.correction", parsed.Workflow, workflowSetupCommand(parsed.Runtime), filepath.Dir(result.KnowledgePath)))
 			return 1
 		}
 		fmt.Fprint(stdout, messages.text("init.result.workflow", result.Name, result.KnowledgePath, result.SourcePath, parsed.Workflow, workflowState(messages, workflow.State)))
-		if parsed.Agent != "" && workflow.State != workspace.WorkflowPending {
-			fmt.Fprint(stdout, messages.text("agent.discovery", parsed.Agent))
+		if parsed.Runtime != "" && workflow.State != workspace.WorkflowPending {
+			fmt.Fprint(stdout, messages.text("agent.discovery", parsed.Runtime))
 		}
 		if workflow.State == workspace.WorkflowPending {
 			fmt.Fprint(stderr, messages.text("workflow.pending.warning", definition.Executor, parsed.Workflow))
-			fmt.Fprint(stderr, messages.text("workflow.pending.correction", parsed.Workflow, workflowSetupCommand(parsed.Agent)))
+			fmt.Fprint(stderr, messages.text("workflow.pending.correction", parsed.Workflow, workflowSetupCommand(parsed.Runtime)))
 		}
 		return 0
 	}
@@ -852,11 +855,12 @@ func runInit(args []string, stdout, stderr io.Writer, messages localizer) int {
 }
 
 type initArguments struct {
-	Name        string
-	Workflow    string
-	Agent       string
-	SourceMode  workspace.SourceMode
-	SourceValue string
+	Name              string
+	Workflow          string
+	Runtime           string
+	RuntimeDeprecated bool
+	SourceMode        workspace.SourceMode
+	SourceValue       string
 }
 
 func parseInitArgs(args []string) (initArguments, bool) {
@@ -878,11 +882,17 @@ func parseInitArgs(args []string) (initArguments, bool) {
 				return initArguments{}, false
 			}
 			parsed.Workflow = value
-		case "--agent":
-			if parsed.Agent != "" || value != "codex" && value != "claude" {
+		case "--runtime":
+			if parsed.Runtime != "" || value != "codex" && value != "claude" {
 				return initArguments{}, false
 			}
-			parsed.Agent = value
+			parsed.Runtime = value
+		case "--agent":
+			if parsed.Runtime != "" || value != "codex" && value != "claude" {
+				return initArguments{}, false
+			}
+			parsed.Runtime = value
+			parsed.RuntimeDeprecated = true
 		case "--source":
 			if parsed.SourceMode != "" {
 				return initArguments{}, false
@@ -897,7 +907,7 @@ func parseInitArgs(args []string) (initArguments, bool) {
 			return initArguments{}, false
 		}
 	}
-	if parsed.Agent != "" && parsed.Workflow != "speckit" {
+	if parsed.Runtime != "" && parsed.Workflow != "speckit" {
 		return initArguments{}, false
 	}
 	return parsed, true
@@ -926,17 +936,20 @@ func runWorkflow(args []string, stdout, stderr io.Writer, messages localizer) in
 		fmt.Fprint(stdout, messages.text(messageWorkflowHelp))
 		return 0
 	}
-	agent, ok := parseWorkflowSetupArgs(args)
+	parsed, ok := parseWorkflowSetupArgs(args)
 	if !ok {
 		fmt.Fprint(stderr, messages.text("workflow.usage"))
 		return 2
+	}
+	if parsed.RuntimeDeprecated {
+		fmt.Fprint(stderr, messages.text("workflow.agent-deprecated", parsed.Runtime))
 	}
 	current, err := currentDirectory()
 	if err != nil {
 		fmt.Fprint(stderr, messages.text("common.cwd"))
 		return 1
 	}
-	result, err := workspace.SetupWorkflowWithAgent(current, workflowexec.Resolve, agent)
+	result, err := workspace.SetupWorkflowWithRuntime(current, workflowexec.Resolve, parsed.Runtime)
 	if err != nil {
 		var failure workspace.WorkflowFailure
 		if errors.As(err, &failure) {
@@ -956,27 +969,37 @@ func runWorkflow(args []string, stdout, stderr io.Writer, messages localizer) in
 	} else {
 		fmt.Fprint(stdout, messages.text("workflow.completed"))
 	}
-	if result.Agent != "" && result.Discovery == workspace.WorkflowDiscoveryReady {
-		fmt.Fprint(stdout, messages.text("agent.discovery", result.Agent))
+	if result.Runtime != "" && result.Discovery == workspace.WorkflowDiscoveryReady {
+		fmt.Fprint(stdout, messages.text("agent.discovery", result.Runtime))
 	}
 	return 0
 }
 
-func parseWorkflowSetupArgs(args []string) (string, bool) {
-	if len(args) == 1 && args[0] == "setup" {
-		return "", true
-	}
-	if len(args) == 3 && args[0] == "setup" && args[1] == "--agent" && (args[2] == "codex" || args[2] == "claude") {
-		return args[2], true
-	}
-	return "", false
+type workflowSetupArguments struct {
+	Runtime           string
+	RuntimeDeprecated bool
 }
 
-func workflowSetupCommand(agent string) string {
-	if agent == "" {
+func parseWorkflowSetupArgs(args []string) (workflowSetupArguments, bool) {
+	if len(args) == 1 && args[0] == "setup" {
+		return workflowSetupArguments{}, true
+	}
+	if len(args) == 3 && args[0] == "setup" && (args[2] == "codex" || args[2] == "claude") {
+		switch args[1] {
+		case "--runtime":
+			return workflowSetupArguments{Runtime: args[2]}, true
+		case "--agent":
+			return workflowSetupArguments{Runtime: args[2], RuntimeDeprecated: true}, true
+		}
+	}
+	return workflowSetupArguments{}, false
+}
+
+func workflowSetupCommand(runtime string) string {
+	if runtime == "" {
 		return "cerne workflow setup"
 	}
-	return "cerne workflow setup --agent " + agent
+	return "cerne workflow setup --runtime " + runtime
 }
 
 func workflowState(messages localizer, state workspace.WorkflowState) string {

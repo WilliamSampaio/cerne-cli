@@ -55,7 +55,7 @@ Uso:
   cerne init <project-name> --source <caminho>
   cerne init <project-name> --clone <origem>
   cerne init <project-name> --workflow <speckit|openspec>
-  cerne init <project-name> --workflow speckit --agent <codex|claude>
+  cerne init <project-name> --workflow speckit --runtime <codex|claude>
   cerne init <project-name> --source <caminho> --workflow <speckit|openspec>
   cerne init <project-name> --clone <origem> --workflow <speckit|openspec>
 
@@ -87,7 +87,7 @@ Clone:
 Workflow:
   Sem a opção, mantém o layout padrão em knowledge/specs. Spec Kit também usa
   specs e cria .specify. OpenSpec usa openspec/specs e cria openspec.
-  --agent codex|claude pode acompanhar somente --workflow speckit. A escolha
+  --runtime codex|claude pode acompanhar somente --workflow speckit. A escolha
   é local, cria descoberta na raiz do workspace e não entra no manifesto.
   O Cerne usa somente instalações locais existentes, sem instalar agentes,
   atualizar providers ou fornecer credenciais. Se ausente, o setup fica pendente.
@@ -115,7 +115,7 @@ Exemplos:
   cerne init exemplo --source ../aplicacao
   cerne init exemplo --clone https://host/organizacao/aplicacao.git
   cerne init exemplo --workflow speckit
-  cerne init exemplo --workflow speckit --agent codex
+  cerne init exemplo --workflow speckit --runtime codex
   cerne init exemplo --clone https://host/organizacao/aplicacao.git --workflow speckit
 `
 
@@ -428,13 +428,13 @@ func TestWorkspaceCommandsDoNotInstallGlobalSkills(t *testing.T) {
 		tools := buildWorkflowTools(t, "speckit", false)
 		env := skillHomeEnvironment(home)
 		env = replaceEnvironment(env, "PATH", tools)
-		status, stdout, stderr := executeCLI(t, binary, parent, env, "init", "app", "--workflow", "speckit", "--agent", "codex")
+		status, stdout, stderr := executeCLI(t, binary, parent, env, "init", "app", "--workflow", "speckit", "--runtime", "codex")
 		if status != 0 || stderr != "" || !strings.Contains(stdout, "Discovery: ready") {
 			t.Fatalf("init: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		assertNoGlobalSkills(t, home)
 
-		status, stdout, stderr = executeCLI(t, binary, filepath.Join(parent, "app"), env, "workflow", "setup", "--agent", "claude")
+		status, stdout, stderr = executeCLI(t, binary, filepath.Join(parent, "app"), env, "workflow", "setup", "--runtime", "claude")
 		if status != 0 || stderr != "" || !strings.Contains(stdout, "Discovery: ready") {
 			t.Fatalf("workflow setup: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
@@ -617,7 +617,7 @@ func TestCLIStableContractAndPortablePath(t *testing.T) {
 
 	t.Run("missing argument", func(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "init")
-		expected := "erro: argumento inválido\nuso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec> [--agent <codex|claude>]]\n"
+		expected := "erro: argumento inválido\nuso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec> [--runtime <codex|claude>]]\n"
 		if status != 2 || stdout != "" || stderr != expected {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
@@ -1081,7 +1081,7 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 		tools := buildWorkflowTools(t, "speckit", false)
 		parent := t.TempDir()
 		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
-		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "codex-project", "--workflow", "speckit", "--agent", "codex")
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "codex-project", "--workflow", "speckit", "--runtime", "codex")
 		root := filepath.Join(parent, "codex-project")
 		knowledge := filepath.Join(root, "knowledge")
 		lines := strings.Split(stdout, "\n")
@@ -1115,13 +1115,13 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 		tools := buildWorkflowTools(t, "speckit", false)
 		parent := t.TempDir()
 		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
-		status, _, stderr := executeCLI(t, binary, parent, environment, "init", "restored", "--workflow", "speckit", "--agent", "codex")
+		status, _, stderr := executeCLI(t, binary, parent, environment, "init", "restored", "--workflow", "speckit", "--runtime", "codex")
 		if status != 0 || stderr != "" {
 			t.Fatalf("init status=%d stderr=%q", status, stderr)
 		}
 		root := filepath.Join(parent, "restored")
 		sourceBefore := snapshotTree(t, filepath.Join(root, "source"))
-		status, stdout, stderr := executeCLI(t, binary, filepath.Join(root, "knowledge", "product"), environment, "workflow", "setup", "--agent", "claude")
+		status, stdout, stderr := executeCLI(t, binary, filepath.Join(root, "knowledge", "product"), environment, "workflow", "setup", "--runtime", "claude")
 		expected := "Workflow: speckit\nKnowledge: " + displayPath(filepath.Join(root, "knowledge")) + "\nNenhuma alteração necessária.\nAgent: claude\nDescoberta: pronta\n"
 		if status != 0 || stdout != expected || stderr != "" {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
@@ -1141,16 +1141,16 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 		tools := buildWorkflowTools(t, "", false)
 		parent := t.TempDir()
 		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
-		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "pending", "--workflow", "speckit", "--agent", "codex")
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "pending", "--workflow", "speckit", "--runtime", "codex")
 		root := filepath.Join(parent, "pending")
 		if status != 0 || !strings.Contains(stdout, "Setup: pendente") || strings.Contains(stdout, "Agent:") ||
-			!strings.Contains(stderr, `cerne workflow setup --agent codex`) {
+			!strings.Contains(stderr, `cerne workflow setup --runtime codex`) {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
 		if _, err := os.Stat(filepath.Join(root, ".agents")); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("ponte falsa criada: %v", err)
 		}
-		status, stdout, stderr = executeCLI(t, binary, root, environment, "workflow", "setup", "--agent", "codex")
+		status, stdout, stderr = executeCLI(t, binary, root, environment, "workflow", "setup", "--runtime", "codex")
 		if status != 1 || stdout != "" || !strings.Contains(stderr, `executável "specify" não encontrado`) {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 		}
@@ -1163,7 +1163,7 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 		tools := buildWorkflowTools(t, "speckit", true)
 		parent := t.TempDir()
 		environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
-		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "failed", "--workflow", "speckit", "--agent", "codex")
+		status, stdout, stderr := executeCLI(t, binary, parent, environment, "init", "failed", "--workflow", "speckit", "--runtime", "codex")
 		root := filepath.Join(parent, "failed")
 		if status != 1 || stdout != "" || strings.Contains(stderr, "SECRET") || !strings.Contains(stderr, "provider não concluiu") {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
@@ -1175,6 +1175,95 @@ func TestCLISpecKitAgentDiscovery(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+}
+
+func TestCLIInitRuntimeAndAgentStdoutIsIdentical(t *testing.T) {
+	binary := buildCLI(t)
+	tools := buildWorkflowTools(t, "speckit", false)
+	environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
+
+	parentNew := t.TempDir()
+	statusNew, stdoutNew, stderrNew := executeCLI(t, binary, parentNew, environment, "init", "project", "--workflow", "speckit", "--runtime", "codex")
+	parentOld := t.TempDir()
+	statusOld, stdoutOld, stderrOld := executeCLI(t, binary, parentOld, environment, "init", "project", "--workflow", "speckit", "--agent", "codex")
+
+	if statusNew != 0 || statusOld != 0 {
+		t.Fatalf("statusNew=%d statusOld=%d", statusNew, statusOld)
+	}
+	if stderrNew != "" {
+		t.Fatalf("--runtime must not warn: stderr=%q", stderrNew)
+	}
+	if stderrOld != "aviso: --agent está depreciada; use --runtime codex\n" {
+		t.Fatalf("--agent must warn naming --runtime: stderr=%q", stderrOld)
+	}
+	if strings.ReplaceAll(stdoutNew, parentNew, "") != strings.ReplaceAll(stdoutOld, parentOld, "") {
+		t.Fatalf("stdout diverges between --runtime and --agent:\nnew=%q\nold=%q", stdoutNew, stdoutOld)
+	}
+}
+
+func TestCLIWorkflowSetupRuntimeAndAgentStdoutIsIdentical(t *testing.T) {
+	binary := buildCLI(t)
+	tools := buildWorkflowTools(t, "speckit", false)
+	environment := replaceEnvironment(portugueseTestEnvironment(), "PATH", tools)
+
+	parentNew := t.TempDir()
+	executeCLI(t, binary, parentNew, environment, "init", "project", "--workflow", "speckit")
+	rootNew := filepath.Join(parentNew, "project")
+	executeCLI(t, binary, rootNew, environment, "workflow", "setup")
+	statusNew, stdoutNew, stderrNew := executeCLI(t, binary, rootNew, environment, "workflow", "setup", "--runtime", "codex")
+
+	parentOld := t.TempDir()
+	executeCLI(t, binary, parentOld, environment, "init", "project", "--workflow", "speckit")
+	rootOld := filepath.Join(parentOld, "project")
+	executeCLI(t, binary, rootOld, environment, "workflow", "setup")
+	statusOld, stdoutOld, stderrOld := executeCLI(t, binary, rootOld, environment, "workflow", "setup", "--agent", "codex")
+
+	if statusNew != 0 || statusOld != 0 {
+		t.Fatalf("statusNew=%d statusOld=%d", statusNew, statusOld)
+	}
+	if stderrNew != "" {
+		t.Fatalf("--runtime must not warn: stderr=%q", stderrNew)
+	}
+	if stderrOld != "aviso: --agent está depreciada; use --runtime codex\n" {
+		t.Fatalf("--agent must warn naming --runtime: stderr=%q", stderrOld)
+	}
+	if strings.ReplaceAll(stdoutNew, rootNew, "") != strings.ReplaceAll(stdoutOld, rootOld, "") {
+		t.Fatalf("stdout diverges between --runtime and --agent:\nnew=%q\nold=%q", stdoutNew, stdoutOld)
+	}
+}
+
+func TestCLIRuntimeAndAgentAreMutuallyExclusive(t *testing.T) {
+	binary := buildCLI(t)
+	for _, args := range [][]string{
+		{"init", "example", "--workflow", "speckit", "--runtime", "codex", "--agent", "codex"},
+		{"workflow", "setup", "--runtime", "codex", "--agent", "codex"},
+	} {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, args...)
+		if status != 2 || stdout != "" || !strings.Contains(stderr, "uso:") {
+			t.Fatalf("args=%v status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
+		}
+	}
+}
+
+func TestCLIAgentRejectsLogicalRoleValue(t *testing.T) {
+	binary := buildCLI(t)
+	for _, args := range [][]string{
+		{"init", "example", "--workflow", "speckit", "--agent", "qa"},
+		{"workflow", "setup", "--agent", "qa"},
+	} {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, args...)
+		if status != 2 || stdout != "" || !strings.Contains(stderr, "uso:") {
+			t.Fatalf("args=%v status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
+		}
+	}
+}
+
+func TestCLIAgentIsNotARegisteredSubcommand(t *testing.T) {
+	binary := buildCLI(t)
+	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "agent")
+	if status != 2 || stdout != "" || !strings.Contains(stderr, "comando desconhecido") {
+		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
 }
 
 func TestCLIWorkflowUsageAndHelp(t *testing.T) {
@@ -1199,7 +1288,7 @@ func TestCLIWorkflowUsageAndHelp(t *testing.T) {
 		}
 	}
 	status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "workflow", "--help")
-	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne workflow setup --agent <codex|claude>") {
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne workflow setup --runtime <codex|claude>") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 	parent := t.TempDir()

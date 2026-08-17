@@ -45,11 +45,11 @@ func TestInitCreatesLocalizedKnowledgeReadme(t *testing.T) {
 	if err := fakeInitRepository(source); err != nil {
 		t.Fatal(err)
 	}
-	withSource, _, err := InitWithSourceAndWorkflowAndAgentInLanguage(parent, "example", SourceInitRequest{Mode: SourceLocal, Input: source}, WorkflowDefinition{}, "", localization.PortugueseBrazil, fakeInitRepository, fakeLinkInspect(nil, nil), nil)
+	withSource, _, err := InitWithSourceAndWorkflowAndRuntimeInLanguage(parent, "example", SourceInitRequest{Mode: SourceLocal, Input: source}, WorkflowDefinition{}, "", localization.PortugueseBrazil, fakeInitRepository, fakeLinkInspect(nil, nil), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	withWorkflow, _, err := InitWithWorkflowAndAgentInLanguage(t.TempDir(), "example", readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json"), "", localization.PortugueseBrazil, fakeInitRepository)
+	withWorkflow, _, err := InitWithWorkflowAndRuntimeInLanguage(t.TempDir(), "example", readyDefinition("alpha", "specs", ".alpha", ".alpha/options.json"), "", localization.PortugueseBrazil, fakeInitRepository)
 	if err != nil {
 		t.Fatal(err)
 	}

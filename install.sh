@@ -4,7 +4,8 @@ set -eu
 official_repo_url="https://github.com/WilliamSampaio/cerne-cli/releases"
 repo_url=$official_repo_url
 version=""
-agent=""
+runtime=""
+agent_deprecated=0
 allow_file_downloads=0
 test_downloader=""
 
@@ -32,7 +33,7 @@ esac
 usage() {
 	cat <<'EOF'
 Usage:
-  install.sh [--version <version>] [--agent <codex|claude|gemini>]
+  install.sh [--version <version>] [--runtime <codex|claude|gemini>]
   install.sh --help
 
 Installs cerne to ~/.local/bin/cerne without sudo.
@@ -119,13 +120,25 @@ while test "$#" -gt 0; do
 			is_release_version "$version" || fail "invalid version: $version"
 			shift 2
 			;;
+		--runtime)
+			need_value "$@"
+			test -z "$runtime" || fail "--runtime and --agent are mutually exclusive"
+			runtime=$2
+			case "$runtime" in
+				codex|claude|gemini) ;;
+				*) fail "unsupported runtime: $runtime" ;;
+			esac
+			shift 2
+			;;
 		--agent)
 			need_value "$@"
-			agent=$2
-			case "$agent" in
+			test -z "$runtime" || fail "--runtime and --agent are mutually exclusive"
+			runtime=$2
+			case "$runtime" in
 				codex|claude|gemini) ;;
-				*) fail "unsupported agent: $agent" ;;
+				*) fail "unsupported runtime: $runtime" ;;
 			esac
+			agent_deprecated=1
 			shift 2
 			;;
 		*)
@@ -133,6 +146,10 @@ while test "$#" -gt 0; do
 			;;
 	esac
 done
+
+if test "$agent_deprecated" = "1"; then
+	printf 'warning: --agent is deprecated; use --runtime %s instead\n' "$runtime" >&2
+fi
 
 if test "${CERNE_INSTALL_TEST_MODE:-}" = "1"; then
 	os=${CERNE_INSTALL_OS:-$(uname -s | tr '[:upper:]' '[:lower:]')}
@@ -295,10 +312,10 @@ case ":$PATH:" in
 	*) printf 'add to PATH: export PATH="$HOME/.local/bin:$PATH"\n' ;;
 esac
 
-if test -n "$agent"; then
-	if "$target" skill install "$agent"; then
-		printf 'skill installed for: %s\n' "$agent"
+if test -n "$runtime"; then
+	if "$target" skill install "$runtime"; then
+		printf 'skill installed for: %s\n' "$runtime"
 	else
-		fail "cerne was installed, but skill installation failed for $agent"
+		fail "cerne was installed, but skill installation failed for $runtime"
 	fi
 fi

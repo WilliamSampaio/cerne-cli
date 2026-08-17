@@ -77,14 +77,14 @@ func InitWithSource(parent, name string, request SourceInitRequest, initReposito
 }
 
 func InitWithSourceAndWorkflow(parent, name string, request SourceInitRequest, definition WorkflowDefinition, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
-	return InitWithSourceAndWorkflowAndAgent(parent, name, request, definition, "", initRepository, inspect, clone)
+	return InitWithSourceAndWorkflowAndRuntime(parent, name, request, definition, "", initRepository, inspect, clone)
 }
 
-func InitWithSourceAndWorkflowAndAgent(parent, name string, request SourceInitRequest, definition WorkflowDefinition, agent string, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
-	return InitWithSourceAndWorkflowAndAgentInLanguage(parent, name, request, definition, agent, localization.English, initRepository, inspect, clone)
+func InitWithSourceAndWorkflowAndRuntime(parent, name string, request SourceInitRequest, definition WorkflowDefinition, agent string, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
+	return InitWithSourceAndWorkflowAndRuntimeInLanguage(parent, name, request, definition, agent, localization.English, initRepository, inspect, clone)
 }
 
-func InitWithSourceAndWorkflowAndAgentInLanguage(parent, name string, request SourceInitRequest, definition WorkflowDefinition, agent string, language localization.Language, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
+func InitWithSourceAndWorkflowAndRuntimeInLanguage(parent, name string, request SourceInitRequest, definition WorkflowDefinition, agent string, language localization.Language, initRepository func(string) error, inspect LinkGitInspect, clone CloneSource) (Result, WorkflowResult, error) {
 	if definition.Provider != "" {
 		if _, _, err := workflowPaths(filepath.Join(parent, name, "knowledge"), definition); err != nil {
 			return Result{}, WorkflowResult{}, errors.New("workflow inválido")
@@ -115,14 +115,14 @@ func initWithSource(parent, name string, request SourceInitRequest, definition W
 }
 
 func InitWithWorkflow(parent, name string, definition WorkflowDefinition, initRepository func(string) error) (Result, WorkflowResult, error) {
-	return InitWithWorkflowAndAgent(parent, name, definition, "", initRepository)
+	return InitWithWorkflowAndRuntime(parent, name, definition, "", initRepository)
 }
 
-func InitWithWorkflowAndAgent(parent, name string, definition WorkflowDefinition, agent string, initRepository func(string) error) (Result, WorkflowResult, error) {
-	return InitWithWorkflowAndAgentInLanguage(parent, name, definition, agent, localization.English, initRepository)
+func InitWithWorkflowAndRuntime(parent, name string, definition WorkflowDefinition, agent string, initRepository func(string) error) (Result, WorkflowResult, error) {
+	return InitWithWorkflowAndRuntimeInLanguage(parent, name, definition, agent, localization.English, initRepository)
 }
 
-func InitWithWorkflowAndAgentInLanguage(parent, name string, definition WorkflowDefinition, agent string, language localization.Language, initRepository func(string) error) (Result, WorkflowResult, error) {
+func InitWithWorkflowAndRuntimeInLanguage(parent, name string, definition WorkflowDefinition, agent string, language localization.Language, initRepository func(string) error) (Result, WorkflowResult, error) {
 	if definition.Provider == "" {
 		return Result{}, WorkflowResult{}, errors.New("workflow inválido")
 	}

@@ -213,21 +213,36 @@ if grep -n 'sudo ' "$root/install.sh" >/dev/null; then
 fi
 grep -- '--https-only' "$root/install.sh" >/dev/null
 
-run_install --version v1.2.3 --agent codex >"$work/install-agent"
-grep 'skill codex' "$work/install-agent" >/dev/null
-run_install --version v1.2.3 --agent claude >"$work/install-agent-claude"
-grep 'skill claude' "$work/install-agent-claude" >/dev/null
-run_install --version v1.2.3 --agent gemini >"$work/install-agent-gemini"
-grep 'skill gemini' "$work/install-agent-gemini" >/dev/null
+run_install --version v1.2.3 --runtime codex >"$work/install-runtime"
+grep 'skill codex' "$work/install-runtime" >/dev/null
+run_install --version v1.2.3 --runtime claude >"$work/install-runtime-claude"
+grep 'skill claude' "$work/install-runtime-claude" >/dev/null
+run_install --version v1.2.3 --runtime gemini >"$work/install-runtime-gemini"
+grep 'skill gemini' "$work/install-runtime-gemini" >/dev/null
 
-if run_install --version v1.2.4 --agent codex >"$work/install-skill-fail" 2>/dev/null; then
+if run_install --version v1.2.4 --runtime codex >"$work/install-skill-fail" 2>/dev/null; then
 	echo "expected delegated skill failure" >&2
 	exit 1
 fi
 grep 'cerne v1.2.4' "$work/install-skill-fail" >/dev/null
 
-if run_install --agent unknown >/dev/null 2>/dev/null; then
-	echo "expected unsupported agent failure" >&2
+if run_install --runtime unknown >/dev/null 2>/dev/null; then
+	echo "expected unsupported runtime failure" >&2
+	exit 1
+fi
+
+run_install --version v1.2.3 --agent codex >"$work/install-agent-out" 2>"$work/install-agent-err"
+grep 'skill codex' "$work/install-agent-out" >/dev/null
+grep 'warning: --agent is deprecated; use --runtime codex instead' "$work/install-agent-err" >/dev/null
+diff "$work/install-runtime" "$work/install-agent-out" >/dev/null
+
+if run_install --runtime codex --agent codex >/dev/null 2>/dev/null; then
+	echo "expected --runtime and --agent to be mutually exclusive" >&2
+	exit 1
+fi
+
+if run_install --agent qa >/dev/null 2>/dev/null; then
+	echo "expected unsupported agent value failure" >&2
 	exit 1
 fi
 
