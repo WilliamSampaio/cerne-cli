@@ -127,8 +127,8 @@ func TestWorkflowPendingResumeAndIdempotency(t *testing.T) {
 
 func TestWorkflowAgentBridgeCreationAuditAndManifestNeutrality(t *testing.T) {
 	definition := readySpecKitDefinitionWithAgents()
-	base, workflow, err := InitWithWorkflowAndAgent(t.TempDir(), "example", definition, "codex", fakeInitRepository)
-	if err != nil || workflow.State != WorkflowConfigured || workflow.Agent != "codex" || workflow.Discovery != WorkflowDiscoveryReady {
+	base, workflow, err := InitWithWorkflowAndRuntime(t.TempDir(), "example", definition, "codex", fakeInitRepository)
+	if err != nil || workflow.State != WorkflowConfigured || workflow.Runtime != "codex" || workflow.Discovery != WorkflowDiscoveryReady {
 		t.Fatalf("base=%#v workflow=%#v erro=%v", base, workflow, err)
 	}
 	assertAgentCommandSet(t, filepath.Join(base.KnowledgePath, ".agents", "skills"))
@@ -160,10 +160,10 @@ func TestWorkflowAgentBridgeCreationAuditAndManifestNeutrality(t *testing.T) {
 func TestWorkflowAgentBridgeUsesCompatibleCodexIntegrationRoot(t *testing.T) {
 	definition := readyDefinition("speckit", "specs", ".specify", ".specify/init-options.json")
 	definition.Executor = "specify"
-	definition.Agents = map[string]WorkflowAgentTarget{
+	definition.Agents = map[string]WorkflowRuntimeTarget{
 		"codex": readyAgentTarget("codex", ".agents/skills", "skills"),
 	}
-	base, workflow, err := InitWithWorkflowAndAgent(t.TempDir(), "example", definition, "codex", fakeInitRepository)
+	base, workflow, err := InitWithWorkflowAndRuntime(t.TempDir(), "example", definition, "codex", fakeInitRepository)
 	if err != nil || workflow.State != WorkflowConfigured || workflow.Discovery != WorkflowDiscoveryReady {
 		t.Fatalf("base=%#v workflow=%#v erro=%v", base, workflow, err)
 	}
@@ -180,7 +180,7 @@ func TestWorkflowAgentBridgeRejectsSymlinkAncestor(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, ".agents")); err != nil {
 		t.Skipf("symlink indisponível: %v", err)
 	}
-	err := createAgentBridge(root, readyAgentTarget("codex", ".agents/skills"), ".agents/skills")
+	err := createRuntimeBridge(root, readyAgentTarget("codex", ".agents/skills"), ".agents/skills")
 	if err == nil {
 		t.Fatal("ponte aceitou ancestral symlink")
 	}
@@ -191,7 +191,7 @@ func TestWorkflowAgentBridgeRejectsSymlinkAncestor(t *testing.T) {
 
 func TestWorkflowAgentCanChangeAfterRestoreWithoutTouchingSource(t *testing.T) {
 	definition := readySpecKitDefinitionWithAgents()
-	base, _, err := InitWithWorkflowAndAgent(t.TempDir(), "example", definition, "codex", fakeInitRepository)
+	base, _, err := InitWithWorkflowAndRuntime(t.TempDir(), "example", definition, "codex", fakeInitRepository)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,10 +199,10 @@ func TestWorkflowAgentCanChangeAfterRestoreWithoutTouchingSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := readText(t, filepath.Join(base.SourcePath, "sentinel"))
-	result, err := SetupWorkflowWithAgent(filepath.Dir(base.KnowledgePath), func(string) (WorkflowDefinition, error) {
+	result, err := SetupWorkflowWithRuntime(filepath.Dir(base.KnowledgePath), func(string) (WorkflowDefinition, error) {
 		return readySpecKitDefinitionWithAgents(), nil
 	}, "claude")
-	if err != nil || result.State != WorkflowUnchanged || result.Agent != "claude" || result.Discovery != WorkflowDiscoveryReady {
+	if err != nil || result.State != WorkflowUnchanged || result.Runtime != "claude" || result.Discovery != WorkflowDiscoveryReady {
 		t.Fatalf("result=%#v erro=%v", result, err)
 	}
 	assertAgentCommandSet(t, filepath.Join(filepath.Dir(base.KnowledgePath), ".claude", "skills"))
@@ -233,7 +233,7 @@ func TestWorkflowWithoutAgentDoesNotCreateBridgeAndMissingProviderCreatesNoFakeB
 		target.Setup = nil
 		unavailable.Agents[name] = target
 	}
-	result, err := SetupWorkflowWithAgent(filepath.Dir(base.KnowledgePath), func(string) (WorkflowDefinition, error) {
+	result, err := SetupWorkflowWithRuntime(filepath.Dir(base.KnowledgePath), func(string) (WorkflowDefinition, error) {
 		return unavailable, nil
 	}, "codex")
 	if err != nil || result.State != WorkflowPending || result.Discovery != WorkflowDiscoveryNotCreated {
@@ -350,19 +350,19 @@ func readyDefinition(provider, specs, root, marker string) WorkflowDefinition {
 func readySpecKitDefinitionWithAgents() WorkflowDefinition {
 	definition := readyDefinition("speckit", "specs", ".specify", ".specify/init-options.json")
 	definition.Executor = "specify"
-	definition.Agents = map[string]WorkflowAgentTarget{
+	definition.Agents = map[string]WorkflowRuntimeTarget{
 		"codex":  readyAgentTarget("codex", ".agents/skills"),
 		"claude": readyAgentTarget("claude", ".claude/skills"),
 	}
 	return definition
 }
 
-func readyAgentTarget(name, root string, integrationRoots ...string) WorkflowAgentTarget {
+func readyAgentTarget(name, root string, integrationRoots ...string) WorkflowRuntimeTarget {
 	roots := integrationRoots
 	if len(roots) == 0 {
 		roots = []string{root}
 	}
-	return WorkflowAgentTarget{
+	return WorkflowRuntimeTarget{
 		Name:             name,
 		DiscoveryRoot:    root,
 		IntegrationRoots: roots,

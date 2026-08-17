@@ -12,7 +12,7 @@ instalada.
 ## Instalador standalone
 
 Releases para Linux e macOS publicam `install.sh`, `checksums.txt` e binários para `amd64` e
-`arm64`. O instalador aceita `--version <version>`, `--agent <codex|claude|gemini>` e `--help`. Ele
+`arm64`. O instalador aceita `--version <version>`, `--runtime <codex|claude|gemini>` e `--help`. Ele
 instala somente `~/.local/bin/cerne`, verifica SHA-256 e a versão reportada pelo binário antes da
 promoção, recusa destino como diretório ou symlink, nunca usa `sudo` e nunca edita arquivos de
 perfil do shell.
@@ -45,7 +45,7 @@ cerne --lang pt-BR config set language pt-BR
 
 O Cerne recusa links simbólicos e caminhos de configuração inseguros em vez de segui-los.
 
-## `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--agent ...]]`
+## `cerne init <project-name> [--source ... | --clone ...] [--workflow ... [--runtime ...]]`
 
 Cria um workspace abaixo do diretório atual. O destino deve estar ausente ou ser um diretório
 regular vazio; links simbólicos e destinos não vazios são recusados. Conteúdo existente nunca é
@@ -56,7 +56,7 @@ a finalidade das coleções, os limites entre os repositórios e comandos seguro
 O nome usa de 1 a 255 caracteres ASCII, começa com letra ou número e pode continuar com letras,
 números, `.`, `_` ou `-`. Nomes reservados do Windows e nomes terminados em `.` são recusados.
 Sem `--workflow`, o comportamento não muda. Com ele, o Cerne executa o provider instalado somente
-em knowledge e sem interação. `--agent codex|claude` é aceito somente com `--workflow speckit`;
+em knowledge e sem interação. `--runtime codex|claude` é aceito somente com `--workflow speckit`;
 ele prepara descoberta local para aquela invocação sem persistir o agente. Executável ausente gera
 aviso; falha de um provider executado preserva o workspace base e retorna erro operacional.
 
@@ -125,7 +125,7 @@ efeitos Git; o agente usa os dados inspecionados e pede confirmação antes de b
 Pull Request.
 
 ```sh
-cerne git inspect --agent codex --task task-1 --json
+cerne git inspect --runtime codex --task task-1 --json
 ```
 
 `inspect` é somente leitura e retorna schema versão 1 com `state_id` determinístico, remotes
@@ -138,10 +138,10 @@ inválido usa stderr/status `2`. Auditorias privadas em `~/.cerne/audit` cobrem 
 excluem conversas, output Git, URLs remotas, tokens, conteúdo de arquivos, corpo de PR e erros
 brutos. A evidência da execução pertence ao agente ou harness, não ao audit do Cerne.
 
-## `cerne workflow setup [--agent codex|claude]`
+## `cerne workflow setup [--runtime codex|claude]`
 
 Localiza o workspace ancestral mais próximo e materializa o provider declarado no manifesto. Não
-aceita provider, caminho nem opção de força. Com `--agent`, o workflow declarado deve ser Spec Kit
+aceita provider, caminho nem opção de força. Com `--runtime`, o workflow declarado deve ser Spec Kit
 e o Cerne prepara ou atualiza a ponte de descoberta na raiz para o agente local escolhido. Cada
 subprocesso real de provider ou integração de agente cria um JSON de auditoria sanitizado em
 `knowledge/runs`; executável ausente e layout pronto sem setup de agente não criam auditoria. Para

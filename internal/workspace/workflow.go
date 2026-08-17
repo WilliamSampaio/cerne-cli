@@ -18,10 +18,10 @@ type WorkflowDefinition struct {
 	Marker         string
 	Available      bool
 	Setup          func(string) error
-	Agents         map[string]WorkflowAgentTarget
+	Agents         map[string]WorkflowRuntimeTarget
 }
 
-type WorkflowAgentTarget struct {
+type WorkflowRuntimeTarget struct {
 	Name             string
 	DiscoveryRoot    string
 	IntegrationRoots []string
@@ -45,7 +45,7 @@ type WorkflowResult struct {
 	Executor      string
 	State         WorkflowState
 	AuditPath     string
-	Agent         string
+	Runtime       string
 	Discovery     WorkflowDiscoveryState
 }
 
@@ -107,10 +107,10 @@ var specKitBridgeDescriptions = map[string]string{
 }
 
 func SetupWorkflow(start string, resolve WorkflowResolver) (WorkflowResult, error) {
-	return SetupWorkflowWithAgent(start, resolve, "")
+	return SetupWorkflowWithRuntime(start, resolve, "")
 }
 
-func SetupWorkflowWithAgent(start string, resolve WorkflowResolver, agent string) (WorkflowResult, error) {
+func SetupWorkflowWithRuntime(start string, resolve WorkflowResolver, agent string) (WorkflowResult, error) {
 	root, manifestPath, err := locateWorkspace(start)
 	if err != nil {
 		return WorkflowResult{}, workflowFailure("workspace-not-found", "workspace Cerne não localizado", "execute o comando dentro de um workspace Cerne")
@@ -151,7 +151,7 @@ func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, a
 			return result, workflowFailure("workflow-specs-missing", "estrutura do workflow inválida ou parcial", "restaure o diretório canônico de especificações")
 		}
 		result.State = WorkflowUnchanged
-		return applyAgentDiscovery(result, knowledge, definition, agent)
+		return applyRuntimeDiscovery(result, knowledge, definition, agent)
 	}
 	if !definition.Available || definition.Setup == nil {
 		result.State = WorkflowPending
@@ -193,14 +193,14 @@ func applyWorkflow(knowledge string, definition WorkflowDefinition, operation, a
 		return result, workflowFailure("workflow-audit-finalization-failed", "não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 	}
 	result.State = WorkflowConfigured
-	return applyAgentDiscovery(result, knowledge, definition, agent)
+	return applyRuntimeDiscovery(result, knowledge, definition, agent)
 }
 
-func applyAgentDiscovery(result WorkflowResult, knowledge string, definition WorkflowDefinition, agent string) (WorkflowResult, error) {
+func applyRuntimeDiscovery(result WorkflowResult, knowledge string, definition WorkflowDefinition, agent string) (WorkflowResult, error) {
 	if agent == "" {
 		return result, nil
 	}
-	result.Agent = agent
+	result.Runtime = agent
 	target, ok := definition.Agents[agent]
 	if !ok || target.Name != agent || target.DiscoveryRoot == "" {
 		return result, workflowFailure("agent-unsupported", "agente não suportado para o workflow", "use --agent codex ou --agent claude com workflow speckit")
@@ -221,7 +221,7 @@ func applyAgentDiscovery(result WorkflowResult, knowledge string, definition Wor
 		}
 		return result, workflowFailure("agent-integration-failed", "integração do agente não concluiu", "corrija ou atualize o provider e tente novamente")
 	}
-	integrationRoot, err := findAgentIntegrationRoot(knowledge, target)
+	integrationRoot, err := findRuntimeIntegrationRoot(knowledge, target)
 	if err != nil {
 		if auditErr := finishWorkflowAudit(auditPath, attempt, "failed", "agent-layout-invalid"); auditErr != nil {
 			return result, workflowFailure("workflow-audit-finalization-failed", "não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
@@ -231,7 +231,7 @@ func applyAgentDiscovery(result WorkflowResult, knowledge string, definition Wor
 	if err := finishWorkflowAudit(auditPath, attempt, "succeeded", ""); err != nil {
 		return result, workflowFailure("workflow-audit-finalization-failed", "não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente")
 	}
-	if err := createAgentBridge(filepath.Dir(knowledge), target, integrationRoot); err != nil {
+	if err := createRuntimeBridge(filepath.Dir(knowledge), target, integrationRoot); err != nil {
 		result.Discovery = WorkflowDiscoveryNotCreated
 		return result, workflowFailure("agent-discovery-failed", "não foi possível preparar descoberta local do agente", "verifique permissões e artefatos de agente na raiz do workspace")
 	}
@@ -239,14 +239,14 @@ func applyAgentDiscovery(result WorkflowResult, knowledge string, definition Wor
 	return result, nil
 }
 
-func findAgentIntegrationRoot(knowledge string, target WorkflowAgentTarget) (string, error) {
+func findRuntimeIntegrationRoot(knowledge string, target WorkflowRuntimeTarget) (string, error) {
 	roots := target.IntegrationRoots
 	if len(roots) == 0 {
 		roots = []string{target.DiscoveryRoot}
 	}
 	var lastErr error
 	for _, relative := range roots {
-		if err := validateAgentIntegration(knowledge, relative); err == nil {
+		if err := validateRuntimeIntegration(knowledge, relative); err == nil {
 			return relative, nil
 		} else {
 			lastErr = err
@@ -258,7 +258,7 @@ func findAgentIntegrationRoot(knowledge string, target WorkflowAgentTarget) (str
 	return "", errors.New("skill ausente ou inválida")
 }
 
-func validateAgentIntegration(knowledge, relative string) error {
+func validateRuntimeIntegration(knowledge, relative string) error {
 	root, err := safeWorkflowPath(knowledge, relative)
 	if err != nil {
 		return err
@@ -277,7 +277,7 @@ func validateAgentIntegration(knowledge, relative string) error {
 	return nil
 }
 
-func createAgentBridge(workspaceRoot string, target WorkflowAgentTarget, integrationRoot string) error {
+func createRuntimeBridge(workspaceRoot string, target WorkflowRuntimeTarget, integrationRoot string) error {
 	root, err := safeBridgePath(workspaceRoot, target.DiscoveryRoot)
 	if err != nil {
 		return err

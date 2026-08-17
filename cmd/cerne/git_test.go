@@ -18,7 +18,7 @@ func TestCLIGitInspectJSONAndAudit(t *testing.T) {
 	root := newCLIGitWorkspace(t)
 	home := t.TempDir()
 
-	status, stdout, stderr := executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "inspect", "--agent", "codex", "--task", "task-1", "--json")
+	status, stdout, stderr := executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "inspect", "--runtime", "codex", "--task", "task-1", "--json")
 	if status != 0 || stderr != "" || !strings.HasSuffix(stdout, "\n") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
@@ -61,14 +61,14 @@ func TestCLIGitInspectUsageHelpAndFailures(t *testing.T) {
 	root := newCLIGitWorkspace(t)
 
 	status, stdout, stderr := executeCLI(t, binary, root, nil, "git", "--help")
-	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne git inspect --agent") || strings.Contains(stdout, "cerne git branch") {
+	if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne git inspect --runtime") || strings.Contains(stdout, "cerne git branch") {
 		t.Fatalf("help: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
 	for _, args := range [][]string{
 		{"git"},
-		{"git", "inspect", "--agent", "codex", "--json"},
+		{"git", "inspect", "--runtime", "codex", "--json"},
 		{"git", "inspect", "--agent", "Codex", "--task", "task", "--json"},
-		{"git", "inspect", "--agent", "codex", "--task", "bad task", "--json"},
+		{"git", "inspect", "--runtime", "codex", "--task", "bad task", "--json"},
 		{"git", "merge"},
 	} {
 		status, stdout, stderr := executeCLI(t, binary, root, nil, args...)
@@ -77,7 +77,7 @@ func TestCLIGitInspectUsageHelpAndFailures(t *testing.T) {
 		}
 	}
 
-	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(t.TempDir()), "git", "inspect", "--agent", "codex", "--task", "task", "--json")
+	status, stdout, stderr = executeCLI(t, binary, t.TempDir(), skillHomeEnvironment(t.TempDir()), "git", "inspect", "--runtime", "codex", "--task", "task", "--json")
 	if status != 1 || stderr != "" || !strings.Contains(stdout, `"status": "invalid"`) {
 		t.Fatalf("invalid workspace: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
@@ -93,7 +93,7 @@ func TestCLIGitInspectUsageHelpAndFailures(t *testing.T) {
 	if err := os.Symlink(auditTarget, filepath.Join(home, ".cerne", "audit")); err != nil {
 		t.Skip(err)
 	}
-	status, stdout, stderr = executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "inspect", "--agent", "codex", "--task", "task", "--json")
+	status, stdout, stderr = executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "inspect", "--runtime", "codex", "--task", "task", "--json")
 	if status != 1 || stdout != "" || !strings.Contains(stderr, "audit_unavailable") {
 		t.Fatalf("audit failure: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}
@@ -106,6 +106,70 @@ func TestCLIGitInspectUsageHelpAndFailures(t *testing.T) {
 	}
 }
 
+func TestCLIGitInspectAgentIsDeprecatedButEquivalent(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	root := newCLIGitWorkspace(t)
+
+	statusNew, stdoutNew, stderrNew := executeCLI(t, binary, root, skillHomeEnvironment(t.TempDir()), "git", "inspect", "--runtime", "codex", "--task", "task-1", "--json")
+	statusOld, stdoutOld, stderrOld := executeCLI(t, binary, root, skillHomeEnvironment(t.TempDir()), "git", "inspect", "--agent", "codex", "--task", "task-1", "--json")
+
+	normalize := func(s string) string {
+		return strings.ReplaceAll(s, root, "")
+	}
+	if statusNew != 0 || statusOld != 0 {
+		t.Fatalf("statusNew=%d statusOld=%d", statusNew, statusOld)
+	}
+	if stderrNew != "" {
+		t.Fatalf("--runtime must not warn: stderr=%q", stderrNew)
+	}
+	if stderrOld == "" || !strings.Contains(stderrOld, "--runtime codex") {
+		t.Fatalf("--agent must warn naming --runtime: stderr=%q", stderrOld)
+	}
+	stripAuditID := func(s string) string {
+		var out strings.Builder
+		for _, line := range strings.Split(s, "\n") {
+			if strings.Contains(line, `"audit_id"`) || strings.Contains(line, `"state_id"`) {
+				continue
+			}
+			out.WriteString(line)
+			out.WriteString("\n")
+		}
+		return out.String()
+	}
+	if stripAuditID(normalize(stdoutNew)) != stripAuditID(normalize(stdoutOld)) {
+		t.Fatalf("stdout diverges between --runtime and --agent:\nnew=%q\nold=%q", stdoutNew, stdoutOld)
+	}
+}
+
+func TestCLIGitInspectAgentRejectsLogicalRole(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	root := newCLIGitWorkspace(t)
+
+	status, stdout, stderr := executeCLI(t, binary, root, nil, "git", "inspect", "--agent", "qa", "--task", "task", "--json")
+	if status != 2 || stdout != "" || !strings.Contains(stderr, "cerne git inspect") {
+		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+}
+
+func TestCLIGitInspectRuntimeAndAgentAreMutuallyExclusive(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	root := newCLIGitWorkspace(t)
+
+	status, stdout, stderr := executeCLI(t, binary, root, nil, "git", "inspect", "--runtime", "codex", "--agent", "codex", "--task", "task", "--json")
+	if status != 2 || stdout != "" || !strings.Contains(stderr, "cerne git inspect") {
+		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+}
+
 func TestCLIGitDelegatesEffectsWithoutAudit(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("Git não está disponível")
@@ -115,10 +179,10 @@ func TestCLIGitDelegatesEffectsWithoutAudit(t *testing.T) {
 	state := cliGitState(t, binary, root, t.TempDir())
 
 	for _, args := range [][]string{
-		{"git", "branch", "create", "--name", "feat/x", "--base", "knowledge=main", "--base", "source=main", "--state", state, "--confirm", "--agent", "codex", "--task", "task-1", "--json"},
-		{"git", "commit", "source", "--message", "feat: checkpoint", "--include", "file.txt", "--state", state, "--confirm", "--agent", "codex", "--task", "task-2", "--json"},
-		{"git", "push", "source", "--remote", "origin", "--branch", "main", "--state", state, "--confirm", "--agent", "codex", "--task", "task-3", "--json"},
-		{"git", "pr", "prepare", "source", "--remote", "origin", "--base", "main", "--head", "feat/x", "--title", "Title", "--body-file", "body.md", "--state", state, "--confirm", "--agent", "codex", "--task", "task-4", "--json"},
+		{"git", "branch", "create", "--name", "feat/x", "--base", "knowledge=main", "--base", "source=main", "--state", state, "--confirm", "--runtime", "codex", "--task", "task-1", "--json"},
+		{"git", "commit", "source", "--message", "feat: checkpoint", "--include", "file.txt", "--state", state, "--confirm", "--runtime", "codex", "--task", "task-2", "--json"},
+		{"git", "push", "source", "--remote", "origin", "--branch", "main", "--state", state, "--confirm", "--runtime", "codex", "--task", "task-3", "--json"},
+		{"git", "pr", "prepare", "source", "--remote", "origin", "--base", "main", "--head", "feat/x", "--title", "Title", "--body-file", "body.md", "--state", state, "--confirm", "--runtime", "codex", "--task", "task-4", "--json"},
 	} {
 		home := t.TempDir()
 		status, stdout, stderr := executeCLI(t, binary, root, skillHomeEnvironment(home), args...)
@@ -145,8 +209,8 @@ func TestCLIGitRefusesForbiddenOperationsWithoutAudit(t *testing.T) {
 		{"git", "reset", "--hard"},
 		{"git", "stash"},
 		{"git", "clean", "-fd"},
-		{"git", "commit", "source", "--amend", "--state", state, "--confirm", "--agent", "codex", "--task", "task", "--json"},
-		{"git", "push", "source", "--remote", "origin", "--branch", "main", "--force", "--state", state, "--confirm", "--agent", "codex", "--task", "task", "--json"},
+		{"git", "commit", "source", "--amend", "--state", state, "--confirm", "--runtime", "codex", "--task", "task", "--json"},
+		{"git", "push", "source", "--remote", "origin", "--branch", "main", "--force", "--state", state, "--confirm", "--runtime", "codex", "--task", "task", "--json"},
 		{"git", "branch", "delete", "feat/x"},
 		{"git", "pr", "merge", "source"},
 	} {
@@ -183,7 +247,7 @@ func newCLIGitWorkspace(t *testing.T) string {
 
 func cliGitState(t *testing.T, binary, root, home string) string {
 	t.Helper()
-	status, stdout, stderr := executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "inspect", "--agent", "codex", "--task", "state", "--json")
+	status, stdout, stderr := executeCLI(t, binary, root, skillHomeEnvironment(home), "git", "inspect", "--runtime", "codex", "--task", "state", "--json")
 	if status != 0 || stderr != "" {
 		t.Fatalf("inspect: status=%d stdout=%q stderr=%q", status, stdout, stderr)
 	}

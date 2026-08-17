@@ -44,7 +44,7 @@ var portugueseFailureMessages = map[string]failureMessage{
 	"workflow.workflow-audit-start-failed":        {"não foi possível registrar a tentativa de workflow", "verifique as permissões de knowledge/runs"},
 	"workflow.workflow-cleanup-failed":            {"auditoria e limpeza do workflow falharam", "remova manualmente a raiz parcial do provider e verifique knowledge/runs"},
 	"workflow.workflow-audit-finalization-failed": {"não foi possível finalizar a auditoria do workflow", "verifique as permissões de knowledge/runs e tente novamente"},
-	"workflow.agent-unsupported":                  {"agente não suportado para o workflow", "use --agent codex ou --agent claude com workflow speckit"},
+	"workflow.agent-unsupported":                  {"agente não suportado para o workflow", "use --runtime codex ou --runtime claude com workflow speckit"},
 	"workflow.agent-integration-failed":           {"integração do agente não concluiu", "corrija ou atualize o provider e tente novamente"},
 	"workflow.agent-integration-incomplete":       {"integração do agente incompleta", "instale uma versão compatível do provider e tente novamente"},
 	"workflow.agent-discovery-failed":             {"não foi possível preparar descoberta local do agente", "verifique permissões e artefatos de agente na raiz do workspace"},

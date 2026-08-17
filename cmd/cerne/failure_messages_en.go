@@ -44,7 +44,7 @@ var englishFailureMessages = map[string]failureMessage{
 	"workflow.workflow-audit-start-failed":        {"could not record the workflow attempt", "check permissions for knowledge/runs"},
 	"workflow.workflow-cleanup-failed":            {"workflow audit and cleanup failed", "remove the partial provider root manually and inspect knowledge/runs"},
 	"workflow.workflow-audit-finalization-failed": {"could not finalize the workflow audit", "check permissions for knowledge/runs and try again"},
-	"workflow.agent-unsupported":                  {"agent is unsupported for this workflow", "use --agent codex or --agent claude with Spec Kit"},
+	"workflow.agent-unsupported":                  {"agent is unsupported for this workflow", "use --runtime codex or --runtime claude with Spec Kit"},
 	"workflow.agent-integration-failed":           {"agent integration did not complete", "repair or update the provider and try again"},
 	"workflow.agent-integration-incomplete":       {"agent integration is incomplete", "install a compatible provider version and try again"},
 	"workflow.agent-discovery-failed":             {"could not prepare local agent discovery", "check permissions and agent artifacts at the workspace root"},

@@ -2,6 +2,7 @@ package main
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/WilliamSampaio/cerne-cli/internal/localization"
@@ -63,6 +64,31 @@ func formatVerbs(value string) []byte {
 		}
 	}
 	return verbs
+}
+
+func TestNoCatalogPresentsAgentAsCanonicalOption(t *testing.T) {
+	deprecationKeys := map[messageID]bool{
+		"init.agent-deprecated":        true,
+		"workflow.agent-deprecated":    true,
+		"git.inspect.agent-deprecated": true,
+	}
+	for _, catalog := range messageCatalogs {
+		for id, value := range catalog {
+			if deprecationKeys[id] {
+				continue
+			}
+			if strings.Contains(value, "--agent") {
+				t.Errorf("mensagem %q apresenta --agent como forma canônica: %q", id, value)
+			}
+		}
+	}
+	for _, catalog := range failureCatalogs {
+		for id, message := range catalog {
+			if strings.Contains(message.Cause, "--agent") || strings.Contains(message.Correction, "--agent") {
+				t.Errorf("falha %q apresenta --agent como correção: %#v", id, message)
+			}
+		}
+	}
 }
 
 func TestLocalizerUsesSelectedCatalog(t *testing.T) {

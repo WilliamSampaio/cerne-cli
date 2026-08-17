@@ -105,7 +105,7 @@ Usage:
   cerne init <project-name> --source <path>
   cerne init <project-name> --clone <origin>
   cerne init <project-name> --workflow <speckit|openspec>
-  cerne init <project-name> --workflow speckit --agent <codex|claude>
+  cerne init <project-name> --workflow speckit --runtime <codex|claude>
   cerne init <project-name> --source <path> --workflow <speckit|openspec>
   cerne init <project-name> --clone <origin> --workflow <speckit|openspec>
 
@@ -132,7 +132,7 @@ Clone:
 
 Workflow:
   Without the option, keeps knowledge/specs. Spec Kit uses specs and .specify.
-  OpenSpec uses openspec/specs and openspec. --agent codex|claude is accepted only
+  OpenSpec uses openspec/specs and openspec. --runtime codex|claude is accepted only
   with Spec Kit and creates local discovery without changing the manifest.
   Cerne uses existing local installations and does not install agents or providers.
   Use cerne skill install <agent> to install the global skill.
@@ -156,13 +156,13 @@ Examples:
   cerne init example --source ../application
   cerne init example --clone https://host/organization/application.git
   cerne init example --workflow speckit
-  cerne init example --workflow speckit --agent codex
+  cerne init example --workflow speckit --runtime codex
 `,
 	messageWorkflowHelp: `Initializes the workflow already declared in the workspace manifest.
 
 Usage:
   cerne workflow setup
-  cerne workflow setup --agent <codex|claude>
+  cerne workflow setup --runtime <codex|claude>
   cerne workflow --help
 
 Location:
@@ -170,7 +170,7 @@ Location:
 
 Behavior:
   Runs only the declared provider already installed inside knowledge. A ready
-  layout is unchanged and a partial layout is refused. --agent prepares local
+  layout is unchanged and a partial layout is refused. --runtime prepares local
   Spec Kit discovery without persisting the agent in the manifest.
 
 Output:
@@ -183,7 +183,7 @@ Effects:
 
 Examples:
   cerne workflow setup
-  cerne workflow setup --agent claude
+  cerne workflow setup --runtime claude
 `,
 	messageDoctorHelp: `Analyzes the current Cerne workspace without modifying files or repositories.
 
@@ -391,8 +391,9 @@ Precedence:
 	"context.problem.workflow-unknown-provider.detail":        "unsupported provider",
 	"context.problem.workflow-unknown-provider.correction":    "use speckit or openspec in the manifest",
 	messageGitHelp:                                            gitHelp,
-	"git.usage":                                               "error: invalid argument\nusage: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n",
-	"git.inspect.usage":                                       "error: invalid argument\nusage: cerne git inspect --agent <codex|claude|gemini> --task <task-id> --json\n",
+	"git.usage":                                               "error: invalid argument\nusage: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
+	"git.inspect.usage":                                       "error: invalid argument\nusage: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
+	"git.inspect.agent-deprecated":                            "warning: --agent is deprecated; use --runtime %s instead\n",
 	"git.failure":                                             "error: could not inspect workspace Git\ncorrection: check the workspace and try again\n",
 	"command.missing":                                         "error: provide a command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
 	"command.unknown":                                         "error: unknown command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
@@ -408,7 +409,8 @@ Precedence:
 	"restore.source.cloned":                                   "Cloned source: %s\n",
 	"restore.source.linked":                                   "Linked source: %s\n",
 	"restore.manifest.changed":                                "Manifest: source reference updated.\n",
-	"init.usage":                                              "usage: cerne init <project-name> [--source <path> | --clone <origin>] [--workflow <speckit|openspec> [--agent <codex|claude>]]\n",
+	"init.usage":                                              "usage: cerne init <project-name> [--source <path> | --clone <origin>] [--workflow <speckit|openspec> [--runtime <codex|claude>]]\n",
+	"init.agent-deprecated":                                   "warning: --agent is deprecated; use --runtime %s instead\n",
 	"init.invalid-argument":                                   "error: invalid argument\n",
 	"init.invalid-name":                                       "error: invalid project name; use 1 to 255 ASCII characters, start with a letter or number, and avoid reserved names\n",
 	"init.invalid-workflow":                                   "error: invalid workflow: use speckit or openspec\n",
@@ -428,7 +430,8 @@ Precedence:
 	"agent.discovery":                                         "Agent: %s\nDiscovery: ready\n",
 	"workflow.pending.warning":                                "warning: executable %q was not found; workflow %s was not initialized\n",
 	"workflow.pending.correction":                             "correction: install %s and run %q inside the workspace\n",
-	"workflow.usage":                                          "error: invalid argument\nusage: cerne workflow setup [--agent <codex|claude>]\n",
+	"workflow.usage":                                          "error: invalid argument\nusage: cerne workflow setup [--runtime <codex|claude>]\n",
+	"workflow.agent-deprecated":                               "warning: --agent is deprecated; use --runtime %s instead\n",
 	"workflow.failure.default":                                "error: could not initialize the workflow\ncorrection: inspect the workspace and try again\n",
 	"workflow.executor.missing":                               "error: executable %q was not found\ncorrection: install %s and run the command again\n",
 	"workflow.result":                                         "Workflow: %s\nKnowledge: %s\n",

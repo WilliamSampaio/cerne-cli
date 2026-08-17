@@ -15,7 +15,7 @@ const (
 
 var ErrInvalidAgent = errors.New("invalid agent")
 
-func SupportedAgent(agent string) bool {
+func SupportedRuntime(agent string) bool {
 	return agent == "codex" || agent == "claude" || agent == "gemini"
 }
 
@@ -34,8 +34,8 @@ func SupportedSkills(agent string) []string {
 	}
 }
 
-func SupportsSkill(agent, skill string) bool {
-	for _, supported := range SupportedSkills(agent) {
+func SupportsSkill(runtime, skill string) bool {
+	for _, supported := range SupportedSkills(runtime) {
 		if skill == supported {
 			return true
 		}
@@ -43,7 +43,7 @@ func SupportsSkill(agent, skill string) bool {
 	return false
 }
 
-func TargetPath(home, agent string, skill ...string) (string, error) {
+func TargetPath(home, runtime string, skill ...string) (string, error) {
 	skillName := SkillName
 	if len(skill) == 1 {
 		skillName = skill[0]
@@ -51,17 +51,17 @@ func TargetPath(home, agent string, skill ...string) (string, error) {
 	if len(skill) > 1 || !SupportedSkill(skillName) {
 		return "", errors.New("invalid skill")
 	}
-	if !SupportedAgent(agent) {
+	if !SupportedRuntime(runtime) {
 		return "", ErrInvalidAgent
 	}
-	if !SupportsSkill(agent, skillName) {
+	if !SupportsSkill(runtime, skillName) {
 		return "", ErrInvalidAgent
 	}
 	parts := map[string][]string{
 		"codex":  {".codex", "skills", skillName},
 		"claude": {".claude", "skills", skillName},
 		"gemini": {".gemini", "skills", skillName},
-	}[agent]
+	}[runtime]
 	target := filepath.Join(append([]string{home}, parts...)...)
 	if inside, err := pathInside(home, target); err != nil || !inside {
 		return "", errors.New("destination outside home")
