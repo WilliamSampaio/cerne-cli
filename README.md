@@ -288,6 +288,16 @@ See the complete [Cerne command reference](docs/en/commands.md).
 Normal output and help use stdout. Usage and operational failures use stderr. `doctor` reports,
 including blocking findings, use stdout so the full diagnosis remains one stable stream.
 
+`doctor` and `status` color their severity icon (`✓`/`!`/`✗`) when stdout is an interactive
+terminal. Set [`NO_COLOR`](https://no-color.org) (any non-empty value) or redirect the output to
+disable color; the icon stays, and `--json` output is never colored.
+
+When stdout is an interactive terminal, `doctor`, `status`, and `context` also add a titled section
+rule, a single value column aligned across the whole command, a bold section title, and dimmed
+labels/paths; `cerne --version` shows a small "CERNE" banner. `NO_COLOR` only removes color, bold,
+and dim — the rules and alignment stay. Redirecting output (a pipe, a file, CI) disables all of it
+and keeps the output byte-for-byte identical to a version without this layout.
+
 ## Safety and privacy
 
 - `doctor` and `status` are read-only.

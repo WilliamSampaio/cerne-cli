@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/WilliamSampaio/cerne-cli/internal/filecheck"
@@ -368,7 +369,7 @@ func runLocalized(args []string, stdout, stderr io.Writer, messages localizer, h
 		return 0
 	}
 	if len(args) == 1 && args[0] == "--version" {
-		fmt.Fprintf(stdout, "cerne %s\n", version)
+		renderVersion(stdout)
 		return 0
 	}
 	if len(args) == 0 {
@@ -552,6 +553,14 @@ func runContext(args []string, stdout, stderr io.Writer, messages localizer) int
 }
 
 func renderContext(stdout io.Writer, report workspace.ContextReport, messages localizer) {
+	if !layoutEnabled(stdout) {
+		renderContextPlain(stdout, report, messages)
+		return
+	}
+	renderContextStyled(stdout, report, messages)
+}
+
+func renderContextPlain(stdout io.Writer, report workspace.ContextReport, messages localizer) {
 	if report.Workspace != nil && report.Workspace.Name != "" {
 		fmt.Fprint(stdout, messages.text("context.workspace", report.Workspace.Name))
 	}
@@ -598,6 +607,78 @@ func renderContext(stdout io.Writer, report workspace.ContextReport, messages lo
 func contextPathLine(output io.Writer, messages localizer, label messageID, path string) {
 	if path != "" {
 		fmt.Fprintf(output, "%s: %s\n", messages.text(label), path)
+	}
+}
+
+func renderContextStyled(stdout io.Writer, report workspace.ContextReport, messages localizer) {
+	width := columnWidth([]string{
+		"Status", "Root",
+		messages.text("status.label.path"),
+		messages.text("context.label.product"),
+		messages.text("context.label.specs"),
+		messages.text("context.label.decisions"),
+		messages.text("context.label.policies"),
+		messages.text("context.label.location"),
+	})
+
+	title := "Workspace"
+	if report.Workspace != nil && report.Workspace.Name != "" {
+		title = report.Workspace.Name
+	}
+	fmt.Fprintln(stdout, sectionRule(stdout, title))
+	fmt.Fprintln(stdout, alignedField(stdout, "Status", width, contextStatus(messages, report.Status)))
+	if report.Workspace != nil {
+		fmt.Fprintln(stdout, alignedField(stdout, "Root", width, report.Workspace.Root))
+	}
+
+	if report.Knowledge != nil {
+		fmt.Fprintln(stdout)
+		fmt.Fprintln(stdout, sectionRule(stdout, "Knowledge"))
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("status.label.path"), width, report.Knowledge.Path))
+		contextStyledField(stdout, messages, "context.label.product", width, report.Knowledge.ProductPath)
+		contextStyledField(stdout, messages, "context.label.specs", width, report.Knowledge.SpecsPath)
+		contextStyledField(stdout, messages, "context.label.decisions", width, report.Knowledge.DecisionsPath)
+		contextStyledField(stdout, messages, "context.label.policies", width, report.Knowledge.PoliciesPath)
+	}
+
+	if report.Source != nil {
+		fmt.Fprintln(stdout)
+		fmt.Fprintln(stdout, sectionRule(stdout, "Source"))
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("status.label.path"), width, report.Source.Path))
+		location := messages.text("context.location.outside")
+		if report.Source.InsideWorkspace {
+			location = messages.text("context.location.inside")
+		}
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("context.label.location"), width, location))
+	}
+
+	if report.Workflow != nil {
+		fmt.Fprintln(stdout)
+		fmt.Fprintln(stdout, sectionRule(stdout, "Workflow"))
+		if !report.Workflow.Declared {
+			fmt.Fprintln(stdout, styledText(stdout, messages.text("context.workflow.unset"), ansiDim))
+		} else {
+			line := report.Workflow.Provider + " (" + contextWorkflowState(messages, report.Workflow.State) + ")"
+			fmt.Fprintln(stdout, styledText(stdout, line, ansiDim))
+		}
+	}
+
+	if len(report.Problems) > 0 {
+		fmt.Fprintln(stdout)
+	}
+	for _, problem := range report.Problems {
+		symbol := "✗"
+		if problem.Severity == "warning" {
+			symbol = "!"
+		}
+		fmt.Fprint(stdout, messages.text("context.problem", symbol, contextComponent(messages, problem.Component), contextProblemDetail(messages, problem.Code)))
+		fmt.Fprint(stdout, messages.text("context.correction", contextProblemCorrection(messages, problem.Code)))
+	}
+}
+
+func contextStyledField(output io.Writer, messages localizer, label messageID, width int, path string) {
+	if path != "" {
+		fmt.Fprintln(output, alignedField(output, messages.text(label), width, path))
 	}
 }
 
@@ -1172,25 +1253,73 @@ func adaptAccess(path string) workspace.AccessResult {
 }
 
 func renderDiagnosis(stdout io.Writer, diagnosis workspace.Diagnosis, messages localizer) {
+	if !layoutEnabled(stdout) {
+		renderDiagnosisPlain(stdout, diagnosis, messages)
+		return
+	}
+	renderDiagnosisStyled(stdout, diagnosis, messages)
+}
+
+func renderDiagnosisPlain(stdout io.Writer, diagnosis workspace.Diagnosis, messages localizer) {
 	for _, check := range diagnosis.Checks {
 		label, detail, correction := localizedCheck(messages, check)
-		fmt.Fprint(stdout, messages.text("diagnosis.line", symbol(check.Severity), label, detail))
+		icon := colorizeIcon(stdout, symbol(check.Severity), severityColor(check.Severity))
+		fmt.Fprint(stdout, messages.text("diagnosis.line", icon, label, detail))
 		if check.Correction != "" {
 			fmt.Fprint(stdout, messages.text("diagnosis.correction", correction))
 		}
 		fmt.Fprintln(stdout)
 	}
-	switch diagnosis.Status {
+	fmt.Fprint(stdout, diagnosisSummary(diagnosis.Status, messages))
+}
+
+func renderDiagnosisStyled(stdout io.Writer, diagnosis workspace.Diagnosis, messages localizer) {
+	fmt.Fprintln(stdout, sectionRule(stdout, "doctor"))
+	fmt.Fprintln(stdout)
+
+	labels := make([]string, len(diagnosis.Checks))
+	for i, check := range diagnosis.Checks {
+		labels[i], _, _ = localizedCheck(messages, check)
+	}
+	width := columnWidth(labels)
+
+	for _, check := range diagnosis.Checks {
+		label, detail, correction := localizedCheck(messages, check)
+		icon := colorizeIcon(stdout, symbol(check.Severity), severityColor(check.Severity))
+		fmt.Fprintln(stdout, icon+" "+alignedField(stdout, label, width, detail))
+		if check.Correction != "" {
+			corrText := strings.TrimSuffix(strings.TrimPrefix(messages.text("diagnosis.correction", correction), "; "), "\n")
+			fmt.Fprintln(stdout, "    "+styledText(stdout, corrText, ansiDim))
+		}
+	}
+
+	fmt.Fprintln(stdout)
+	fmt.Fprintln(stdout, shortRule())
+	fmt.Fprintln(stdout)
+	summary := strings.TrimSuffix(diagnosisSummary(diagnosis.Status, messages), "\n")
+	fmt.Fprintln(stdout, styledText(stdout, summary, ansiBold))
+}
+
+func diagnosisSummary(status workspace.Status, messages localizer) string {
+	switch status {
 	case workspace.Invalid:
-		fmt.Fprint(stdout, messages.text("diagnosis.invalid"))
+		return messages.text("diagnosis.invalid")
 	case workspace.Warnings:
-		fmt.Fprint(stdout, messages.text("diagnosis.warning"))
+		return messages.text("diagnosis.warning")
 	default:
-		fmt.Fprint(stdout, messages.text("diagnosis.healthy"))
+		return messages.text("diagnosis.healthy")
 	}
 }
 
 func renderStatus(stdout io.Writer, report workspace.WorkspaceReport, messages localizer) {
+	if !layoutEnabled(stdout) {
+		renderStatusPlain(stdout, report, messages)
+		return
+	}
+	renderStatusStyled(stdout, report, messages)
+}
+
+func renderStatusPlain(stdout io.Writer, report workspace.WorkspaceReport, messages localizer) {
 	fmt.Fprint(stdout, messages.text("status.project", report.ProjectName))
 	fmt.Fprint(stdout, messages.text("status.workspace", report.Root))
 	for index, repository := range report.Repositories {
@@ -1199,21 +1328,64 @@ func renderStatus(stdout io.Writer, report workspace.WorkspaceReport, messages l
 		}
 		fmt.Fprintln(stdout, messages.text(messageID("status.repository."+repository.Name)))
 		fmt.Fprint(stdout, messages.text("status.path", repository.Path))
-		branch := repository.Branch
-		if branch == gitexec.DetachedHEAD {
-			branch = messages.text("status.branch.detached-head")
-		}
-		commit := repository.Commit
-		if commit == gitexec.NoCommits {
-			commit = messages.text("status.commit.no-commits")
-		}
+		branch, commit := statusBranchCommit(repository, messages)
 		fmt.Fprint(stdout, messages.text("status.branch", branch))
 		fmt.Fprint(stdout, messages.text("status.commit", commit))
-		fmt.Fprint(stdout, messages.text("status.state", messages.text(messageID("status.state."+repository.State))))
+		stateSeverity := repositorySeverity(repository.State)
+		stateIcon := colorizeIcon(stdout, symbol(stateSeverity), severityColor(stateSeverity))
+		stateLabel := messages.text(messageID("status.state." + repository.State))
+		fmt.Fprint(stdout, messages.text("status.state", stateIcon+" "+stateLabel))
 		fmt.Fprint(stdout, messages.text("status.modified", repository.ModifiedCount))
 		fmt.Fprint(stdout, messages.text("status.staged", repository.StagedCount))
 		fmt.Fprint(stdout, messages.text("status.untracked", repository.UntrackedCount))
 	}
+}
+
+func renderStatusStyled(stdout io.Writer, report workspace.WorkspaceReport, messages localizer) {
+	project := strings.TrimSuffix(messages.text("status.project", report.ProjectName), "\n")
+	fmt.Fprintln(stdout, styledText(stdout, project, ansiBold))
+	fmt.Fprintln(stdout, strings.TrimSuffix(messages.text("status.workspace", report.Root), "\n\n"))
+
+	width := columnWidth([]string{
+		messages.text("status.label.path"),
+		messages.text("status.label.branch"),
+		messages.text("status.label.commit"),
+		messages.text("status.label.state"),
+		messages.text("status.label.modified"),
+		messages.text("status.label.staged"),
+		messages.text("status.label.untracked"),
+	})
+
+	for index, repository := range report.Repositories {
+		if index > 0 {
+			fmt.Fprintln(stdout)
+		}
+		fmt.Fprintln(stdout, sectionRule(stdout, messages.text(messageID("status.repository."+repository.Name))))
+		branch, commit := statusBranchCommit(repository, messages)
+		stateSeverity := repositorySeverity(repository.State)
+		stateIcon := colorizeIcon(stdout, symbol(stateSeverity), severityColor(stateSeverity))
+		stateLabel := stateIcon + " " + messages.text(messageID("status.state."+repository.State))
+
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("status.label.path"), width, repository.Path))
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("status.label.branch"), width, branch))
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("status.label.commit"), width, commit))
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("status.label.state"), width, stateLabel))
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("status.label.modified"), width, strconv.Itoa(repository.ModifiedCount)))
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("status.label.staged"), width, strconv.Itoa(repository.StagedCount)))
+		fmt.Fprintln(stdout, alignedField(stdout, messages.text("status.label.untracked"), width, strconv.Itoa(repository.UntrackedCount)))
+	}
+}
+
+func statusBranchCommit(repository workspace.RepositoryReport, messages localizer) (branch, commit string) {
+	branch = repository.Branch
+	if branch == gitexec.DetachedHEAD {
+		branch = messages.text("status.branch.detached-head")
+	}
+	commit = repository.Commit
+	if commit == gitexec.NoCommits {
+		commit = messages.text("status.commit.no-commits")
+	}
+	return branch, commit
 }
 
 func renderLink(stdout io.Writer, result workspace.LinkResult, messages localizer) {
