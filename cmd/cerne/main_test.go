@@ -28,16 +28,17 @@ Uso:
   cerne --version
 
 Comandos:
-  init      Cria um workspace Cerne
-  restore   Restaura um workspace Cerne existente
-  doctor    Valida a estrutura e a segurança do workspace
-  status    Exibe o estado local dos repositórios
-  link      Vincula um repositório Git local como source
-  workflow  Inicializa o workflow declarado no workspace
-  context   Exibe o contexto estrutural do workspace
-  skill     Instala skills Cerne no perfil do agente
-  git       Coordena inspeção Git segura
-  config    Administra preferências do usuário
+  init        Cria um workspace Cerne
+  restore     Restaura um workspace Cerne existente
+  doctor      Valida a estrutura e a segurança do workspace
+  status      Exibe o estado local dos repositórios
+  link        Vincula um repositório Git local como source
+  workflow    Inicializa o workflow declarado no workspace
+  context     Exibe o contexto estrutural do workspace
+  skill       Instala skills Cerne no perfil do agente
+  git         Coordena inspeção Git segura
+  config      Administra preferências do usuário
+  completion  Gera script de completion de shell (bash, zsh)
 
 Opções:
   --lang       Usa en ou pt-BR somente nesta execução

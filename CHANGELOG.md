@@ -19,6 +19,18 @@ All notable changes to Cerne are documented in this file. This project follows
   CI) keeps the output of `doctor` and `--version` byte-for-byte identical to before this change;
   `status`'s severity icon (added in the previous entry) and `context`'s output are unaffected by
   this change outside a terminal. `--json` output is unaffected.
+- New `cerne completion <bash|zsh>` prints a shell completion script to stdout that completes
+  `cerne`'s subcommand names (`init`, `restore`, `doctor`, `status`, `link`, `workflow`, `context`,
+  `skill`, `git`, `config`, `completion`), plus the second word of `config` (`set`/`get`/`unset`),
+  `skill` (`install`), `workflow` (`setup`), and `git` (`inspect`), plus a third and, where
+  applicable, fourth level at the remaining closed-vocabulary points: `language` after
+  `config set|get|unset`; the runtime (`codex`/`claude`/`gemini`) after `skill install`, and the
+  skill name after that (depending on the chosen runtime); and the runtime after `--runtime` in
+  `workflow setup` and `git inspect`. Other flags and free-form arguments (paths, project names) are
+  not completed. In zsh, the highlighted suggestion shows a one-line description in the invocation's
+  effective language; bash has no per-item description in its completion API. Load it with
+  `eval "$(cerne completion bash)"` or `eval "$(cerne completion zsh)"`; Cerne never writes to any
+  shell configuration file. Does not require an initialized workspace.
 
 ### Changed
 

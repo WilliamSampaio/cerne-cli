@@ -182,4 +182,21 @@ accepted, including valid Git worktrees. Knowledge and source must be distinct a
 dangerously nested. Replacing a different configured source requires `--replace`; linking the same
 source succeeds without rewriting the manifest. Manifest replacement is atomic.
 
+## `cerne completion <bash|zsh>`
+
+Prints a shell completion script to stdout that completes `cerne`'s subcommand names, plus the
+second word of `config` (`set`/`get`/`unset`), `skill` (`install`), `workflow` (`setup`), and `git`
+(`inspect`). It also completes a third and, where applicable, fourth level at the remaining
+closed-vocabulary points: `language` after `config set|get|unset`; the runtime
+(`codex`/`claude`/`gemini`) after `skill install`, and the skill name after that (depending on the
+chosen runtime — `cerne-context`, `cerne-product-discovery`, and `cerne-git-workflow` for
+`codex`/`claude`; only `cerne-git-workflow` for `gemini`); and the runtime after the `--runtime`
+flag in `workflow setup --runtime` and `git inspect --runtime`. Other flags and free-form arguments
+(paths, project names) are not completed. In zsh, the highlighted item in the suggestion menu shows
+a one-line description in the invocation's effective language; bash has no per-item description in
+its completion API. Load it for the current session with `eval "$(cerne completion bash)"` or
+`eval "$(cerne completion zsh)"`; to persist it, append the same output to your shell's startup
+file (`~/.bashrc` or `~/.zshrc`) yourself — Cerne never writes to that file. Does not require an
+initialized workspace. An unsupported or missing shell fails as invalid usage with status 2.
+
 <!-- END AUTO-GENERATED -->
