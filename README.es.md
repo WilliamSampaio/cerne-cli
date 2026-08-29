@@ -293,6 +293,17 @@ La salida normal y la ayuda usan stdout. Los errores de uso y fallos operacional
 informes de `doctor`, incluidos los errores bloqueantes, usan stdout para mantener el diagnóstico en
 un único stream.
 
+`doctor` y `status` colorean el ícono de severidad (`✓`/`!`/`✗`) cuando stdout es una terminal
+interactiva. Defina [`NO_COLOR`](https://no-color.org) (cualquier valor no vacío) o redirija la
+salida para desactivar el color; el ícono permanece, y la salida `--json` nunca se colorea.
+
+Cuando stdout es una terminal interactiva, `doctor`, `status` y `context` también reciben una regla
+de sección con título, una única columna de valores alineada en toda la salida del comando, título
+en negrita y etiquetas/rutas atenuadas; `cerne --version` muestra un pequeño banner "CERNE".
+`NO_COLOR` solo elimina color, negrita y atenuado — la regla y la alineación continúan.
+Redirigir la salida (pipe, archivo, CI) desactiva todo esto y mantiene la salida byte a byte
+idéntica a una versión sin este acabado.
+
 ## Seguridad y privacidad
 
 - `doctor` y `status` son de solo lectura.

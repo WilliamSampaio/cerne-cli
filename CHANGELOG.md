@@ -5,6 +5,21 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+### Added
+
+- `cerne doctor` and `cerne status` color their severity icon (`✓`/`!`/`✗`) when stdout is an
+  interactive terminal. Color is disabled by [`NO_COLOR`](https://no-color.org) or a non-interactive
+  stdout; the icon itself is always shown, matching the existing `doctor` output. `--json` output is
+  unaffected.
+- `cerne doctor`, `cerne status`, and `cerne context` add a titled section rule, a single value
+  column aligned across the whole command output, a bold section title, and dimmed labels/paths,
+  when stdout is an interactive terminal. `cerne --version` shows a small "CERNE" banner under the
+  same condition. [`NO_COLOR`](https://no-color.org) removes only color/bold/dim, not the rule or
+  the alignment — those two conditions are now independent. A non-interactive stdout (pipe, file,
+  CI) keeps the output of `doctor` and `--version` byte-for-byte identical to before this change;
+  `status`'s severity icon (added in the previous entry) and `context`'s output are unaffected by
+  this change outside a terminal. `--json` output is unaffected.
+
 ### Changed
 
 - `cerne init`, `cerne workflow setup`, `cerne git inspect`, and the standalone installer now

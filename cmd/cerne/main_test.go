@@ -8,13 +8,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/WilliamSampaio/cerne-cli/internal/localization"
+	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
 )
 
 const expectedGlobalHelp = `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
@@ -1432,6 +1435,214 @@ func TestCLIDoctorPreReportFailure(t *testing.T) {
 	}
 }
 
+func TestRenderDiagnosisColorOnTTY(t *testing.T) {
+	f := withTerminal(t, true)
+	t.Setenv("NO_COLOR", "")
+
+	diagnosis := workspace.Diagnosis{
+		Status: workspace.Warnings,
+		Checks: []workspace.CheckResult{
+			{ID: "manifest", Label: "Manifest", Detail: "ok", Severity: workspace.Pass},
+			{ID: "workflow", Label: "Workflow", Detail: "pending", Severity: workspace.Warning},
+			{ID: "git-available", Label: "Git", Detail: "missing", Severity: workspace.Error},
+		},
+	}
+	renderDiagnosis(f, diagnosis, localizer{language: localization.Default})
+
+	content, err := os.ReadFile(f.Name())
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	output := string(content)
+	for _, want := range []string{
+		ansiGreen + "✓" + ansiReset,
+		ansiYellow + "!" + ansiReset,
+		ansiRed + "✗" + ansiReset,
+		"── " + ansiBold + "doctor" + ansiReset,
+		shortRule(),
+		ansiDim + "Manifest" + ansiReset,
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output does not contain %q:\n%s", want, output)
+		}
+	}
+}
+
+func TestRenderStatusColorOnTTY(t *testing.T) {
+	f := withTerminal(t, true)
+	t.Setenv("NO_COLOR", "")
+
+	longPath := "/tmp/example/" + strings.Repeat("very-long-directory-name/", 5) + "knowledge"
+	report := workspace.WorkspaceReport{
+		ProjectName: "example",
+		Root:        "/tmp/example",
+		Repositories: []workspace.RepositoryReport{
+			{Name: "knowledge", Path: longPath, Branch: "main", Commit: "abc1234", State: workspace.RepositoryClean},
+			{Name: "source", Path: "/tmp/example/source", Branch: "main", Commit: "def5678", State: workspace.RepositoryPending},
+		},
+	}
+	renderStatus(f, report, localizer{language: localization.Default})
+
+	content, err := os.ReadFile(f.Name())
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	output := string(content)
+	for _, want := range []string{
+		ansiGreen + "✓" + ansiReset,
+		ansiYellow + "!" + ansiReset,
+		"── " + ansiBold + "Knowledge" + ansiReset,
+		"── " + ansiBold + "Source" + ansiReset,
+		ansiDim + "Path" + ansiReset,
+		longPath, // FR-010: long paths are never truncated
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output does not contain %q:\n%s", want, output)
+		}
+	}
+}
+
+func TestRenderContextColorOnTTY(t *testing.T) {
+	f := withTerminal(t, true)
+	t.Setenv("NO_COLOR", "")
+
+	report := workspace.ContextReport{
+		Status: workspace.Healthy,
+		Workspace: &workspace.WorkspaceContext{
+			Name: "example",
+			Root: "/tmp/example",
+		},
+		Knowledge: &workspace.KnowledgeContext{
+			Path:        "/tmp/example/knowledge",
+			ProductPath: "/tmp/example/knowledge/product",
+		},
+		Source: &workspace.SourceContext{
+			Path:            "/tmp/example/source",
+			InsideWorkspace: true,
+		},
+	}
+	renderContext(f, report, localizer{language: localization.Default})
+
+	content, err := os.ReadFile(f.Name())
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	output := string(content)
+	for _, want := range []string{
+		"── " + ansiBold + "example" + ansiReset,
+		"── " + ansiBold + "Knowledge" + ansiReset,
+		"── " + ansiBold + "Source" + ansiReset,
+		ansiDim + "Status" + ansiReset,
+		ansiDim + "Root" + ansiReset,
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output does not contain %q:\n%s", want, output)
+		}
+	}
+}
+
+var (
+	ansiEscapeSequence = regexp.MustCompile("\x1b\\[[0-9;]*m")
+	fieldLinePattern   = regexp.MustCompile(`^(\S.*\S|\S)( {2,})(\S.*)$`)
+)
+
+func TestRenderStatusAlignmentAcrossLanguages(t *testing.T) {
+	report := workspace.WorkspaceReport{
+		ProjectName: "example",
+		Root:        "/tmp/example",
+		Repositories: []workspace.RepositoryReport{
+			{Name: "knowledge", Path: "/tmp/example/knowledge", Branch: "main", Commit: "abc1234", State: workspace.RepositoryClean},
+			{Name: "source", Path: "/tmp/example/source", Branch: "main", Commit: "def5678", State: workspace.RepositoryPending},
+		},
+	}
+
+	for _, language := range []localization.Language{localization.English, localization.PortugueseBrazil} {
+		t.Run(string(language), func(t *testing.T) {
+			f := withTerminal(t, true)
+			t.Setenv("NO_COLOR", "")
+			renderStatus(f, report, localizer{language: language})
+
+			content, err := os.ReadFile(f.Name())
+			if err != nil {
+				t.Fatalf("ReadFile() error = %v", err)
+			}
+			plain := ansiEscapeSequence.ReplaceAllString(string(content), "")
+
+			var valueColumns []int
+			for _, line := range strings.Split(plain, "\n") {
+				match := fieldLinePattern.FindStringSubmatch(line)
+				if match == nil || strings.Contains(line, "──") {
+					continue // skip section rules, blank lines, and non label/value lines
+				}
+				label, gap := match[1], match[2]
+				valueColumns = append(valueColumns, utf8.RuneCountInString(label)+utf8.RuneCountInString(gap))
+			}
+			if len(valueColumns) == 0 {
+				t.Fatalf("%s: no field lines found in:\n%s", language, plain)
+			}
+			for _, column := range valueColumns[1:] {
+				if column != valueColumns[0] {
+					t.Errorf("%s: value column not aligned to a single position across the output: %v", language, valueColumns)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderDiagnosisAndStatusLayoutWithNoColor(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+
+	t.Run("doctor", func(t *testing.T) {
+		f := withTerminal(t, true)
+		diagnosis := workspace.Diagnosis{
+			Status: workspace.Warnings,
+			Checks: []workspace.CheckResult{
+				{ID: "manifest", Label: "Manifest", Detail: "ok", Severity: workspace.Pass},
+				{ID: "workflow", Label: "Workflow", Detail: "pending", Severity: workspace.Warning},
+			},
+		}
+		renderDiagnosis(f, diagnosis, localizer{language: localization.Default})
+
+		content, err := os.ReadFile(f.Name())
+		if err != nil {
+			t.Fatalf("ReadFile() error = %v", err)
+		}
+		output := string(content)
+		if strings.ContainsRune(output, '\x1b') {
+			t.Errorf("output contains ANSI sequence with NO_COLOR set:\n%s", output)
+		}
+		for _, want := range []string{"── doctor ", shortRule(), "✓", "!"} {
+			if !strings.Contains(output, want) {
+				t.Errorf("output missing layout element %q with NO_COLOR set:\n%s", want, output)
+			}
+		}
+	})
+
+	t.Run("status", func(t *testing.T) {
+		f := withTerminal(t, true)
+		report := workspace.WorkspaceReport{
+			ProjectName: "example",
+			Root:        "/tmp/example",
+			Repositories: []workspace.RepositoryReport{
+				{Name: "knowledge", Path: "/tmp/example/knowledge", Branch: "main", Commit: "abc1234", State: workspace.RepositoryClean},
+			},
+		}
+		renderStatus(f, report, localizer{language: localization.Default})
+
+		content, err := os.ReadFile(f.Name())
+		if err != nil {
+			t.Fatalf("ReadFile() error = %v", err)
+		}
+		output := string(content)
+		if strings.ContainsRune(output, '\x1b') {
+			t.Errorf("output contains ANSI sequence with NO_COLOR set:\n%s", output)
+		}
+		if !strings.Contains(output, "── Knowledge ") {
+			t.Errorf("output missing section rule with NO_COLOR set:\n%s", output)
+		}
+	})
+}
+
 func TestCLIStatusCleanWorkspace(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("Git não está disponível")
@@ -1454,8 +1665,8 @@ func TestCLIStatusCleanWorkspace(t *testing.T) {
 	knowledgeCommit := gitOutput(t, knowledge, "rev-parse", "--short=7", "HEAD")
 	sourceCommit := gitOutput(t, source, "rev-parse", "--short=7", "HEAD")
 	expected := expectedStatus(root, "example",
-		repositoryExpectation{"Knowledge", knowledge, knowledgeBranch, knowledgeCommit, "limpo", 0, 0, 0},
-		repositoryExpectation{"Source", source, sourceBranch, sourceCommit, "limpo", 0, 0, 0},
+		repositoryExpectation{"Knowledge", knowledge, knowledgeBranch, knowledgeCommit, "✓ limpo", 0, 0, 0},
+		repositoryExpectation{"Source", source, sourceBranch, sourceCommit, "✓ limpo", 0, 0, 0},
 	)
 
 	status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
@@ -1511,13 +1722,34 @@ func TestCLIStatusPendingDetachedAndNoCommits(t *testing.T) {
 		"Source\n",
 		"  Branch: detached HEAD\n",
 		"  Commit: " + commit + "\n",
-		"  Estado: alterações pendentes\n",
+		"  Estado: ! alterações pendentes\n",
 		"  Modificados: 1\n",
 		"  Em stage: 1\n",
 		"  Não rastreados: 1\n",
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Fatalf("stdout não contém %q:\n%s", want, stdout)
+		}
+	}
+}
+
+func TestCLIDoctorAndStatusNoANSIOutsideTTY(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	root := initWorkspaceWithCLI(t, binary, t.TempDir(), "example")
+
+	for _, args := range [][]string{{"doctor"}, {"status"}} {
+		status, stdout, stderr := executeCLI(t, binary, root, nil, args...)
+		if status != 0 || stderr != "" {
+			t.Fatalf("%v: status = %d\nstdout = %q\nstderr = %q", args, status, stdout, stderr)
+		}
+		if strings.ContainsRune(stdout, '\x1b') {
+			t.Fatalf("%v: stdout contém sequência ANSI fora de TTY:\n%s", args, stdout)
+		}
+		if !strings.Contains(stdout, "✓") {
+			t.Fatalf("%v: stdout deveria manter o ícone mesmo sem cor:\n%s", args, stdout)
 		}
 	}
 }

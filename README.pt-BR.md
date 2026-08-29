@@ -288,6 +288,16 @@ Consulte a [referência completa dos comandos do Cerne](docs/pt-BR/commands.md).
 Saídas normais e ajuda usam stdout. Erros de uso e falhas operacionais usam stderr. Os relatórios do
 `doctor`, inclusive com erros bloqueantes, usam stdout para manter o diagnóstico em um único stream.
 
+`doctor` e `status` colorem o ícone de severidade (`✓`/`!`/`✗`) quando stdout é um terminal
+interativo. Defina [`NO_COLOR`](https://no-color.org) (qualquer valor não vazio) ou redirecione a
+saída para desativar a cor; o ícone permanece, e a saída `--json` nunca é colorida.
+
+Quando stdout é um terminal interativo, `doctor`, `status` e `context` também ganham régua de seção
+com título, uma única coluna de valores alinhada em toda a saída do comando, título em negrito e
+rótulos/caminhos esmaecidos; `cerne --version` mostra um pequeno banner "CERNE". `NO_COLOR` remove
+só cor, negrito e esmaecido — a régua e o alinhamento continuam. Redirecionar a saída (pipe, arquivo,
+CI) desativa tudo isso e mantém a saída byte a byte idêntica a uma versão sem esse acabamento.
+
 ## Segurança e privacidade
 
 - `doctor` e `status` são somente de leitura.
