@@ -189,4 +189,22 @@ absolutas y worktrees válidos. Knowledge y source deben ser distintos y no pued
 forma peligrosa. Cambiar un source ya configurado requiere `--replace`; vincular el mismo source
 termina sin reescribir el manifiesto. La sustitución del manifiesto es atómica.
 
+## `cerne completion <bash|zsh>`
+
+Imprime en stdout un script de completion de shell que completa los nombres de subcomando de
+`cerne`, además de la segunda palabra de `config` (`set`/`get`/`unset`), `skill` (`install`),
+`workflow` (`setup`) y `git` (`inspect`). También completa un tercer y, cuando aplica, un cuarto
+nivel en los demás puntos de vocabulario cerrado: `language` después de `config set|get|unset`; el
+runtime (`codex`/`claude`/`gemini`) después de `skill install`, y el nombre de la skill después de
+eso (según el runtime elegido — `cerne-context`, `cerne-product-discovery` y `cerne-git-workflow`
+para `codex`/`claude`; solo `cerne-git-workflow` para `gemini`); y el runtime después de la flag
+`--runtime` en `workflow setup --runtime` y `git inspect --runtime`. Otras flags y argumentos libres
+(rutas, nombres de proyecto) no se completan. En zsh, el ítem resaltado en la lista de sugerencias
+muestra una descripción de una línea en el idioma efectivo de la invocación; bash no tiene
+descripción por ítem en su API de completion. Cárguelo en la sesión actual con
+`eval "$(cerne completion bash)"` o `eval "$(cerne completion zsh)"`; para persistirlo, agregue la
+misma salida al archivo de inicio de su shell (`~/.bashrc` o `~/.zshrc`) usted mismo — Cerne nunca
+escribe en ese archivo. No requiere un workspace inicializado. Un shell no soportado o ausente falla
+como uso inválido con status 2.
+
 <!-- END AUTO-GENERATED -->

@@ -274,16 +274,17 @@ Usage:
   cerne --version
 
 Commands:
-  init      Creates a Cerne workspace
-  restore   Restores an existing Cerne workspace
-  doctor    Validates workspace structure and safety
-  status    Shows the local repository state
-  link      Links a local Git repository as source
-  workflow  Initializes the workflow declared by the workspace
-  context   Shows the workspace structural context
-  skill     Installs Cerne skills in an agent profile
-  git       Coordinates safe Git inspection
-  config    Manages user preferences
+  init        Creates a Cerne workspace
+  restore     Restores an existing Cerne workspace
+  doctor      Validates workspace structure and safety
+  status      Shows the local repository state
+  link        Links a local Git repository as source
+  workflow    Initializes the workflow declared by the workspace
+  context     Shows the workspace structural context
+  skill       Installs Cerne skills in an agent profile
+  git         Coordinates safe Git inspection
+  config      Manages user preferences
+  completion  Generates a shell completion script (bash, zsh)
 
 Options:
   --lang       Uses en or pt-BR for this invocation only
@@ -393,93 +394,142 @@ Precedence:
 	"context.problem.workflow-unknown-provider.detail":        "unsupported provider",
 	"context.problem.workflow-unknown-provider.correction":    "use speckit or openspec in the manifest",
 	messageGitHelp:                                            gitHelp,
-	"git.usage":                                               "error: invalid argument\nusage: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
-	"git.inspect.usage":                                       "error: invalid argument\nusage: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
-	"git.inspect.agent-deprecated":                            "warning: --agent is deprecated; use --runtime %s instead\n",
-	"git.failure":                                             "error: could not inspect workspace Git\ncorrection: check the workspace and try again\n",
-	"command.missing":                                         "error: provide a command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
-	"command.unknown":                                         "error: unknown command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
-	"common.cwd":                                              "error: could not get the current directory\ncorrection: run the command in an accessible directory\n",
-	"common.git":                                              "error: Git is unavailable\ncorrection: install Git and make it available in PATH\n",
-	"common.home":                                             "error: could not locate the home directory\ncorrection: configure an accessible home directory\n",
-	"restore.usage":                                           "usage: cerne restore <knowledge-origin> (--source <path> | --clone <source-origin>)\n",
-	"restore.invalid-argument":                                "error: invalid argument\n",
-	"restore.invalid-knowledge-origin":                        "error: invalid knowledge origin\n",
-	"restore.invalid-source-origin":                           "error: invalid source clone origin\n",
-	"restore.failure.default":                                 "error: could not restore the workspace\ncorrection: inspect the audit and try again\n",
-	"restore.result":                                          "Restored workspace %q.\nKnowledge: %s\n",
-	"restore.source.cloned":                                   "Cloned source: %s\n",
-	"restore.source.linked":                                   "Linked source: %s\n",
-	"restore.manifest.changed":                                "Manifest: source reference updated.\n",
-	"init.usage":                                              "usage: cerne init <project-name> [--source <path> | --clone <origin>] [--workflow <speckit|openspec> [--runtime <codex|claude>]]\n",
-	"init.agent-deprecated":                                   "warning: --agent is deprecated; use --runtime %s instead\n",
-	"init.invalid-argument":                                   "error: invalid argument\n",
-	"init.invalid-name":                                       "error: invalid project name; use 1 to 255 ASCII characters, start with a letter or number, and avoid reserved names\n",
-	"init.invalid-workflow":                                   "error: invalid workflow: use speckit or openspec\n",
-	"init.invalid-clone-origin":                               "error: invalid clone origin\n",
-	"init.destination-unsafe":                                 "error: unsafe destination\ncorrection: choose an absent or empty destination\n",
-	"init.failure.default":                                    "error: could not create the workspace\ncorrection: check permissions and try again\n",
-	"init.workflow.failure":                                   "error: could not initialize workflow %s: %s\n",
-	"init.workflow.correction":                                "correction: repair or update %s and run %q inside %s\n",
-	"init.result":                                             "Created workspace %q.\nKnowledge: %s\nSource: %s\n",
-	"init.result.knowledge":                                   "Created workspace %q.\nKnowledge: %s\n",
-	"init.source.linked":                                      "Linked source: %s\n",
-	"init.source.cloned":                                      "Cloned source: %s\n",
-	"init.workflow.result":                                    "Workflow: %s\nSetup: %s\n",
-	"init.result.workflow":                                    "Created workspace %q.\nKnowledge: %s\nSource: %s\nWorkflow: %s\nSetup: %s\n",
-	"workflow.state.configured":                               "completed",
-	"workflow.state.pending":                                  "pending",
-	"agent.discovery":                                         "Agent: %s\nDiscovery: ready\n",
-	"workflow.pending.warning":                                "warning: executable %q was not found; workflow %s was not initialized\n",
-	"workflow.pending.correction":                             "correction: install %s and run %q inside the workspace\n",
-	"workflow.usage":                                          "error: invalid argument\nusage: cerne workflow setup [--runtime <codex|claude>]\n",
-	"workflow.agent-deprecated":                               "warning: --agent is deprecated; use --runtime %s instead\n",
-	"workflow.failure.default":                                "error: could not initialize the workflow\ncorrection: inspect the workspace and try again\n",
-	"workflow.executor.missing":                               "error: executable %q was not found\ncorrection: install %s and run the command again\n",
-	"workflow.result":                                         "Workflow: %s\nKnowledge: %s\n",
-	"workflow.unchanged":                                      "No changes required.\n",
-	"workflow.completed":                                      "Setup completed.\n",
-	"doctor.usage":                                            "error: invalid argument\nusage: cerne doctor\n",
-	"diagnosis.line":                                          "%s %s: %s",
-	"diagnosis.correction":                                    "; correction: %s",
-	"diagnosis.invalid":                                       "Invalid workspace\n",
-	"diagnosis.warning":                                       "Workspace has warnings\n",
-	"diagnosis.healthy":                                       "Healthy workspace\n",
-	"status.usage":                                            "error: invalid argument\nusage: cerne status\n",
-	"status.failure.default":                                  "error: could not inspect the workspace\ncorrection: inspect the workspace and try again\n",
-	"status.project":                                          "Project: %s\n",
-	"status.workspace":                                        "Workspace: %s\n\n",
-	"status.path":                                             "  Path: %s\n",
-	"status.branch":                                           "  Branch: %s\n",
-	"status.commit":                                           "  Commit: %s\n",
-	"status.state":                                            "  State: %s\n",
-	"status.modified":                                         "  Modified: %d\n",
-	"status.staged":                                           "  Staged: %d\n",
-	"status.untracked":                                        "  Untracked: %d\n",
-	"status.repository.knowledge":                             "Knowledge",
-	"status.repository.source":                                "Source",
-	"status.label.path":                                       "Path",
-	"status.label.branch":                                     "Branch",
-	"status.label.commit":                                     "Commit",
-	"status.label.state":                                      "State",
-	"status.label.modified":                                   "Modified",
-	"status.label.staged":                                     "Staged",
-	"status.label.untracked":                                  "Untracked",
-	"status.state.clean":                                      "clean",
-	"status.state.pending":                                    "pending changes",
-	"status.branch.detached-head":                             "detached HEAD",
-	"status.commit.no-commits":                                "no commits",
-	"link.usage":                                              "error: invalid argument\nusage: cerne link <path> [--replace]\n",
-	"link.failure.default":                                    "error: could not link source\ncorrection: inspect the workspace and try again\n",
-	"link.project":                                            "Project: %s\n",
-	"link.current":                                            "Current source: %s\n",
-	"link.unchanged":                                          "No changes required.\n",
-	"link.previous":                                           "Previous source: %s\n",
-	"link.new":                                                "New source: %s\n",
-	"link.updated":                                            "Manifest updated.\n",
-	"failure.cause":                                           "error: %s\n",
-	"failure.cause.path":                                      "error: %s: %s\n",
-	"failure.correction":                                      "correction: %s\n",
-	"failure.operational":                                     "operational failure",
-	"failure.check-and-retry":                                 "inspect the workspace and try again",
+	messageCompletionHelp: `Generates a shell completion script for cerne-cli.
+
+Usage:
+  cerne completion <bash|zsh>
+  cerne completion --help
+
+Supported shells: bash, zsh
+
+Load it for the current session:
+  eval "$(cerne completion bash)"
+  eval "$(cerne completion zsh)"
+
+Persist it across sessions by appending the same output to your shell's
+startup file (~/.bashrc for bash, ~/.zshrc for zsh), then restart the shell.
+Cerne never writes to that file itself.
+
+Output:
+  The script uses stdout; --help uses stdout. Status 0: printed or help;
+  2: invalid or unsupported shell.
+
+Effects:
+  Read-only. Does not require an initialized workspace and does not read or
+  write any file.
+`,
+	"git.usage":                                         "error: invalid argument\nusage: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
+	"git.inspect.usage":                                 "error: invalid argument\nusage: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
+	"git.inspect.agent-deprecated":                      "warning: --agent is deprecated; use --runtime %s instead\n",
+	"git.failure":                                       "error: could not inspect workspace Git\ncorrection: check the workspace and try again\n",
+	"command.missing":                                   "error: provide a command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
+	"command.unknown":                                   "error: unknown command\nusage: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
+	"common.cwd":                                        "error: could not get the current directory\ncorrection: run the command in an accessible directory\n",
+	"common.git":                                        "error: Git is unavailable\ncorrection: install Git and make it available in PATH\n",
+	"common.home":                                       "error: could not locate the home directory\ncorrection: configure an accessible home directory\n",
+	"restore.usage":                                     "usage: cerne restore <knowledge-origin> (--source <path> | --clone <source-origin>)\n",
+	"restore.invalid-argument":                          "error: invalid argument\n",
+	"restore.invalid-knowledge-origin":                  "error: invalid knowledge origin\n",
+	"restore.invalid-source-origin":                     "error: invalid source clone origin\n",
+	"restore.failure.default":                           "error: could not restore the workspace\ncorrection: inspect the audit and try again\n",
+	"restore.result":                                    "Restored workspace %q.\nKnowledge: %s\n",
+	"restore.source.cloned":                             "Cloned source: %s\n",
+	"restore.source.linked":                             "Linked source: %s\n",
+	"restore.manifest.changed":                          "Manifest: source reference updated.\n",
+	"init.usage":                                        "usage: cerne init <project-name> [--source <path> | --clone <origin>] [--workflow <speckit|openspec> [--runtime <codex|claude>]]\n",
+	"init.agent-deprecated":                             "warning: --agent is deprecated; use --runtime %s instead\n",
+	"init.invalid-argument":                             "error: invalid argument\n",
+	"init.invalid-name":                                 "error: invalid project name; use 1 to 255 ASCII characters, start with a letter or number, and avoid reserved names\n",
+	"init.invalid-workflow":                             "error: invalid workflow: use speckit or openspec\n",
+	"init.invalid-clone-origin":                         "error: invalid clone origin\n",
+	"init.destination-unsafe":                           "error: unsafe destination\ncorrection: choose an absent or empty destination\n",
+	"init.failure.default":                              "error: could not create the workspace\ncorrection: check permissions and try again\n",
+	"init.workflow.failure":                             "error: could not initialize workflow %s: %s\n",
+	"init.workflow.correction":                          "correction: repair or update %s and run %q inside %s\n",
+	"init.result":                                       "Created workspace %q.\nKnowledge: %s\nSource: %s\n",
+	"init.result.knowledge":                             "Created workspace %q.\nKnowledge: %s\n",
+	"init.source.linked":                                "Linked source: %s\n",
+	"init.source.cloned":                                "Cloned source: %s\n",
+	"init.workflow.result":                              "Workflow: %s\nSetup: %s\n",
+	"init.result.workflow":                              "Created workspace %q.\nKnowledge: %s\nSource: %s\nWorkflow: %s\nSetup: %s\n",
+	"workflow.state.configured":                         "completed",
+	"workflow.state.pending":                            "pending",
+	"agent.discovery":                                   "Agent: %s\nDiscovery: ready\n",
+	"workflow.pending.warning":                          "warning: executable %q was not found; workflow %s was not initialized\n",
+	"workflow.pending.correction":                       "correction: install %s and run %q inside the workspace\n",
+	"workflow.usage":                                    "error: invalid argument\nusage: cerne workflow setup [--runtime <codex|claude>]\n",
+	"workflow.agent-deprecated":                         "warning: --agent is deprecated; use --runtime %s instead\n",
+	"workflow.failure.default":                          "error: could not initialize the workflow\ncorrection: inspect the workspace and try again\n",
+	"workflow.executor.missing":                         "error: executable %q was not found\ncorrection: install %s and run the command again\n",
+	"workflow.result":                                   "Workflow: %s\nKnowledge: %s\n",
+	"workflow.unchanged":                                "No changes required.\n",
+	"workflow.completed":                                "Setup completed.\n",
+	"doctor.usage":                                      "error: invalid argument\nusage: cerne doctor\n",
+	"diagnosis.line":                                    "%s %s: %s",
+	"diagnosis.correction":                              "; correction: %s",
+	"diagnosis.invalid":                                 "Invalid workspace\n",
+	"diagnosis.warning":                                 "Workspace has warnings\n",
+	"diagnosis.healthy":                                 "Healthy workspace\n",
+	"status.usage":                                      "error: invalid argument\nusage: cerne status\n",
+	"status.failure.default":                            "error: could not inspect the workspace\ncorrection: inspect the workspace and try again\n",
+	"status.project":                                    "Project: %s\n",
+	"status.workspace":                                  "Workspace: %s\n\n",
+	"status.path":                                       "  Path: %s\n",
+	"status.branch":                                     "  Branch: %s\n",
+	"status.commit":                                     "  Commit: %s\n",
+	"status.state":                                      "  State: %s\n",
+	"status.modified":                                   "  Modified: %d\n",
+	"status.staged":                                     "  Staged: %d\n",
+	"status.untracked":                                  "  Untracked: %d\n",
+	"status.repository.knowledge":                       "Knowledge",
+	"status.repository.source":                          "Source",
+	"status.label.path":                                 "Path",
+	"status.label.branch":                               "Branch",
+	"status.label.commit":                               "Commit",
+	"status.label.state":                                "State",
+	"status.label.modified":                             "Modified",
+	"status.label.staged":                               "Staged",
+	"status.label.untracked":                            "Untracked",
+	"status.state.clean":                                "clean",
+	"status.state.pending":                              "pending changes",
+	"status.branch.detached-head":                       "detached HEAD",
+	"status.commit.no-commits":                          "no commits",
+	"link.usage":                                        "error: invalid argument\nusage: cerne link <path> [--replace]\n",
+	"completion.usage":                                  "error: invalid shell\nusage: cerne completion <bash|zsh>\n",
+	"completion.desc.init":                              "Creates a Cerne workspace",
+	"completion.desc.restore":                           "Restores an existing Cerne workspace",
+	"completion.desc.doctor":                            "Validates workspace structure and safety",
+	"completion.desc.status":                            "Shows the local repository state",
+	"completion.desc.link":                              "Links a local Git repository as source",
+	"completion.desc.workflow":                          "Initializes the workflow declared by the workspace",
+	"completion.desc.context":                           "Shows the workspace structural context",
+	"completion.desc.skill":                             "Installs Cerne skills in an agent profile",
+	"completion.desc.git":                               "Coordinates safe Git inspection",
+	"completion.desc.config":                            "Manages user preferences",
+	"completion.desc.completion":                        "Generates a shell completion script (bash, zsh)",
+	"completion.desc.config.set":                        "Saves the language preference",
+	"completion.desc.config.get":                        "Shows the saved language preference",
+	"completion.desc.config.unset":                      "Removes the saved language preference",
+	"completion.desc.skill.install":                     "Installs a skill for an agent runtime",
+	"completion.desc.workflow.setup":                    "Runs the declared workflow setup",
+	"completion.desc.git.inspect":                       "Reports sanitized Git state for an agent task",
+	"completion.desc.config.language":                   "The only key config manages",
+	"completion.desc.agent.codex":                       "Codex agent runtime",
+	"completion.desc.agent.claude":                      "Claude agent runtime",
+	"completion.desc.agent.gemini":                      "Gemini agent runtime",
+	"completion.desc.skillname.cerne-context":           "Structural workspace context skill",
+	"completion.desc.skillname.cerne-product-discovery": "Product and feature idea evaluation skill",
+	"completion.desc.skillname.cerne-git-workflow":      "Safe Git inspection skill",
+	"link.failure.default":                              "error: could not link source\ncorrection: inspect the workspace and try again\n",
+	"link.project":                                      "Project: %s\n",
+	"link.current":                                      "Current source: %s\n",
+	"link.unchanged":                                    "No changes required.\n",
+	"link.previous":                                     "Previous source: %s\n",
+	"link.new":                                          "New source: %s\n",
+	"link.updated":                                      "Manifest updated.\n",
+	"failure.cause":                                     "error: %s\n",
+	"failure.cause.path":                                "error: %s: %s\n",
+	"failure.correction":                                "correction: %s\n",
+	"failure.operational":                               "operational failure",
+	"failure.check-and-retry":                           "inspect the workspace and try again",
 }

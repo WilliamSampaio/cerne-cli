@@ -396,6 +396,8 @@ func runLocalized(args []string, stdout, stderr io.Writer, messages localizer, h
 		return runGit(args[1:], stdout, stderr, messages, home)
 	case "config":
 		return runConfig(args[1:], stdout, stderr, messages, home)
+	case "completion":
+		return runCompletion(args[1:], stdout, stderr, messages)
 	default:
 		return commandUsageError(stderr, messages, "command.unknown")
 	}

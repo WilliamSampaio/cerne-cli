@@ -17,16 +17,17 @@ Uso:
   cerne --version
 
 Comandos:
-  init      Cria um workspace Cerne
-  restore   Restaura um workspace Cerne existente
-  doctor    Valida a estrutura e a segurança do workspace
-  status    Exibe o estado local dos repositórios
-  link      Vincula um repositório Git local como source
-  workflow  Inicializa o workflow declarado no workspace
-  context   Exibe o contexto estrutural do workspace
-  skill     Instala skills Cerne no perfil do agente
-  git       Coordena inspeção Git segura
-  config    Administra preferências do usuário
+  init        Cria um workspace Cerne
+  restore     Restaura um workspace Cerne existente
+  doctor      Valida a estrutura e a segurança do workspace
+  status      Exibe o estado local dos repositórios
+  link        Vincula um repositório Git local como source
+  workflow    Inicializa o workflow declarado no workspace
+  context     Exibe o contexto estrutural do workspace
+  skill       Instala skills Cerne no perfil do agente
+  git         Coordena inspeção Git segura
+  config      Administra preferências do usuário
+  completion  Gera script de completion de shell (bash, zsh)
 
 Opções:
   --lang       Usa en ou pt-BR somente nesta execução
@@ -136,93 +137,142 @@ Precedência:
 	"context.problem.workflow-unknown-provider.detail":        "provider não suportado",
 	"context.problem.workflow-unknown-provider.correction":    "use speckit ou openspec no manifesto",
 	messageGitHelp:                                            gitHelp,
-	"git.usage":                                               "erro: argumento inválido\nuso: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
-	"git.inspect.usage":                                       "erro: argumento inválido\nuso: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
-	"git.inspect.agent-deprecated":                            "aviso: --agent está depreciada; use --runtime %s\n",
-	"git.failure":                                             "erro: não foi possível consultar o Git do workspace\ncorreção: verifique o workspace e tente novamente\n",
-	"command.missing":                                         "erro: informe um comando\nuso: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
-	"command.unknown":                                         "erro: comando desconhecido\nuso: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
-	"common.cwd":                                              "erro: não foi possível obter o diretório atual\ncorreção: execute o comando em um diretório acessível\n",
-	"common.git":                                              "erro: Git indisponível\ncorreção: instale o Git e disponibilize-o no PATH\n",
-	"common.home":                                             "erro: não foi possível localizar o diretório pessoal\ncorreção: configure um diretório pessoal acessível\n",
-	"restore.usage":                                           "uso: cerne restore <origem-knowledge> (--source <caminho> | --clone <origem-source>)\n",
-	"restore.invalid-argument":                                "erro: argumento inválido\n",
-	"restore.invalid-knowledge-origin":                        "erro: origem do knowledge inválida\n",
-	"restore.invalid-source-origin":                           "erro: origem de clone do source inválida\n",
-	"restore.failure.default":                                 "erro: não foi possível restaurar o workspace\ncorreção: verifique a auditoria e tente novamente\n",
-	"restore.result":                                          "Workspace %q restaurado.\nKnowledge: %s\n",
-	"restore.source.cloned":                                   "Source clonado: %s\n",
-	"restore.source.linked":                                   "Source vinculado: %s\n",
-	"restore.manifest.changed":                                "Manifesto: referência de source atualizada.\n",
-	"init.usage":                                              "uso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec> [--runtime <codex|claude>]]\n",
-	"init.agent-deprecated":                                   "aviso: --agent está depreciada; use --runtime %s\n",
-	"init.invalid-argument":                                   "erro: argumento inválido\n",
-	"init.invalid-name":                                       "erro: nome de projeto inválido; use de 1 a 255 caracteres ASCII, comece por letra ou número e não use nomes reservados\n",
-	"init.invalid-workflow":                                   "erro: workflow inválido: use speckit ou openspec\n",
-	"init.invalid-clone-origin":                               "erro: origem de clone inválida\n",
-	"init.destination-unsafe":                                 "erro: destino inseguro\ncorreção: escolha um destino inexistente ou vazio\n",
-	"init.failure.default":                                    "erro: não foi possível criar o workspace\ncorreção: verifique permissões e tente novamente\n",
-	"init.workflow.failure":                                   "erro: não foi possível inicializar workflow %s: %s\n",
-	"init.workflow.correction":                                "correção: corrija ou atualize %s e execute %q dentro de %s\n",
-	"init.result":                                             "Workspace %q criado.\nKnowledge: %s\nSource: %s\n",
-	"init.result.knowledge":                                   "Workspace %q criado.\nKnowledge: %s\n",
-	"init.source.linked":                                      "Source vinculado: %s\n",
-	"init.source.cloned":                                      "Source clonado: %s\n",
-	"init.workflow.result":                                    "Workflow: %s\nSetup: %s\n",
-	"init.result.workflow":                                    "Workspace %q criado.\nKnowledge: %s\nSource: %s\nWorkflow: %s\nSetup: %s\n",
-	"workflow.state.configured":                               "concluído",
-	"workflow.state.pending":                                  "pendente",
-	"agent.discovery":                                         "Agent: %s\nDescoberta: pronta\n",
-	"workflow.pending.warning":                                "aviso: executável %q não encontrado; workflow %s não inicializado\n",
-	"workflow.pending.correction":                             "correção: instale %s e execute %q dentro do workspace\n",
-	"workflow.usage":                                          "erro: argumento inválido\nuso: cerne workflow setup [--runtime <codex|claude>]\n",
-	"workflow.agent-deprecated":                               "aviso: --agent está depreciada; use --runtime %s\n",
-	"workflow.failure.default":                                "erro: não foi possível inicializar o workflow\ncorreção: verifique o workspace e tente novamente\n",
-	"workflow.executor.missing":                               "erro: executável %q não encontrado\ncorreção: instale %s e execute novamente\n",
-	"workflow.result":                                         "Workflow: %s\nKnowledge: %s\n",
-	"workflow.unchanged":                                      "Nenhuma alteração necessária.\n",
-	"workflow.completed":                                      "Setup concluído.\n",
-	"doctor.usage":                                            "erro: argumento inválido\nuso: cerne doctor\n",
-	"diagnosis.line":                                          "%s %s: %s",
-	"diagnosis.correction":                                    "; correção: %s",
-	"diagnosis.invalid":                                       "Workspace inválido\n",
-	"diagnosis.warning":                                       "Workspace com avisos\n",
-	"diagnosis.healthy":                                       "Workspace saudável\n",
-	"status.usage":                                            "erro: argumento inválido\nuso: cerne status\n",
-	"status.failure.default":                                  "erro: não foi possível consultar o workspace\ncorreção: verifique o workspace e tente novamente\n",
-	"status.project":                                          "Projeto: %s\n",
-	"status.workspace":                                        "Workspace: %s\n\n",
-	"status.path":                                             "  Caminho: %s\n",
-	"status.branch":                                           "  Branch: %s\n",
-	"status.commit":                                           "  Commit: %s\n",
-	"status.state":                                            "  Estado: %s\n",
-	"status.modified":                                         "  Modificados: %d\n",
-	"status.staged":                                           "  Em stage: %d\n",
-	"status.untracked":                                        "  Não rastreados: %d\n",
-	"status.repository.knowledge":                             "Knowledge",
-	"status.repository.source":                                "Source",
-	"status.label.path":                                       "Caminho",
-	"status.label.branch":                                     "Branch",
-	"status.label.commit":                                     "Commit",
-	"status.label.state":                                      "Estado",
-	"status.label.modified":                                   "Modificados",
-	"status.label.staged":                                     "Em stage",
-	"status.label.untracked":                                  "Não rastreados",
-	"status.state.clean":                                      "limpo",
-	"status.state.pending":                                    "alterações pendentes",
-	"status.branch.detached-head":                             "detached HEAD",
-	"status.commit.no-commits":                                "sem commits",
-	"link.usage":                                              "erro: argumento inválido\nuso: cerne link <caminho> [--replace]\n",
-	"link.failure.default":                                    "erro: não foi possível vincular o source\ncorreção: verifique o workspace e tente novamente\n",
-	"link.project":                                            "Projeto: %s\n",
-	"link.current":                                            "Source atual: %s\n",
-	"link.unchanged":                                          "Nenhuma alteração necessária.\n",
-	"link.previous":                                           "Source anterior: %s\n",
-	"link.new":                                                "Novo source: %s\n",
-	"link.updated":                                            "Manifesto atualizado.\n",
-	"failure.cause":                                           "erro: %s\n",
-	"failure.cause.path":                                      "erro: %s: %s\n",
-	"failure.correction":                                      "correção: %s\n",
-	"failure.operational":                                     "falha operacional",
-	"failure.check-and-retry":                                 "verifique o workspace e tente novamente",
+	messageCompletionHelp: `Gera um script de completion de shell para o cerne-cli.
+
+Uso:
+  cerne completion <bash|zsh>
+  cerne completion --help
+
+Shells suportados: bash, zsh
+
+Carregar na sessão atual:
+  eval "$(cerne completion bash)"
+  eval "$(cerne completion zsh)"
+
+Para persistir entre sessões, anexe a mesma saída ao arquivo de inicialização
+do seu shell (~/.bashrc para bash, ~/.zshrc para zsh) e reinicie o shell. O
+Cerne nunca grava nesse arquivo por conta própria.
+
+Saída:
+  O script usa stdout; --help usa stdout. Status 0: impresso ou ajuda;
+  2: shell inválido ou não suportado.
+
+Efeitos:
+  Somente leitura. Não exige workspace inicializado e não lê nem grava
+  nenhum arquivo.
+`,
+	"git.usage":                                         "erro: argumento inválido\nuso: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
+	"git.inspect.usage":                                 "erro: argumento inválido\nuso: cerne git inspect --runtime <codex|claude|gemini> --task <task-id> --json\n",
+	"git.inspect.agent-deprecated":                      "aviso: --agent está depreciada; use --runtime %s\n",
+	"git.failure":                                       "erro: não foi possível consultar o Git do workspace\ncorreção: verifique o workspace e tente novamente\n",
+	"command.missing":                                   "erro: informe um comando\nuso: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
+	"command.unknown":                                   "erro: comando desconhecido\nuso: cerne <init|restore|doctor|status|link|workflow|context|skill|git|config>\n",
+	"common.cwd":                                        "erro: não foi possível obter o diretório atual\ncorreção: execute o comando em um diretório acessível\n",
+	"common.git":                                        "erro: Git indisponível\ncorreção: instale o Git e disponibilize-o no PATH\n",
+	"common.home":                                       "erro: não foi possível localizar o diretório pessoal\ncorreção: configure um diretório pessoal acessível\n",
+	"restore.usage":                                     "uso: cerne restore <origem-knowledge> (--source <caminho> | --clone <origem-source>)\n",
+	"restore.invalid-argument":                          "erro: argumento inválido\n",
+	"restore.invalid-knowledge-origin":                  "erro: origem do knowledge inválida\n",
+	"restore.invalid-source-origin":                     "erro: origem de clone do source inválida\n",
+	"restore.failure.default":                           "erro: não foi possível restaurar o workspace\ncorreção: verifique a auditoria e tente novamente\n",
+	"restore.result":                                    "Workspace %q restaurado.\nKnowledge: %s\n",
+	"restore.source.cloned":                             "Source clonado: %s\n",
+	"restore.source.linked":                             "Source vinculado: %s\n",
+	"restore.manifest.changed":                          "Manifesto: referência de source atualizada.\n",
+	"init.usage":                                        "uso: cerne init <project-name> [--source <caminho> | --clone <origem>] [--workflow <speckit|openspec> [--runtime <codex|claude>]]\n",
+	"init.agent-deprecated":                             "aviso: --agent está depreciada; use --runtime %s\n",
+	"init.invalid-argument":                             "erro: argumento inválido\n",
+	"init.invalid-name":                                 "erro: nome de projeto inválido; use de 1 a 255 caracteres ASCII, comece por letra ou número e não use nomes reservados\n",
+	"init.invalid-workflow":                             "erro: workflow inválido: use speckit ou openspec\n",
+	"init.invalid-clone-origin":                         "erro: origem de clone inválida\n",
+	"init.destination-unsafe":                           "erro: destino inseguro\ncorreção: escolha um destino inexistente ou vazio\n",
+	"init.failure.default":                              "erro: não foi possível criar o workspace\ncorreção: verifique permissões e tente novamente\n",
+	"init.workflow.failure":                             "erro: não foi possível inicializar workflow %s: %s\n",
+	"init.workflow.correction":                          "correção: corrija ou atualize %s e execute %q dentro de %s\n",
+	"init.result":                                       "Workspace %q criado.\nKnowledge: %s\nSource: %s\n",
+	"init.result.knowledge":                             "Workspace %q criado.\nKnowledge: %s\n",
+	"init.source.linked":                                "Source vinculado: %s\n",
+	"init.source.cloned":                                "Source clonado: %s\n",
+	"init.workflow.result":                              "Workflow: %s\nSetup: %s\n",
+	"init.result.workflow":                              "Workspace %q criado.\nKnowledge: %s\nSource: %s\nWorkflow: %s\nSetup: %s\n",
+	"workflow.state.configured":                         "concluído",
+	"workflow.state.pending":                            "pendente",
+	"agent.discovery":                                   "Agent: %s\nDescoberta: pronta\n",
+	"workflow.pending.warning":                          "aviso: executável %q não encontrado; workflow %s não inicializado\n",
+	"workflow.pending.correction":                       "correção: instale %s e execute %q dentro do workspace\n",
+	"workflow.usage":                                    "erro: argumento inválido\nuso: cerne workflow setup [--runtime <codex|claude>]\n",
+	"workflow.agent-deprecated":                         "aviso: --agent está depreciada; use --runtime %s\n",
+	"workflow.failure.default":                          "erro: não foi possível inicializar o workflow\ncorreção: verifique o workspace e tente novamente\n",
+	"workflow.executor.missing":                         "erro: executável %q não encontrado\ncorreção: instale %s e execute novamente\n",
+	"workflow.result":                                   "Workflow: %s\nKnowledge: %s\n",
+	"workflow.unchanged":                                "Nenhuma alteração necessária.\n",
+	"workflow.completed":                                "Setup concluído.\n",
+	"doctor.usage":                                      "erro: argumento inválido\nuso: cerne doctor\n",
+	"diagnosis.line":                                    "%s %s: %s",
+	"diagnosis.correction":                              "; correção: %s",
+	"diagnosis.invalid":                                 "Workspace inválido\n",
+	"diagnosis.warning":                                 "Workspace com avisos\n",
+	"diagnosis.healthy":                                 "Workspace saudável\n",
+	"status.usage":                                      "erro: argumento inválido\nuso: cerne status\n",
+	"status.failure.default":                            "erro: não foi possível consultar o workspace\ncorreção: verifique o workspace e tente novamente\n",
+	"status.project":                                    "Projeto: %s\n",
+	"status.workspace":                                  "Workspace: %s\n\n",
+	"status.path":                                       "  Caminho: %s\n",
+	"status.branch":                                     "  Branch: %s\n",
+	"status.commit":                                     "  Commit: %s\n",
+	"status.state":                                      "  Estado: %s\n",
+	"status.modified":                                   "  Modificados: %d\n",
+	"status.staged":                                     "  Em stage: %d\n",
+	"status.untracked":                                  "  Não rastreados: %d\n",
+	"status.repository.knowledge":                       "Knowledge",
+	"status.repository.source":                          "Source",
+	"status.label.path":                                 "Caminho",
+	"status.label.branch":                               "Branch",
+	"status.label.commit":                               "Commit",
+	"status.label.state":                                "Estado",
+	"status.label.modified":                             "Modificados",
+	"status.label.staged":                               "Em stage",
+	"status.label.untracked":                            "Não rastreados",
+	"status.state.clean":                                "limpo",
+	"status.state.pending":                              "alterações pendentes",
+	"status.branch.detached-head":                       "detached HEAD",
+	"status.commit.no-commits":                          "sem commits",
+	"link.usage":                                        "erro: argumento inválido\nuso: cerne link <caminho> [--replace]\n",
+	"completion.usage":                                  "erro: shell inválido\nuso: cerne completion <bash|zsh>\n",
+	"completion.desc.init":                              "Cria um workspace Cerne",
+	"completion.desc.restore":                           "Restaura um workspace Cerne existente",
+	"completion.desc.doctor":                            "Valida a estrutura e a segurança do workspace",
+	"completion.desc.status":                            "Exibe o estado local dos repositórios",
+	"completion.desc.link":                              "Vincula um repositório Git local como source",
+	"completion.desc.workflow":                          "Inicializa o workflow declarado no workspace",
+	"completion.desc.context":                           "Exibe o contexto estrutural do workspace",
+	"completion.desc.skill":                             "Instala skills Cerne no perfil do agente",
+	"completion.desc.git":                               "Coordena inspeção Git segura",
+	"completion.desc.config":                            "Administra preferências do usuário",
+	"completion.desc.completion":                        "Gera script de completion de shell (bash, zsh)",
+	"completion.desc.config.set":                        "Salva a preferência de idioma",
+	"completion.desc.config.get":                        "Exibe a preferência de idioma salva",
+	"completion.desc.config.unset":                      "Remove a preferência de idioma salva",
+	"completion.desc.skill.install":                     "Instala uma skill para um runtime de agente",
+	"completion.desc.workflow.setup":                    "Executa a preparação do workflow declarado",
+	"completion.desc.git.inspect":                       "Relata o estado Git sanitizado para uma tarefa do agente",
+	"completion.desc.config.language":                   "A única chave que o config administra",
+	"completion.desc.agent.codex":                       "Runtime do agente Codex",
+	"completion.desc.agent.claude":                      "Runtime do agente Claude",
+	"completion.desc.agent.gemini":                      "Runtime do agente Gemini",
+	"completion.desc.skillname.cerne-context":           "Skill de contexto estrutural do workspace",
+	"completion.desc.skillname.cerne-product-discovery": "Skill de avaliação de ideias de produto e feature",
+	"completion.desc.skillname.cerne-git-workflow":      "Skill de inspeção Git segura",
+	"link.failure.default":                              "erro: não foi possível vincular o source\ncorreção: verifique o workspace e tente novamente\n",
+	"link.project":                                      "Projeto: %s\n",
+	"link.current":                                      "Source atual: %s\n",
+	"link.unchanged":                                    "Nenhuma alteração necessária.\n",
+	"link.previous":                                     "Source anterior: %s\n",
+	"link.new":                                          "Novo source: %s\n",
+	"link.updated":                                      "Manifesto atualizado.\n",
+	"failure.cause":                                     "erro: %s\n",
+	"failure.cause.path":                                "erro: %s: %s\n",
+	"failure.correction":                                "correção: %s\n",
+	"failure.operational":                               "falha operacional",
+	"failure.check-and-retry":                           "verifique o workspace e tente novamente",
 }

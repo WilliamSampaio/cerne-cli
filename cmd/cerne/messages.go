@@ -20,6 +20,7 @@ const (
 	messageStatusHelp          messageID = "help.status"
 	messageLinkHelp            messageID = "help.link"
 	messageGitHelp             messageID = "help.git"
+	messageCompletionHelp      messageID = "help.completion"
 	messageInvalidLanguage     messageID = "error.invalid-language"
 	messageInvalidGlobalOption messageID = "error.invalid-global-option"
 	messageConfigUsage         messageID = "error.config-usage"
