@@ -2716,6 +2716,8 @@ func TestCLIGitInspectKeepsMinimumScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitOutput(t, frontend, "init", "--quiet")
+	gitOutput(t, frontend, "config", "user.email", "test@example.com")
+	gitOutput(t, frontend, "config", "user.name", "Test")
 	gitOutput(t, frontend, "commit", "--allow-empty", "-m", "init")
 	if status, _, stderr := executeCLI(t, binary, root, nil, "link", "../frontend", "--as", "frontend"); status != 0 {
 		t.Fatalf("registro: status = %d stderr = %q", status, stderr)
@@ -2857,6 +2859,8 @@ func TestCLILinkRepositoryGitRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitOutput(t, frontend, "init", "--quiet")
+	gitOutput(t, frontend, "config", "user.email", "test@example.com")
+	gitOutput(t, frontend, "config", "user.name", "Test")
 	gitOutput(t, frontend, "commit", "--allow-empty", "-m", "init")
 	if status, _, stderr := executeCLI(t, binary, root, nil, "link", "../frontend", "--as", "frontend"); status != 0 {
 		t.Fatalf("registro: status = %d stderr = %q", status, stderr)
