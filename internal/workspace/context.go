@@ -18,13 +18,14 @@ const (
 )
 
 type ContextReport struct {
-	SchemaVersion int               `json:"schema_version"`
-	Status        Status            `json:"status"`
-	Workspace     *WorkspaceContext `json:"workspace,omitempty"`
-	Knowledge     *KnowledgeContext `json:"knowledge,omitempty"`
-	Source        *SourceContext    `json:"source,omitempty"`
-	Workflow      *WorkflowContext  `json:"workflow,omitempty"`
-	Problems      []ContextProblem  `json:"problems"`
+	SchemaVersion int                 `json:"schema_version"`
+	Status        Status              `json:"status"`
+	Workspace     *WorkspaceContext   `json:"workspace,omitempty"`
+	Knowledge     *KnowledgeContext   `json:"knowledge,omitempty"`
+	Source        *SourceContext      `json:"source,omitempty"`
+	Repositories  []RepositoryContext `json:"repositories,omitempty"`
+	Workflow      *WorkflowContext    `json:"workflow,omitempty"`
+	Problems      []ContextProblem    `json:"problems"`
 }
 
 type WorkspaceContext struct {
@@ -45,6 +46,15 @@ type SourceContext struct {
 	InsideWorkspace bool   `json:"inside_workspace"`
 }
 
+// RepositoryContext é um repositório adicional registrado. Listá-lo entrega o roteiro do que
+// existe; Selected marca o escopo efetivamente autorizado para a tarefa (Princípio V, FR-033).
+type RepositoryContext struct {
+	Name            string `json:"name"`
+	Path            string `json:"path"`
+	InsideWorkspace bool   `json:"inside_workspace"`
+	Selected        bool   `json:"selected"`
+}
+
 type WorkflowContext struct {
 	Declared bool                 `json:"declared"`
 	Provider string               `json:"provider,omitempty"`
@@ -57,7 +67,14 @@ type ContextProblem struct {
 	Component string `json:"component"`
 }
 
+// Context relata o workspace sem selecionar nenhum repositório adicional.
 func Context(start string, resolve WorkflowResolver) ContextReport {
+	return ContextWithRepositories(start, nil, resolve)
+}
+
+// ContextWithRepositories relata o workspace marcando como selecionados os repositórios adicionais
+// nomeados em selection. Um nome não registrado invalida o relatório inteiro (FR-034).
+func ContextWithRepositories(start string, selection []string, resolve WorkflowResolver) ContextReport {
 	report := ContextReport{SchemaVersion: 1, Status: Healthy, Problems: []ContextProblem{}}
 	root, ok := locateContextWorkspace(start)
 	if !ok {
@@ -99,6 +116,7 @@ func Context(start string, resolve WorkflowResolver) ContextReport {
 	}
 	report.Workspace.Name = data.Name
 	addContextSource(&report, root, knowledge, data.Source)
+	addContextRepositories(&report, root, knowledge, data, selection)
 	addContextWorkflow(&report, knowledge, data, resolve)
 	return finishContext(report)
 }
@@ -155,6 +173,37 @@ func addContextSource(report *ContextReport, root, knowledge, sourceValue string
 		return
 	}
 	report.Source = &SourceContext{Path: canonical(source), InsideWorkspace: containsPath(root, source)}
+}
+
+func addContextRepositories(report *ContextReport, root, knowledge string, data manifest, selection []string) {
+	selected := map[string]bool{}
+	for _, name := range selection {
+		selected[name] = true
+	}
+	known := map[string]bool{}
+	for _, name := range registeredRepositoryNames(data) {
+		known[name] = true
+	}
+	for _, name := range selection {
+		if !known[name] {
+			report.Problems = append(report.Problems, contextProblem("repository-unknown", "error", "repository"))
+			report.Repositories = nil
+			return
+		}
+	}
+	for _, participant := range registeredRepositories(root, data, nil) {
+		if participant.Broken {
+			report.Problems = append(report.Problems, contextProblem("repository-invalid", "error", "repository"))
+			continue
+		}
+		path := canonical(participant.Path)
+		report.Repositories = append(report.Repositories, RepositoryContext{
+			Name:            participant.Name,
+			Path:            path,
+			InsideWorkspace: containsPath(root, path),
+			Selected:        selected[participant.Name],
+		})
+	}
 }
 
 func addContextWorkflow(report *ContextReport, knowledge string, data manifest, resolve WorkflowResolver) {
@@ -256,7 +305,7 @@ func finishContext(report ContextReport) ContextReport {
 }
 
 func contextProblemOrder(problem ContextProblem) int {
-	order := map[string]int{"workspace-not-found": 0, "knowledge-invalid": 1, "manifest-invalid": 2, "manifest-version-unsupported": 3, "source-invalid": 4, "required-directory-invalid": 5, "workflow-pending": 6, "workflow-invalid": 7, "workflow-unknown-provider": 8}
+	order := map[string]int{"workspace-not-found": 0, "knowledge-invalid": 1, "manifest-invalid": 2, "manifest-version-unsupported": 3, "source-invalid": 4, "repository-unknown": 5, "repository-invalid": 6, "required-directory-invalid": 7, "workflow-pending": 8, "workflow-invalid": 9, "workflow-unknown-provider": 10}
 	return order[problem.Code]
 }
 

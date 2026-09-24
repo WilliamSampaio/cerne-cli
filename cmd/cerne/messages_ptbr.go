@@ -9,6 +9,7 @@ var portugueseBrazilMessages = map[messageID]string{
 	messageDoctorHelp:   doctorHelp,
 	messageStatusHelp:   statusHelp,
 	messageLinkHelp:     linkHelp,
+	messageUnlinkHelp:   unlinkHelp,
 	messageGlobalHelp: `Cerne administra workspaces com repositórios Git independentes de conhecimento e código-fonte.
 
 Uso:
@@ -22,6 +23,7 @@ Comandos:
   doctor      Valida a estrutura e a segurança do workspace
   status      Exibe o estado local dos repositórios
   link        Vincula um repositório Git local como source
+  unlink      Desvincula um repositório adicional do workspace
   workflow    Inicializa o workflow declarado no workspace
   context     Exibe o contexto estrutural do workspace
   skill       Instala skills Cerne no perfil do agente
@@ -233,16 +235,21 @@ Efeitos:
 	"status.label.modified":                             "Modificados",
 	"status.label.staged":                               "Em stage",
 	"status.label.untracked":                            "Não rastreados",
+	"status.state.invalid":                              "vínculo inválido",
 	"status.state.clean":                                "limpo",
 	"status.state.pending":                              "alterações pendentes",
 	"status.branch.detached-head":                       "detached HEAD",
 	"status.commit.no-commits":                          "sem commits",
-	"link.usage":                                        "erro: argumento inválido\nuso: cerne link <caminho> [--replace]\n",
+	"unlink.usage":                                      "erro: argumento inválido\nuso: cerne unlink <nome>\n",
+	"unlink.failure.default":                            "erro: não foi possível desvincular o repositório\ncorreção: verifique o workspace e tente novamente\n",
+	"unlink.removed":                                    "Repositório removido: %s (%s)\n",
+	"link.usage":                                        "erro: argumento inválido\nuso: cerne link <caminho> [--as <nome>] [--replace]\n",
 	"completion.usage":                                  "erro: shell inválido\nuso: cerne completion <bash|zsh>\n",
 	"completion.desc.init":                              "Cria um workspace Cerne",
 	"completion.desc.restore":                           "Restaura um workspace Cerne existente",
 	"completion.desc.doctor":                            "Valida a estrutura e a segurança do workspace",
 	"completion.desc.status":                            "Exibe o estado local dos repositórios",
+	"completion.desc.unlink":                            "Desvincula um repositório adicional do workspace",
 	"completion.desc.link":                              "Vincula um repositório Git local como source",
 	"completion.desc.workflow":                          "Inicializa o workflow declarado no workspace",
 	"completion.desc.context":                           "Exibe o contexto estrutural do workspace",
@@ -264,6 +271,9 @@ Efeitos:
 	"completion.desc.skillname.cerne-product-discovery": "Skill de avaliação de ideias de produto e feature",
 	"completion.desc.skillname.cerne-git-workflow":      "Skill de inspeção Git segura",
 	"link.failure.default":                              "erro: não foi possível vincular o source\ncorreção: verifique o workspace e tente novamente\n",
+	"repository.current":                                "Repositório %s: %s\n",
+	"repository.previous":                               "Caminho anterior: %s\n",
+	"repository.new":                                    "Repositório %s: %s\n",
 	"link.project":                                      "Projeto: %s\n",
 	"link.current":                                      "Source atual: %s\n",
 	"link.unchanged":                                    "Nenhuma alteração necessária.\n",

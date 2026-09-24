@@ -27,8 +27,12 @@ const (
 )
 
 type CheckResult struct {
-	ID         string
-	Code       string
+	ID   string
+	Code string
+	// Target nomeia a entidade a que o check se refere quando um mesmo ID cobre várias — hoje, cada
+	// repositório adicional registrado. Fica fora do texto traduzido: a camada de tradução resolve
+	// Detail por chave estática (ID+"."+Code) e descartaria conteúdo dinâmico embutido nele.
+	Target     string
 	Label      string
 	Severity   Severity
 	Detail     string
@@ -108,6 +112,7 @@ func doctor(root string, inspectGit GitInspect, checkAccess AccessCheck, resolve
 	if manifest.WorkflowDeclared || manifest.WorkflowErr != nil {
 		checks = append(checks, workflowCheck(knowledge, manifest, resolve))
 	}
+	checks = append(checks, repositoryChecks(root, manifest)...)
 	status := Healthy
 	for _, check := range checks {
 		if check.Severity == Error {
@@ -124,6 +129,7 @@ func doctor(root string, inspectGit GitInspect, checkAccess AccessCheck, resolve
 type manifest struct {
 	Name             string
 	Source           string
+	Repositories     []RepositoryEntry
 	VersionState     string
 	VersionErr       error
 	WorkflowDeclared bool
@@ -154,6 +160,9 @@ func readManifest(path string) (manifest, error) {
 		return out, err
 	}
 	if err := decodeString(raw, "source", &out.Source); err != nil {
+		return out, err
+	}
+	if err := decodeRepositories(raw, &out.Repositories); err != nil {
 		return out, err
 	}
 	if version, ok := raw["version"]; !ok {
@@ -433,4 +442,22 @@ func noSymlink(path string) error {
 		}
 		path = parent
 	}
+}
+
+// repositoryChecks emite um check por repositório adicional registrado. O ID é fixo para que a
+// camada de tradução resolva o texto por chave estática; o nome da entrada viaja em Target.
+func repositoryChecks(root string, data manifest) []CheckResult {
+	participants := registeredRepositories(root, data, nil)
+	checks := make([]CheckResult, 0, len(participants))
+	for _, participant := range participants {
+		result := check("repository", "found", "Repositório adicional", Pass, "encontrado", "")
+		if participant.Broken {
+			result = check("repository", "missing", "Repositório adicional", Error,
+				"não encontrado como diretório regular: "+participant.Path,
+				"restaure o diretório ou remova o registro com cerne unlink")
+		}
+		result.Target = participant.Name
+		checks = append(checks, result)
+	}
+	return checks
 }

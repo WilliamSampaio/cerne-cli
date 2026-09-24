@@ -23,7 +23,8 @@ documentation, product, implementation, validation, and maintenance.
 Cerne is built on a few durable rules:
 
 - your knowledge belongs to you and remains accessible as ordinary files and Git history;
-- private knowledge and application code stay in separate repositories;
+- private knowledge and application code stay in separate repositories, and a workspace may
+  associate more than one code repository;
 - integrations belong behind adapters instead of leaking into the domain;
 - automated work must be traceable and receive only the context it needs;
 - push, merge, publication, deployment, and destructive operations require explicit approval;

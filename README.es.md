@@ -24,7 +24,8 @@ mantenimiento.
 Cerne sigue algunas reglas duraderas:
 
 - tu conocimiento te pertenece y permanece accesible como archivos comunes e historial Git;
-- el conocimiento privado y el código de la aplicación permanecen en repositorios separados;
+- el conocimiento privado y el código de la aplicación permanecen en repositorios separados, y un
+  workspace puede asociar más de un repositorio de código;
 - las integraciones se implementan mediante adaptadores, sin contaminar el dominio;
 - el trabajo automatizado debe ser trazable y recibir solo el contexto necesario;
 - push, merge, publicación, despliegue y operaciones destructivas requieren autorización explícita;

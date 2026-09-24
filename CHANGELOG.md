@@ -7,6 +7,33 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ### Added
 
+- **Multi-repository workspaces.** A workspace can now register additional local Git repositories
+  beyond `source`, and every change is additive: a workspace without the new manifest field behaves
+  exactly as before and needs no migration.
+  - `cerne link <path> --as <name>` registers an additional repository. Names are unique in the
+    workspace, follow the project-name rule, and cannot be `source` or `knowledge`. `--replace`
+    swaps the path of an existing name and preserves its position in the list.
+  - `cerne unlink <name>` removes a registration. It touches only `knowledge/cerne.json` and never
+    the repository on disk, so it also clears a broken link.
+  - `cerne context` gains `--repo <name>` (repeatable) and a `repositories` array in `--json`, with
+    `name`, `path`, `inside_workspace` and `selected`. Registered repositories are *listed* by
+    default but never `selected` without an explicit `--repo`; an unregistered name fails the whole
+    report instead of emitting a partial context.
+  - `cerne git inspect` gains the same `--repo <name>`. Without it the inspected scope stays
+    `knowledge` + `source` exactly as before, so registering a repository never widens what an agent
+    receives. The audit record names only the selected repositories.
+  - `cerne status` lists registered repositories after `knowledge` and `source`, in manifest order,
+    and gains a new `State` value `invalid` for a registration that can no longer be inspected.
+    `knowledge` and `source` never produce it, so existing consumers of `clean`/`pending` are
+    unaffected; a broken entry no longer aborts the report of the others.
+  - `cerne doctor` emits one check per registered repository, naming the entry, and reports the
+    workspace as invalid when a registration is broken.
+  - New manifest field `repositories`: an optional array of `{name, path}`. Absent means no
+    additional repositories. Paths are stored relative to `knowledge/` when portable.
+  - Two repositories that share Git history are not independent, so a worktree of an
+    already-registered repository is refused. This rule now also covers `cerne link` for the
+    `source`, which previously compared only against `knowledge`.
+
 - `cerne doctor` and `cerne status` color their severity icon (`✓`/`!`/`✗`) when stdout is an
   interactive terminal. Color is disabled by [`NO_COLOR`](https://no-color.org) or a non-interactive
   stdout; the icon itself is always shown, matching the existing `doctor` output. `--json` output is

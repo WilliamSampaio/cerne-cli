@@ -151,7 +151,7 @@ Cada subproceso real de provider o integración de agente crea un JSON de audito
 que Codex descubra el puente en `.agents/skills`, inicia la sesión en la raíz del workspace Cerne, no
 dentro de `source/`.
 
-## `cerne context [--json]`
+## `cerne context [--json] [--repo <nombre>]...`
 
 Localiza el workspace ancestro más cercano e informa rutas canónicas de workspace, knowledge,
 product, specs, decisions, policies, source y workflow declarado. `--json` emite el schema estable
@@ -168,6 +168,13 @@ cerne context
 cerne context --json
 ```
 
+
+Los repositorios adicionales registrados aparecen en `repositories`, cada uno con `name`, `path`,
+`inside_workspace` y `selected`. Listar no es entregar: por defecto todos vienen con
+`"selected": false`. `--repo <nombre>` es repetible y marca los repositorios que componen el alcance
+de la tarea. Un nombre no registrado invalida el informe completo, sin producir contexto parcial. El
+campo se omite cuando no hay repositorios registrados.
+
 ## `cerne doctor`
 
 Ejecuta diez verificaciones de solo lectura desde la raíz: manifiesto, directorios de ambos
@@ -182,12 +189,36 @@ Localiza el workspace ancestro más cercano desde el directorio actual y lee amb
 Reconoce árboles limpios o con cambios, detached HEAD y repositorios sin commits. No ejecuta fetch
 ni compara con remotos.
 
-## `cerne link <ruta> [--replace]`
+## `cerne link <ruta> [--as <nombre>] [--replace]`
 
 Vincula como `source` un repositorio Git local no bare con árbol de trabajo. Acepta rutas relativas,
 absolutas y worktrees válidos. Knowledge y source deben ser distintos y no pueden estar anidados de
 forma peligrosa. Cambiar un source ya configurado requiere `--replace`; vincular el mismo source
 termina sin reescribir el manifiesto. La sustitución del manifiesto es atómica.
+
+
+Con `--as <nombre>`, el repositorio se registra como **repositorio adicional** del workspace, junto
+al `source`, en lugar de sustituirlo. El nombre es único en el workspace, sigue la misma regla que
+el nombre de proyecto (1 a 255 caracteres ASCII, empezando por letra o dígito, admitiendo punto,
+guion y guion bajo) y no puede ser `source` ni `knowledge`. Registrar el mismo nombre con la misma
+ruta termina sin reescribir el manifiesto; con otra ruta exige `--replace`, que conserva la posición
+de la entrada en la lista. El candidato no puede compartir historial Git con knowledge, con el
+`source` ni con otro repositorio ya registrado, por lo que se rechaza un worktree de un repositorio
+ya registrado. No se crea, modifica ni elimina ningún archivo del repositorio vinculado, y no se
+accede a ningún remoto.
+
+Estado 0: registrado, sin cambios o ayuda. Estado 1: fallo operativo. Estado 2: uso inválido.
+
+## `cerne unlink <nombre>`
+
+Elimina un repositorio adicional del manifiesto del workspace. Solo modifica
+`knowledge/cerne.json`: no borra, mueve ni modifica el repositorio en disco, y no accede a remotos.
+También funciona sobre un vínculo roto: así se limpia un registro cuyo directorio ya no existe.
+`source` y `knowledge` se rechazan por ser repositorios propios del workspace; para cambiar el
+source, use `cerne link`. Eliminar la última entrada quita el campo `repositories` del manifiesto.
+
+Estado 0: eliminado o ayuda. Estado 1: nombre no registrado, nombre reservado o fallo de escritura.
+Estado 2: uso inválido.
 
 ## `cerne completion <bash|zsh>`
 

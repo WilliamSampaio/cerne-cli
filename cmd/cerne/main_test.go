@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -1930,7 +1931,7 @@ func TestCLILinkFailuresHelpUsageAndPreReportFailure(t *testing.T) {
 
 	t.Run("invalid usage", func(t *testing.T) {
 		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "link", "--replace")
-		expected := "erro: argumento inválido\nuso: cerne link <caminho> [--replace]\n"
+		expected := "erro: argumento inválido\nuso: cerne link <caminho> [--as <nome>] [--replace]\n"
 		if status != 2 || stdout != "" || stderr != expected {
 			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
 		}
@@ -2475,4 +2476,419 @@ func createRestoreGitRepository(t *testing.T, files map[string]string) string {
 	gitOutput(t, repository, "add", ".")
 	gitOutput(t, repository, "commit", "--quiet", "-m", "fixture")
 	return repository
+}
+
+func TestCLILinkRegistersAdditionalRepositories(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	root := initWorkspaceWithCLI(t, binary, parent, "example")
+	manifestPath := filepath.Join(root, "knowledge", "cerne.json")
+
+	newRepo := func(name string) string {
+		path := filepath.Join(parent, name)
+		if err := os.Mkdir(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		gitOutput(t, path, "init", "--quiet")
+		return path
+	}
+	frontend := newRepo("frontend")
+	newRepo("infra")
+	before := snapshotTree(t, frontend)
+
+	status, stdout, stderr := executeCLI(t, binary, root, nil, "link", "../frontend", "--as", "frontend")
+	expectedPath := filepath.ToSlash(filepath.Join("..", "..", "frontend"))
+	expected := "Projeto: example\nRepositório frontend: " + expectedPath + "\nManifesto atualizado.\n"
+	if status != 0 || stdout != expected || stderr != "" {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q\nesperado = %q", status, stdout, stderr, expected)
+	}
+	if after := snapshotTree(t, frontend); !reflect.DeepEqual(before, after) {
+		t.Fatalf("registro alterou o repositório vinculado\nantes=%#v\ndepois=%#v", before, after)
+	}
+
+	if status, _, stderr = executeCLI(t, binary, root, nil, "link", "../infra", "--as", "infra"); status != 0 || stderr != "" {
+		t.Fatalf("segundo registro status = %d stderr = %q", status, stderr)
+	}
+
+	manifest := readFile(t, manifestPath)
+	frontendAt := strings.Index(manifest, `"frontend"`)
+	infraAt := strings.Index(manifest, `"infra"`)
+	if frontendAt < 0 || infraAt < 0 || frontendAt > infraAt {
+		t.Fatalf("ordem de inserção não preservada:\n%s", manifest)
+	}
+	if !strings.Contains(manifest, `"source"`) {
+		t.Fatalf("campo source perdido:\n%s", manifest)
+	}
+
+	t.Run("noop", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "link", "../frontend", "--as", "frontend")
+		expected := "Projeto: example\nRepositório frontend: " + expectedPath + "\nNenhuma alteração necessária.\n"
+		if status != 0 || stdout != expected || stderr != "" {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q", status, stdout, stderr)
+		}
+	})
+
+	t.Run("replace preserva posicao e informa caminho anterior", func(t *testing.T) {
+		outro := newRepo("frontend-v2")
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "link", "../frontend-v2", "--as", "frontend", "--replace")
+		novo := filepath.ToSlash(filepath.Join("..", "..", "frontend-v2"))
+		expected := "Projeto: example\nCaminho anterior: " + expectedPath + "\nRepositório frontend: " + novo + "\nManifesto atualizado.\n"
+		if status != 0 || stdout != expected || stderr != "" {
+			t.Fatalf("status = %d\nstdout = %q\nstderr = %q\nesperado = %q", status, stdout, stderr, expected)
+		}
+		manifest := readFile(t, manifestPath)
+		if strings.Index(manifest, `"frontend"`) > strings.Index(manifest, `"infra"`) {
+			t.Fatalf("replace moveu a entrada:\n%s", manifest)
+		}
+		_ = outro
+	})
+
+	t.Run("caminho relativo a partir de subdiretorio", func(t *testing.T) {
+		docs := newRepo("docs")
+		start := filepath.Join(root, "knowledge", "product")
+		status, _, stderr := executeCLI(t, binary, start, nil, "link", filepath.Join("..", "..", "..", "docs"), "--as", "docs")
+		if status != 0 || stderr != "" {
+			t.Fatalf("status = %d stderr = %q", status, stderr)
+		}
+		_ = docs
+	})
+
+	t.Run("manifesto preservado em falha", func(t *testing.T) {
+		before := readFile(t, manifestPath)
+		for _, args := range [][]string{
+			{"link", "../infra", "--as", "frontend"},
+			{"link", "../infra", "--as", "source"},
+			{"link", "../infra", "--as", "nome inválido"},
+			{"link", "../nao-existe", "--as", "x"},
+			{"link", "knowledge", "--as", "k"},
+		} {
+			status, stdout, stderr := executeCLI(t, binary, root, nil, args...)
+			if status != 1 || stdout != "" || !strings.HasPrefix(stderr, "erro: ") {
+				t.Fatalf("%v: status = %d stdout = %q stderr = %q", args, status, stdout, stderr)
+			}
+		}
+		if readFile(t, manifestPath) != before {
+			t.Fatal("manifesto alterado por falha bloqueante")
+		}
+	})
+
+	t.Run("uso invalido", func(t *testing.T) {
+		before := readFile(t, manifestPath)
+		for _, args := range [][]string{
+			{"link", "--as", "orfao"},
+			{"link", "../infra", "--as"},
+			{"link", "../infra", "--as", "a", "--as", "b"},
+			{"link", "../infra", "--as", "a", "extra"},
+			{"link", "../infra", "--desconhecida"},
+		} {
+			status, stdout, stderr := executeCLI(t, binary, root, nil, args...)
+			if status != 2 || stdout != "" || !strings.Contains(stderr, "uso: cerne link") {
+				t.Fatalf("%v: status = %d stdout = %q stderr = %q", args, status, stdout, stderr)
+			}
+		}
+		if readFile(t, manifestPath) != before {
+			t.Fatal("manifesto alterado por uso inválido")
+		}
+	})
+}
+
+func TestCLIReportsRegisteredRepositoriesAcrossCommands(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	root := initWorkspaceWithCLI(t, binary, parent, "example")
+	for _, name := range []string{"frontend", "infra"} {
+		path := filepath.Join(parent, name)
+		if err := os.Mkdir(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		gitOutput(t, path, "init", "--quiet")
+		if status, _, stderr := executeCLI(t, binary, root, nil, "link", "../"+name, "--as", name); status != 0 {
+			t.Fatalf("registro de %s: status = %d stderr = %q", name, status, stderr)
+		}
+	}
+
+	t.Run("status lista os quatro repositorios", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
+		if status != 0 || stderr != "" {
+			t.Fatalf("status = %d stderr = %q", status, stderr)
+		}
+		for _, name := range []string{"Knowledge", "Source", "frontend", "infra"} {
+			if !strings.Contains(stdout, name) {
+				t.Fatalf("status não lista %q:\n%s", name, stdout)
+			}
+		}
+		if strings.Contains(stdout, "missing message") {
+			t.Fatalf("rótulo não resolvido:\n%s", stdout)
+		}
+	})
+
+	t.Run("doctor emite um check por repositorio", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "doctor")
+		if status != 0 || stderr != "" {
+			t.Fatalf("status = %d stderr = %q", status, stderr)
+		}
+		if !strings.Contains(stdout, "(frontend)") || !strings.Contains(stdout, "(infra)") {
+			t.Fatalf("doctor não nomeia as entradas:\n%s", stdout)
+		}
+	})
+
+	t.Run("context lista disponiveis e marca selecionados", func(t *testing.T) {
+		decode := func(args ...string) map[string]any {
+			status, stdout, stderr := executeCLI(t, binary, root, nil, args...)
+			if stderr != "" {
+				t.Fatalf("%v: status = %d stderr = %q", args, status, stderr)
+			}
+			var report map[string]any
+			if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+				t.Fatalf("%v: JSON inválido: %v", args, err)
+			}
+			return report
+		}
+		available := decode("context", "--json")["repositories"].([]any)
+		if len(available) != 2 {
+			t.Fatalf("repositories = %#v", available)
+		}
+		for _, entry := range available {
+			if entry.(map[string]any)["selected"].(bool) {
+				t.Fatalf("selecionado sem --repo: %#v", entry)
+			}
+		}
+		selected := decode("context", "--json", "--repo", "frontend")["repositories"].([]any)
+		if !selected[0].(map[string]any)["selected"].(bool) || selected[1].(map[string]any)["selected"].(bool) {
+			t.Fatalf("seleção = %#v", selected)
+		}
+		unknown := decode("context", "--json", "--repo", "fantasma")
+		if unknown["status"] != "invalid" || unknown["repositories"] != nil {
+			t.Fatalf("contexto parcial emitido: %#v", unknown)
+		}
+	})
+
+	t.Run("vinculo quebrado e reportado sem impedir os demais", func(t *testing.T) {
+		if err := os.Rename(filepath.Join(parent, "infra"), filepath.Join(parent, "infra-movido")); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			_ = os.Rename(filepath.Join(parent, "infra-movido"), filepath.Join(parent, "infra"))
+		})
+		status, stdout, stderr := executeCLI(t, binary, root, nil, "status")
+		if status != 0 || stderr != "" {
+			t.Fatalf("status abortou: %d %q", status, stderr)
+		}
+		if !strings.Contains(stdout, "frontend") || !strings.Contains(stdout, "infra") {
+			t.Fatalf("relato interrompido:\n%s", stdout)
+		}
+		if doctorStatus, _, _ := executeCLI(t, binary, root, nil, "doctor"); doctorStatus == 0 {
+			t.Fatal("doctor considerou saudável um workspace com vínculo quebrado")
+		}
+	})
+
+	t.Run("uso invalido de --repo", func(t *testing.T) {
+		for _, args := range [][]string{
+			{"context", "--repo"},
+			{"context", "--repo", "--json"},
+			{"context", "--desconhecida"},
+		} {
+			status, stdout, _ := executeCLI(t, binary, root, nil, args...)
+			if status != 2 || stdout != "" {
+				t.Fatalf("%v: status = %d stdout = %q", args, status, stdout)
+			}
+		}
+	})
+}
+
+// TestCLIGitInspectKeepsMinimumScope é o teste de integração do Princípio V: registrar
+// repositórios não amplia o escopo entregue a um agente por cerne git inspect.
+func TestCLIGitInspectKeepsMinimumScope(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	root := initWorkspaceWithCLI(t, binary, parent, "example")
+	frontend := filepath.Join(parent, "frontend")
+	if err := os.Mkdir(frontend, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitOutput(t, frontend, "init", "--quiet")
+	gitOutput(t, frontend, "commit", "--allow-empty", "-m", "init")
+	if status, _, stderr := executeCLI(t, binary, root, nil, "link", "../frontend", "--as", "frontend"); status != 0 {
+		t.Fatalf("registro: status = %d stderr = %q", status, stderr)
+	}
+	environment := replaceEnvironment(portugueseTestEnvironment(), "HOME", t.TempDir())
+
+	names := func(args ...string) []string {
+		status, stdout, stderr := executeCLI(t, binary, root, environment, args...)
+		if status != 0 || stderr != "" {
+			t.Fatalf("%v: status = %d stderr = %q", args, status, stderr)
+		}
+		var snapshot struct {
+			Repositories []struct {
+				Name string `json:"name"`
+			} `json:"repositories"`
+		}
+		if err := json.Unmarshal([]byte(stdout), &snapshot); err != nil {
+			t.Fatalf("JSON inválido: %v", err)
+		}
+		collected := []string{}
+		for _, repository := range snapshot.Repositories {
+			collected = append(collected, repository.Name)
+		}
+		return collected
+	}
+
+	base := []string{"git", "inspect", "--runtime", "codex", "--task", "t-1", "--json"}
+	if got := names(base...); !reflect.DeepEqual(got, []string{"knowledge", "source"}) {
+		t.Fatalf("escopo ampliado sem --repo: %v", got)
+	}
+	if got := names(append(append([]string{}, base...), "--repo", "frontend")...); !reflect.DeepEqual(got, []string{"knowledge", "source", "frontend"}) {
+		t.Fatalf("seleção não aplicada: %v", got)
+	}
+	if status, _, _ := executeCLI(t, binary, root, environment, append(append([]string{}, base...), "--repo")...); status != 2 {
+		t.Fatalf("--repo sem valor status = %d", status)
+	}
+}
+
+func TestCLIUnlinkRemovesRegistrationOnly(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	root := initWorkspaceWithCLI(t, binary, parent, "example")
+	manifestPath := filepath.Join(root, "knowledge", "cerne.json")
+	for _, name := range []string{"frontend", "infra"} {
+		path := filepath.Join(parent, name)
+		if err := os.Mkdir(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		gitOutput(t, path, "init", "--quiet")
+		if status, _, stderr := executeCLI(t, binary, root, nil, "link", "../"+name, "--as", name); status != 0 {
+			t.Fatalf("registro de %s: %d %q", name, status, stderr)
+		}
+	}
+	before := snapshotTree(t, filepath.Join(parent, "infra"))
+
+	status, stdout, stderr := executeCLI(t, binary, root, nil, "unlink", "infra")
+	expected := "Projeto: example\nRepositório removido: infra (" +
+		filepath.ToSlash(filepath.Join("..", "..", "infra")) + ")\nManifesto atualizado.\n"
+	if status != 0 || stdout != expected || stderr != "" {
+		t.Fatalf("status = %d\nstdout = %q\nstderr = %q\nesperado = %q", status, stdout, stderr, expected)
+	}
+	if after := snapshotTree(t, filepath.Join(parent, "infra")); !reflect.DeepEqual(before, after) {
+		t.Fatalf("unlink alterou o repositório vinculado\nantes=%#v\ndepois=%#v", before, after)
+	}
+	manifest := readFile(t, manifestPath)
+	if strings.Contains(manifest, `"infra"`) || !strings.Contains(manifest, `"frontend"`) {
+		t.Fatalf("manifesto = %s", manifest)
+	}
+
+	t.Run("falhas nao alteram o manifesto", func(t *testing.T) {
+		before := readFile(t, manifestPath)
+		for _, args := range [][]string{
+			{"unlink", "infra"},
+			{"unlink", "source"},
+			{"unlink", "knowledge"},
+		} {
+			status, stdout, stderr := executeCLI(t, binary, root, nil, args...)
+			if status != 1 || stdout != "" || !strings.HasPrefix(stderr, "erro: ") || !strings.Contains(stderr, "correção:") {
+				t.Fatalf("%v: status = %d stdout = %q stderr = %q", args, status, stdout, stderr)
+			}
+		}
+		for _, args := range [][]string{{"unlink"}, {"unlink", "a", "b"}, {"unlink", "--x"}} {
+			status, stdout, stderr := executeCLI(t, binary, root, nil, args...)
+			if status != 2 || stdout != "" || !strings.Contains(stderr, "uso: cerne unlink") {
+				t.Fatalf("%v: status = %d stdout = %q stderr = %q", args, status, stdout, stderr)
+			}
+		}
+		if readFile(t, manifestPath) != before {
+			t.Fatal("manifesto alterado por falha")
+		}
+	})
+
+	t.Run("remove vinculo quebrado", func(t *testing.T) {
+		if err := os.Rename(filepath.Join(parent, "frontend"), filepath.Join(parent, "frontend-movido")); err != nil {
+			t.Fatal(err)
+		}
+		if status, _, stderr := executeCLI(t, binary, root, nil, "unlink", "frontend"); status != 0 || stderr != "" {
+			t.Fatalf("status = %d stderr = %q", status, stderr)
+		}
+		if strings.Contains(readFile(t, manifestPath), "repositories") {
+			t.Fatalf("campo vazio mantido:\n%s", readFile(t, manifestPath))
+		}
+	})
+
+	t.Run("ajuda", func(t *testing.T) {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "unlink", "--help")
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "cerne unlink <nome>") || !strings.Contains(stdout, "Status 0") {
+			t.Fatalf("status = %d stdout = %q stderr = %q", status, stdout, stderr)
+		}
+	})
+}
+
+func TestCLICompletionIncludesUnlink(t *testing.T) {
+	binary := buildCLI(t)
+	for _, shell := range []string{"bash", "zsh"} {
+		status, stdout, stderr := executeCLI(t, binary, t.TempDir(), nil, "completion", shell)
+		if status != 0 || stderr != "" || !strings.Contains(stdout, "unlink") {
+			t.Fatalf("%s: status = %d stderr = %q stdout não contém unlink", shell, status, stderr)
+		}
+	}
+}
+
+// TestCLILinkRepositoryGitRefusals cobre os cenários negativos que exigem fixtures Git reais:
+// repositório bare, diretório sem repositório Git e worktree de um repositório já registrado.
+func TestCLILinkRepositoryGitRefusals(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git não está disponível")
+	}
+	binary := buildCLI(t)
+	parent := t.TempDir()
+	root := initWorkspaceWithCLI(t, binary, parent, "example")
+	manifestPath := filepath.Join(root, "knowledge", "cerne.json")
+
+	frontend := filepath.Join(parent, "frontend")
+	if err := os.Mkdir(frontend, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitOutput(t, frontend, "init", "--quiet")
+	gitOutput(t, frontend, "commit", "--allow-empty", "-m", "init")
+	if status, _, stderr := executeCLI(t, binary, root, nil, "link", "../frontend", "--as", "frontend"); status != 0 {
+		t.Fatalf("registro: status = %d stderr = %q", status, stderr)
+	}
+
+	bare := filepath.Join(parent, "bare.git")
+	if output, err := exec.Command("git", "init", "--bare", "--quiet", bare).CombinedOutput(); err != nil {
+		t.Fatalf("git init --bare: %v %s", err, output)
+	}
+	semGit := filepath.Join(parent, "sem-git")
+	if err := os.Mkdir(semGit, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Worktree do repositório já registrado: histórico compartilhado, portanto não independente.
+	compartilhado := filepath.Join(parent, "frontend-wt")
+	gitOutput(t, frontend, "worktree", "add", "--detach", compartilhado)
+
+	before := readFile(t, manifestPath)
+	cases := map[string]string{
+		"bare":                   "../bare.git",
+		"sem repositorio git":    "../sem-git",
+		"worktree compartilhado": "../frontend-wt",
+	}
+	for name, input := range cases {
+		t.Run(name, func(t *testing.T) {
+			status, stdout, stderr := executeCLI(t, binary, root, nil, "link", input, "--as", "candidato")
+			if status != 1 || stdout != "" || !strings.HasPrefix(stderr, "erro: ") || !strings.Contains(stderr, "correção:") {
+				t.Fatalf("status = %d stdout = %q stderr = %q", status, stdout, stderr)
+			}
+			if readFile(t, manifestPath) != before {
+				t.Fatal("manifesto alterado por recusa")
+			}
+		})
+	}
 }

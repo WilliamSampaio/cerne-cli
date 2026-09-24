@@ -251,3 +251,67 @@ func readGitAudit(t *testing.T, home, id string) gitAuditRecord {
 	}
 	return record
 }
+
+// TestInspectGitScopeRequiresExplicitSelection é o teste negativo do Princípio V (Contexto Mínimo)
+// e de FR-031/SC-007: registrar repositórios adicionais NÃO os coloca no escopo entregue ao agente.
+func TestInspectGitScopeRequiresExplicitSelection(t *testing.T) {
+	root := newGitWorkflowWorkspace(t)
+	home := t.TempDir()
+	parent := filepath.Dir(root)
+	for _, name := range []string{"frontend", "infra"} {
+		if err := os.Mkdir(filepath.Join(parent, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	registerRepos(t, root,
+		RepositoryEntry{Name: "frontend", Path: "../../frontend"},
+		RepositoryEntry{Name: "infra", Path: "../../infra"},
+	)
+	inspector := fakeWorkflowInspector(map[string]gitexec.WorkflowRepository{
+		filepath.Join(root, "knowledge"):  fakeWorkflowRepo(filepath.Join(root, "knowledge"), "main", "a"),
+		filepath.Join(root, "source"):     fakeWorkflowRepo(filepath.Join(root, "source"), "main", "b"),
+		filepath.Join(parent, "frontend"): fakeWorkflowRepo(filepath.Join(parent, "frontend"), "main", "c"),
+		filepath.Join(parent, "infra"):    fakeWorkflowRepo(filepath.Join(parent, "infra"), "main", "d"),
+	}, nil)
+
+	t.Run("sem selecao o escopo permanece knowledge e source", func(t *testing.T) {
+		got, err := InspectGit(root, GitInspectRequest{Runtime: "codex", TaskID: "task-1", Home: home}, inspector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Repositories) != 2 || got.Repositories[0].Name != "knowledge" || got.Repositories[1].Name != "source" {
+			t.Fatalf("escopo ampliado sem seleção explícita: %#v", got.Repositories)
+		}
+		if audit := readGitAudit(t, home, got.AuditID); len(audit.Targets) != 2 {
+			t.Fatalf("auditoria registrou alvos não autorizados: %#v", audit.Targets)
+		}
+	})
+
+	t.Run("selecao nominal entra no escopo e na auditoria", func(t *testing.T) {
+		got, err := InspectGit(root, GitInspectRequest{
+			Runtime: "codex", TaskID: "task-1", Home: home, Repositories: []string{"frontend"},
+		}, inspector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Repositories) != 3 || got.Repositories[2].Name != "frontend" {
+			t.Fatalf("seleção não aplicada: %#v", got.Repositories)
+		}
+		audit := readGitAudit(t, home, got.AuditID)
+		if len(audit.Targets) != 3 {
+			t.Fatalf("auditoria = %#v", audit.Targets)
+		}
+	})
+
+	t.Run("nome nao registrado falha sem snapshot parcial", func(t *testing.T) {
+		got, err := InspectGit(root, GitInspectRequest{
+			Runtime: "codex", TaskID: "task-1", Home: home, Repositories: []string{"fantasma"},
+		}, inspector)
+		if err != nil {
+			t.Fatalf("erro inesperado: %v", err)
+		}
+		if got.Status != "invalid" || len(got.Repositories) != 0 {
+			t.Fatalf("snapshot parcial emitido: %#v", got)
+		}
+	})
+}

@@ -294,17 +294,50 @@ Exemplo:
   cerne status
 `
 
+const unlinkHelp = `Desvincula um repositório adicional do workspace Cerne atual.
+
+Uso:
+  cerne unlink <nome>
+  cerne unlink --help
+
+Nome:
+  Nome de um repositório adicional registrado, como listado por cerne status,
+  cerne doctor e cerne context. source e knowledge não são aceitos: são
+  repositórios próprios do workspace.
+
+Efeitos:
+  Altera somente knowledge/cerne.json. Não apaga, move nem modifica o
+  repositório no disco, e não acessa remotos. Funciona também sobre um vínculo
+  quebrado, que é como se limpa um registro cujo diretório não existe mais.
+
+Saídas:
+  Sucesso e ajuda usam stdout. Uso inválido e falhas usam stderr.
+  Status 0: removido ou ajuda; 1: falha operacional; 2: uso inválido.
+
+Exemplo:
+  cerne unlink frontend
+`
+
 const linkHelp = `Vincula o workspace Cerne atual a um repositório Git local existente como source.
 
 Uso:
   cerne link <caminho>
   cerne link <caminho> --replace
+  cerne link <caminho> --as <nome>
+  cerne link <caminho> --as <nome> --replace
   cerne link --help
 
 Caminho:
   Pode ser relativo ao diretório atual ou absoluto. Deve apontar para a raiz
   de um repositório Git local com árvore de trabalho. Worktrees válidos são
-  aceitos; repositórios bare não são aceitos.
+  aceitos desde que não compartilhem histórico com outro repositório do
+  workspace; repositórios bare não são aceitos.
+
+Repositórios adicionais:
+  Com --as <nome>, o repositório é registrado como um repositório adicional do
+  workspace, ao lado do source, e não substitui o source. O nome é único no
+  workspace, não pode ser source nem knowledge, e é usado por status, doctor,
+  context e cerne unlink.
 
 Substituição:
   Se outro source já estiver configurado, a troca exige --replace. Mesmo com
@@ -313,7 +346,8 @@ Substituição:
 
 Validações:
   Workspace, manifesto, versão, caminho informado, Git local, repositório
-  non-bare, independência entre knowledge/source e sobreposição perigosa.
+  non-bare, nome do repositório, independência entre todos os repositórios do
+  workspace e sobreposição perigosa.
 
 Saídas:
   Sucesso e ajuda usam stdout. Uso inválido e falhas usam stderr.
@@ -325,8 +359,9 @@ Efeitos:
   reset, add, commit, clean, fetch, pull, push, acessa remotos, credenciais ou
   agentes de IA.
 
-Exemplo:
+Exemplos:
   cerne link ../aplicacao-existente --replace
+  cerne link ../app-frontend --as frontend
 `
 
 func main() {
@@ -386,6 +421,8 @@ func runLocalized(args []string, stdout, stderr io.Writer, messages localizer, h
 		return runStatus(args[1:], stdout, stderr, messages)
 	case "link":
 		return runLink(args[1:], stdout, stderr, messages)
+	case "unlink":
+		return runUnlink(args[1:], stdout, stderr, messages)
 	case "workflow":
 		return runWorkflow(args[1:], stdout, stderr, messages)
 	case "context":
@@ -532,13 +569,13 @@ func runContext(args []string, stdout, stderr io.Writer, messages localizer) int
 		fmt.Fprint(stdout, messages.text(messageContextHelp))
 		return 0
 	}
-	jsonOutput := len(args) == 1 && args[0] == "--json"
-	if len(args) != 0 && !jsonOutput {
+	jsonOutput, selection, ok := parseContextArgs(args)
+	if !ok {
 		fmt.Fprint(stderr, messages.text("context.usage"))
 		return 2
 	}
 	current, _ := currentDirectory()
-	report := workspace.Context(current, workflowexec.Describe)
+	report := workspace.ContextWithRepositories(current, selection, workflowexec.Describe)
 	if jsonOutput {
 		encoder := json.NewEncoder(stdout)
 		encoder.SetIndent("", "  ")
@@ -552,6 +589,29 @@ func runContext(args []string, stdout, stderr io.Writer, messages localizer) int
 		return 1
 	}
 	return 0
+}
+
+// parseContextArgs aceita `cerne context [--json] [--repo <nome>]...`. --repo é repetível e
+// seleciona, por nome, os repositórios adicionais que compõem o escopo da tarefa.
+func parseContextArgs(args []string) (jsonOutput bool, selection []string, ok bool) {
+	for index := 0; index < len(args); index++ {
+		switch args[index] {
+		case "--json":
+			if jsonOutput {
+				return false, nil, false
+			}
+			jsonOutput = true
+		case "--repo":
+			if index+1 >= len(args) || args[index+1] == "" || strings.HasPrefix(args[index+1], "--") {
+				return false, nil, false
+			}
+			index++
+			selection = append(selection, args[index])
+		default:
+			return false, nil, false
+		}
+	}
+	return jsonOutput, selection, true
 }
 
 func renderContext(stdout io.Writer, report workspace.ContextReport, messages localizer) {
@@ -1163,7 +1223,7 @@ func runLink(args []string, stdout, stderr io.Writer, messages localizer) int {
 		fmt.Fprint(stdout, messages.text(messageLinkHelp))
 		return 0
 	}
-	source, replace, ok := parseLinkArgs(args)
+	source, name, replace, ok := parseLinkArgs(args)
 	if !ok {
 		fmt.Fprint(stderr, messages.text("link.usage"))
 		return 2
@@ -1179,28 +1239,106 @@ func runLink(args []string, stdout, stderr io.Writer, messages localizer) int {
 		fmt.Fprint(stderr, messages.text("common.git"))
 		return 1
 	}
+	if name != "" {
+		return runLinkRepository(current, name, source, replace, stdout, stderr, messages, adaptLink(inspect))
+	}
 	result, err := workspace.Link(current, workspace.LinkRequest{SourceInput: source, Replace: replace}, adaptLink(inspect))
 	if err != nil {
-		var failure workspace.LinkFailure
-		if errors.As(err, &failure) {
-			renderFailure(stderr, messages, "link", failure.Code, failure.Cause, failure.Path, failure.Correction)
-		} else {
-			fmt.Fprint(stderr, messages.text("link.failure.default"))
-		}
-		return 1
+		return renderLinkFailure(stderr, messages, err)
 	}
 	renderLink(stdout, result, messages)
 	return 0
 }
 
-func parseLinkArgs(args []string) (string, bool, bool) {
-	if len(args) == 1 && args[0] != "--replace" {
-		return args[0], false, true
+func runLinkRepository(current, name, source string, replace bool, stdout, stderr io.Writer, messages localizer, inspect workspace.LinkGitInspect) int {
+	result, err := workspace.AddRepository(current, workspace.AddRepositoryRequest{
+		Name: name, PathInput: source, Replace: replace,
+	}, inspect)
+	if err != nil {
+		return renderLinkFailure(stderr, messages, err)
 	}
-	if len(args) == 2 && args[0] != "--replace" && args[1] == "--replace" {
-		return args[0], true, true
+	fmt.Fprint(stdout, messages.text("link.project", result.ProjectName))
+	if !result.Changed {
+		fmt.Fprint(stdout, messages.text("repository.current", result.Name, result.NewPath))
+		fmt.Fprint(stdout, messages.text("link.unchanged"))
+		return 0
 	}
-	return "", false, false
+	if result.PreviousPath != "" {
+		fmt.Fprint(stdout, messages.text("repository.previous", result.PreviousPath))
+	}
+	fmt.Fprint(stdout, messages.text("repository.new", result.Name, result.NewPath))
+	fmt.Fprint(stdout, messages.text("link.updated"))
+	return 0
+}
+
+func runUnlink(args []string, stdout, stderr io.Writer, messages localizer) int {
+	if len(args) == 1 && args[0] == "--help" {
+		fmt.Fprint(stdout, messages.text(messageUnlinkHelp))
+		return 0
+	}
+	if len(args) != 1 || args[0] == "" || strings.HasPrefix(args[0], "--") {
+		fmt.Fprint(stderr, messages.text("unlink.usage"))
+		return 2
+	}
+	current, err := currentDirectory()
+	if err != nil {
+		fmt.Fprint(stderr, messages.text("common.cwd"))
+		return 1
+	}
+	result, err := workspace.RemoveRepository(current, args[0])
+	if err != nil {
+		var failure workspace.LinkFailure
+		if errors.As(err, &failure) {
+			renderFailure(stderr, messages, "unlink", failure.Code, failure.Cause, failure.Path, failure.Correction)
+		} else {
+			fmt.Fprint(stderr, messages.text("unlink.failure.default"))
+		}
+		return 1
+	}
+	fmt.Fprint(stdout, messages.text("link.project", result.ProjectName))
+	fmt.Fprint(stdout, messages.text("unlink.removed", result.Name, result.RemovedPath))
+	fmt.Fprint(stdout, messages.text("link.updated"))
+	return 0
+}
+
+func renderLinkFailure(stderr io.Writer, messages localizer, err error) int {
+	var failure workspace.LinkFailure
+	if errors.As(err, &failure) {
+		renderFailure(stderr, messages, "link", failure.Code, failure.Cause, failure.Path, failure.Correction)
+	} else {
+		fmt.Fprint(stderr, messages.text("link.failure.default"))
+	}
+	return 1
+}
+
+// parseLinkArgs aceita `cerne link <caminho> [--as <nome>] [--replace]`. Sem `--as`, o comando
+// mantém o contrato anterior de configurar o source. As flags podem vir em qualquer ordem depois
+// do caminho, mas nenhuma pode ser repetida nem vir sem o caminho.
+func parseLinkArgs(args []string) (source string, name string, replace bool, ok bool) {
+	for index := 0; index < len(args); index++ {
+		switch args[index] {
+		case "--replace":
+			if replace {
+				return "", "", false, false
+			}
+			replace = true
+		case "--as":
+			if name != "" || index+1 >= len(args) || args[index+1] == "" || strings.HasPrefix(args[index+1], "--") {
+				return "", "", false, false
+			}
+			index++
+			name = args[index]
+		default:
+			if source != "" || strings.HasPrefix(args[index], "--") {
+				return "", "", false, false
+			}
+			source = args[index]
+		}
+	}
+	if source == "" {
+		return "", "", false, false
+	}
+	return source, name, replace, true
 }
 
 func adaptGit(inspect func(string) (gitexec.Repository, error)) workspace.GitInspect {
@@ -1321,6 +1459,15 @@ func renderStatus(stdout io.Writer, report workspace.WorkspaceReport, messages l
 	renderStatusStyled(stdout, report, messages)
 }
 
+// statusRepositoryLabel devolve o rótulo traduzido de knowledge e source; para um repositório
+// adicional, o próprio nome escolhido pelo usuário é o rótulo — ele não é traduzível.
+func statusRepositoryLabel(messages localizer, name string) string {
+	if label, ok := messages.find(messageID("status.repository." + name)); ok {
+		return label
+	}
+	return name
+}
+
 func renderStatusPlain(stdout io.Writer, report workspace.WorkspaceReport, messages localizer) {
 	fmt.Fprint(stdout, messages.text("status.project", report.ProjectName))
 	fmt.Fprint(stdout, messages.text("status.workspace", report.Root))
@@ -1328,7 +1475,7 @@ func renderStatusPlain(stdout io.Writer, report workspace.WorkspaceReport, messa
 		if index > 0 {
 			fmt.Fprintln(stdout)
 		}
-		fmt.Fprintln(stdout, messages.text(messageID("status.repository."+repository.Name)))
+		fmt.Fprintln(stdout, statusRepositoryLabel(messages, repository.Name))
 		fmt.Fprint(stdout, messages.text("status.path", repository.Path))
 		branch, commit := statusBranchCommit(repository, messages)
 		fmt.Fprint(stdout, messages.text("status.branch", branch))
@@ -1362,7 +1509,7 @@ func renderStatusStyled(stdout io.Writer, report workspace.WorkspaceReport, mess
 		if index > 0 {
 			fmt.Fprintln(stdout)
 		}
-		fmt.Fprintln(stdout, sectionRule(stdout, messages.text(messageID("status.repository."+repository.Name))))
+		fmt.Fprintln(stdout, sectionRule(stdout, statusRepositoryLabel(messages, repository.Name)))
 		branch, commit := statusBranchCommit(repository, messages)
 		stateSeverity := repositorySeverity(repository.State)
 		stateIcon := colorizeIcon(stdout, symbol(stateSeverity), severityColor(stateSeverity))

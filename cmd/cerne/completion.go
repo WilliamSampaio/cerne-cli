@@ -19,6 +19,7 @@ var topLevelCompletionItems = []completionItem{
 	{"doctor", "completion.desc.doctor"},
 	{"status", "completion.desc.status"},
 	{"link", "completion.desc.link"},
+	{"unlink", "completion.desc.unlink"},
 	{"workflow", "completion.desc.workflow"},
 	{"context", "completion.desc.context"},
 	{"skill", "completion.desc.skill"},

@@ -262,3 +262,67 @@ func hasContextProblem(report ContextReport, code, component string) bool {
 	}
 	return false
 }
+
+func TestContextRepositoriesAvailableAndSelected(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	parent := filepath.Dir(root)
+	for _, name := range []string{"frontend", "infra"} {
+		if err := os.Mkdir(filepath.Join(parent, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("omitido sem registros", func(t *testing.T) {
+		if got := Context(root, nil); got.Repositories != nil {
+			t.Fatalf("repositories = %#v", got.Repositories)
+		}
+	})
+
+	registerRepos(t, root,
+		RepositoryEntry{Name: "frontend", Path: "../../frontend"},
+		RepositoryEntry{Name: "infra", Path: "../../infra"},
+	)
+
+	t.Run("listados como disponiveis sem selecao", func(t *testing.T) {
+		got := Context(root, nil)
+		if len(got.Repositories) != 2 {
+			t.Fatalf("repositories = %#v", got.Repositories)
+		}
+		for _, repository := range got.Repositories {
+			if repository.Selected {
+				t.Fatalf("selecionado sem pedido explícito: %#v", repository)
+			}
+		}
+	})
+
+	t.Run("selecao nominal", func(t *testing.T) {
+		got := ContextWithRepositories(root, []string{"frontend"}, nil)
+		if len(got.Repositories) != 2 || !got.Repositories[0].Selected || got.Repositories[1].Selected {
+			t.Fatalf("seleção = %#v", got.Repositories)
+		}
+	})
+
+	t.Run("nome desconhecido nao produz relatorio parcial", func(t *testing.T) {
+		got := ContextWithRepositories(root, []string{"fantasma"}, nil)
+		if got.Repositories != nil || got.Status != Invalid {
+			t.Fatalf("relatório parcial: %#v", got)
+		}
+		if got.Problems[0].Code != "repository-unknown" {
+			t.Fatalf("problemas = %#v", got.Problems)
+		}
+	})
+
+	t.Run("entrada quebrada nao interrompe as demais", func(t *testing.T) {
+		registerRepos(t, root,
+			RepositoryEntry{Name: "frontend", Path: "../../frontend"},
+			RepositoryEntry{Name: "sumido", Path: "../../nao-existe"},
+		)
+		got := Context(root, nil)
+		if len(got.Repositories) != 1 || got.Repositories[0].Name != "frontend" {
+			t.Fatalf("repositories = %#v", got.Repositories)
+		}
+		if got.Problems[0].Code != "repository-invalid" || got.Status != Invalid {
+			t.Fatalf("problemas = %#v status = %s", got.Problems, got.Status)
+		}
+	})
+}
