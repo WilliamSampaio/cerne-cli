@@ -12,17 +12,27 @@ type checkMessage struct {
 
 func localizedCheck(messages localizer, check workspace.CheckResult) (string, string, string) {
 	if messages.language == localization.PortugueseBrazil {
-		return check.Label, check.Detail, check.Correction
+		return targeted(check.Label, check.Target), check.Detail, check.Correction
 	}
 	label := englishCheckLabels[check.ID]
 	if label == "" {
 		label = check.ID
 	}
+	label = targeted(label, check.Target)
 	translated, ok := englishCheckMessages[check.ID+"."+check.Code]
 	if !ok {
 		return label, messages.text("failure.operational"), messages.text("failure.check-and-retry")
 	}
 	return label, translated.Detail, translated.Correction
+}
+
+// targeted anexa ao rótulo o nome da entidade quando um mesmo ID de check cobre várias. O nome vem
+// do domínio e não é traduzível, então fica fora do texto resolvido por chave estática.
+func targeted(label, target string) string {
+	if target == "" {
+		return label
+	}
+	return label + " (" + target + ")"
 }
 
 var englishCheckLabels = map[string]string{
@@ -37,9 +47,13 @@ var englishCheckLabels = map[string]string{
 	"git-available":         "Git",
 	"permissions":           "Permissions",
 	"manifest-version":      "Manifest version",
+	"repository":            "Additional repository",
 }
 
 var englishCheckMessages = map[string]checkMessage{
+	"repository.found":                            {Detail: "found"},
+	"repository.missing":                          {"not found as a regular directory", "restore the directory or remove the registration with cerne unlink"},
+	"repository.invalid":                          {"not a valid local Git repository", "restore the repository or remove the registration with cerne unlink"},
 	"manifest.invalid":                            {"invalid or unreadable", "repair knowledge/cerne.json"},
 	"manifest.name-mismatch":                      {"valid name differs from root name", "align the manifest or rename the workspace"},
 	"manifest.readable":                           {Detail: "readable"},

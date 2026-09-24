@@ -9,6 +9,10 @@ import (
 const (
 	RepositoryClean   = "clean"
 	RepositoryPending = "pending"
+	// RepositoryInvalid marca um repositório adicional registrado que não pôde ser inspecionado.
+	// knowledge e source nunca produzem este estado: eles continuam falhando duro, preservando o
+	// contrato de saída anterior a esta feature.
+	RepositoryInvalid = "invalid"
 )
 
 type GitRepositoryStatus struct {
@@ -42,6 +46,10 @@ type GitStatus func(string) (GitRepositoryStatus, error)
 type RepositoryParticipant struct {
 	Name string
 	Path string
+	// Additional distingue um repositório registrado no manifesto de knowledge e source.
+	Additional bool
+	// Broken marca uma entrada registrada cujo caminho não pôde ser resolvido no disco.
+	Broken bool
 }
 
 type StatusFailure struct {
@@ -82,11 +90,22 @@ func CurrentStatus(start string, collect GitStatus) (WorkspaceReport, error) {
 		return WorkspaceReport{}, statusFailure("git-unavailable", "Git indisponível", "", "instale o Git e disponibilize-o no PATH")
 	}
 
+	participants = append(participants, registeredRepositories(root, data, nil)...)
+
 	reports := make([]RepositoryReport, 0, len(participants))
 	for _, repository := range participants {
+		if repository.Broken {
+			reports = append(reports, RepositoryReport{Name: repository.Name, Path: repository.Path, State: RepositoryInvalid})
+			continue
+		}
 		status, err := collect(repository.Path)
 		if err != nil {
-			return WorkspaceReport{}, statusFailure("git-status-failed", "não foi possível consultar o repositório Git", repository.Path, "verifique se o diretório é um repositório Git local válido")
+			// knowledge e source continuam abortando; uma entrada adicional é reportada inválida.
+			if !repository.Additional {
+				return WorkspaceReport{}, statusFailure("git-status-failed", "não foi possível consultar o repositório Git", repository.Path, "verifique se o diretório é um repositório Git local válido")
+			}
+			reports = append(reports, RepositoryReport{Name: repository.Name, Path: canonical(repository.Path), State: RepositoryInvalid})
+			continue
 		}
 		reports = append(reports, repositoryReport(repository.Name, repository.Path, status))
 	}
@@ -172,4 +191,45 @@ func statusFailure(code, cause, path, correction string) StatusFailure {
 		path = filepath.Clean(path)
 	}
 	return StatusFailure{Code: code, Cause: cause, Path: path, Correction: correction}
+}
+
+// registeredRepositories resolve as entradas adicionais do manifesto contra o disco.
+//
+// names == nil devolve todas as entradas — a semântica de `cerne status` e `cerne doctor`, que
+// relatam o workspace inteiro. names não-nil devolve apenas as nomeadas, preservando o Princípio V
+// para consumidores que entregam contexto a agentes.
+//
+// Uma entrada que não resolve é devolvida com Broken, nunca omitida: o chamador precisa saber que
+// ela existe para reportá-la (FR-027, FR-028).
+func registeredRepositories(root string, data manifest, names []string) []RepositoryParticipant {
+	knowledge := filepath.Join(root, "knowledge")
+	selected := map[string]bool{}
+	for _, name := range names {
+		selected[name] = true
+	}
+	participants := make([]RepositoryParticipant, 0, len(data.Repositories))
+	for _, entry := range data.Repositories {
+		if names != nil && !selected[entry.Name] {
+			continue
+		}
+		participant := RepositoryParticipant{Name: entry.Name, Additional: true}
+		path, err := validateSourcePath(knowledge, entry.Path)
+		if err != nil || regularDir(path) != nil {
+			participant.Path, participant.Broken = manifestSourcePath(knowledge, entry.Path), true
+			participants = append(participants, participant)
+			continue
+		}
+		participant.Path = path
+		participants = append(participants, participant)
+	}
+	return participants
+}
+
+// registeredRepositoryNames devolve os nomes registrados, na ordem do manifesto.
+func registeredRepositoryNames(data manifest) []string {
+	names := make([]string, 0, len(data.Repositories))
+	for _, entry := range data.Repositories {
+		names = append(names, entry.Name)
+	}
+	return names
 }

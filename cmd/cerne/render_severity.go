@@ -55,8 +55,11 @@ func severityColor(severity workspace.Severity) string {
 }
 
 func repositorySeverity(state string) workspace.Severity {
-	if state == workspace.RepositoryPending {
+	switch state {
+	case workspace.RepositoryPending:
 		return workspace.Warning
+	case workspace.RepositoryInvalid:
+		return workspace.Error
 	}
 	return workspace.Pass
 }

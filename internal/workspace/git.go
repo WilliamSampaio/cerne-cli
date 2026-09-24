@@ -20,6 +20,10 @@ type GitInspectRequest struct {
 	Runtime string
 	TaskID  string
 	Home    string
+	// Repositories nomeia os repositórios adicionais que entram no escopo desta inspeção. Vazio
+	// significa escopo mínimo — apenas knowledge e source — conforme o Princípio V: registrar um
+	// repositório no workspace não o entrega a um agente.
+	Repositories []string
 }
 
 type WorkspaceGitSnapshot struct {
@@ -114,6 +118,13 @@ func InspectGit(start string, request GitInspectRequest, inspect gitexec.Workflo
 	participants, err := workspaceRepositories(root, data)
 	if err != nil {
 		return invalidGitSnapshot(err), nil
+	}
+	if len(request.Repositories) > 0 {
+		selected, err := selectRegisteredRepositories(root, data, request.Repositories)
+		if err != nil {
+			return invalidGitSnapshot(err), nil
+		}
+		participants = append(participants, selected...)
 	}
 	audit, auditID, err := startGitAudit(request.Home, request.Runtime, request.TaskID, "inspect", "not-required", participants)
 	if err != nil {
@@ -325,4 +336,26 @@ func digest(values ...string) string {
 
 func gitFailure(code, cause, correction string) GitFailure {
 	return GitFailure{Code: code, Cause: cause, Correction: correction}
+}
+
+// selectRegisteredRepositories resolve uma seleção nominal de repositórios adicionais. Um nome não
+// registrado, ou uma entrada cujo caminho não resolve, falha a seleção inteira: um escopo pedido e
+// não atendido MUST NOT virar um contexto parcial silencioso (FR-034).
+func selectRegisteredRepositories(root string, data manifest, names []string) ([]RepositoryParticipant, error) {
+	registered := map[string]bool{}
+	for _, name := range registeredRepositoryNames(data) {
+		registered[name] = true
+	}
+	for _, name := range names {
+		if !registered[name] {
+			return nil, statusFailure("repository-unknown", "repositório não registrado no workspace", name, "use um nome listado por cerne status")
+		}
+	}
+	selected := registeredRepositories(root, data, names)
+	for _, participant := range selected {
+		if participant.Broken {
+			return nil, statusFailure("repository-invalid", "repositório registrado não pôde ser resolvido", participant.Path, "restaure o diretório ou remova o registro com cerne unlink")
+		}
+	}
+	return selected, nil
 }

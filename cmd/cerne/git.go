@@ -8,6 +8,7 @@ import (
 
 	"github.com/WilliamSampaio/cerne-cli/internal/gitexec"
 	"github.com/WilliamSampaio/cerne-cli/internal/workspace"
+	"strings"
 )
 
 const gitHelp = `Coordena operações Git seguras em um workspace Cerne.
@@ -58,7 +59,7 @@ func runGitInspect(args []string, stdout, stderr io.Writer, home string, message
 		fmt.Fprint(stderr, messages.text("common.git"))
 		return 1
 	}
-	snapshot, err := workspace.InspectGit(current, workspace.GitInspectRequest{Runtime: parsed.Runtime, TaskID: parsed.Task, Home: home}, inspect)
+	snapshot, err := workspace.InspectGit(current, workspace.GitInspectRequest{Runtime: parsed.Runtime, TaskID: parsed.Task, Home: home, Repositories: parsed.Repositories}, inspect)
 	if err != nil {
 		var failure workspace.GitFailure
 		if errors.As(err, &failure) {
@@ -87,6 +88,9 @@ type gitInspectArguments struct {
 	Runtime           string
 	Task              string
 	RuntimeDeprecated bool
+	// Repositories nomeia os repositórios adicionais que entram no escopo. Sem --repo o escopo
+	// permanece knowledge + source, preservando o contexto mínimo entregue ao agente.
+	Repositories []string
 }
 
 func parseGitInspectArgs(args []string) (gitInspectArguments, bool) {
@@ -112,6 +116,12 @@ func parseGitInspectArgs(args []string) (gitInspectArguments, bool) {
 				return gitInspectArguments{}, false
 			}
 			parsed.Task = args[i+1]
+			i++
+		case "--repo":
+			if i+1 >= len(args) || args[i+1] == "" || strings.HasPrefix(args[i+1], "--") {
+				return gitInspectArguments{}, false
+			}
+			parsed.Repositories = append(parsed.Repositories, args[i+1])
 			i++
 		case "--json":
 			if jsonOutput {

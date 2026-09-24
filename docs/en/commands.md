@@ -146,7 +146,7 @@ agent. Each real provider or agent-integration subprocess creates one redacted J
 For Codex to discover the bridge in `.agents/skills`, start the session at the Cerne workspace root,
 not inside `source/`.
 
-## `cerne context [--json]`
+## `cerne context [--json] [--repo <name>]...`
 
 Locates the nearest ancestor workspace and reports canonical paths for workspace, knowledge,
 product, specs, decisions, policies, source, and the declared workflow. `--json` emits stable
@@ -162,6 +162,13 @@ cerne context
 cerne context --json
 ```
 
+
+Registered additional repositories appear under `repositories`, each with `name`, `path`,
+`inside_workspace` and `selected`. Listing is not delivering: by default every entry comes with
+`"selected": false`. `--repo <name>` is repeatable and marks the repositories that make up the
+task's scope. An unregistered name fails the whole report rather than producing a partial context.
+The field is omitted when no repository is registered.
+
 ## `cerne doctor`
 
 Performs ten read-only checks from the workspace root: manifest readability, both repository
@@ -175,12 +182,37 @@ Locates the nearest workspace from the current directory and reads both reposito
 clean and pending worktrees, detached HEAD, and repositories without commits. It does not fetch or
 compare with remotes.
 
-## `cerne link <path> [--replace]`
+## `cerne link <path> [--as <name>] [--replace]`
 
 Links a local non-bare Git repository with a worktree as `source`. Relative and absolute paths are
 accepted, including valid Git worktrees. Knowledge and source must be distinct and must not be
 dangerously nested. Replacing a different configured source requires `--replace`; linking the same
 source succeeds without rewriting the manifest. Manifest replacement is atomic.
+
+
+With `--as <name>`, the repository is registered as an **additional repository** of the workspace,
+alongside the `source`, instead of replacing it. The name is unique in the workspace, follows the
+same rule as the project name (1 to 255 ASCII characters, starting with a letter or digit, allowing
+dot, hyphen and underscore), and cannot be `source` or `knowledge`. Registering the same name with
+the same path completes without rewriting the manifest; a different path requires `--replace`, which
+preserves the entry's position in the list. The candidate must not share Git history with knowledge,
+with the `source`, or with another registered repository — which is why a worktree of an already
+registered repository is refused. No file in the linked repository is created, changed or removed,
+and no remote is accessed.
+
+Status 0: registered, unchanged, or help. Status 1: operational failure. Status 2: invalid usage.
+
+## `cerne unlink <name>`
+
+Removes an additional repository from the workspace manifest. It changes only
+`knowledge/cerne.json`: it does not delete, move or modify the repository on disk, and does not
+access remotes. It also works on a broken link — that is how a registration whose directory is gone
+gets cleaned up. `source` and `knowledge` are refused, being workspace-owned repositories; use
+`cerne link` to change the source. Removing the last entry drops the `repositories` field from the
+manifest.
+
+Status 0: removed or help. Status 1: unregistered name, reserved name, or write failure.
+Status 2: invalid usage.
 
 ## `cerne completion <bash|zsh>`
 

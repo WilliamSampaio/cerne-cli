@@ -23,7 +23,8 @@ coordenar agentes de IA em documentação, produto, implementação, validação
 O Cerne segue algumas regras duradouras:
 
 - seu conhecimento pertence a você e permanece acessível como arquivos comuns e histórico Git;
-- conhecimento privado e código da aplicação ficam em repositórios separados;
+- conhecimento privado e código da aplicação ficam em repositórios separados, e um workspace pode
+  associar mais de um repositório de código;
 - integrações ficam atrás de adaptadores, sem contaminar o domínio;
 - trabalho automatizado deve ser rastreável e receber apenas o contexto necessário;
 - push, merge, publicação, deploy e operações destrutivas exigem autorização explícita;

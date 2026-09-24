@@ -240,16 +240,48 @@ Effects:
 Example:
   cerne status
 `,
+	messageUnlinkHelp: `Removes an additional repository from the current Cerne workspace.
+
+Usage:
+  cerne unlink <name>
+  cerne unlink --help
+
+Name:
+  The name of a registered additional repository, as listed by cerne status,
+  cerne doctor and cerne context. source and knowledge are not accepted: they
+  are workspace-owned repositories.
+
+Effects:
+  Changes only knowledge/cerne.json. Does not delete, move or modify the
+  repository on disk, and does not access remotes. Also works on a broken link,
+  which is how a registration whose directory is gone is cleaned up.
+
+Output:
+  Success and help use stdout. Invalid usage and failures use stderr.
+  Status 0: removed or help; 1: operational failure; 2: invalid usage.
+
+Example:
+  cerne unlink frontend
+`,
 	messageLinkHelp: `Links an existing local Git repository as the current Cerne workspace source.
 
 Usage:
   cerne link <path>
   cerne link <path> --replace
+  cerne link <path> --as <name>
+  cerne link <path> --as <name> --replace
   cerne link --help
 
 Path:
   May be relative or absolute and must identify the root of a local Git working
-  tree. Valid worktrees are accepted; bare repositories are not.
+  tree. Valid worktrees are accepted as long as they share no Git history with
+  another workspace repository; bare repositories are not.
+
+Additional repositories:
+  With --as <name>, the repository is registered as an additional workspace
+  repository alongside the source; it does not replace the source. The name is
+  unique in the workspace, cannot be source or knowledge, and is used by status,
+  doctor, context and cerne unlink.
 
 Replacement:
   Replacing an existing source requires --replace. Cerne changes only
@@ -263,8 +295,9 @@ Effects:
   Reads local workspace and Git metadata. Does not copy, move, delete, checkout,
   reset, add, commit, clean, fetch, pull, push, access remotes or credentials.
 
-Example:
+Examples:
   cerne link ../existing-application --replace
+  cerne link ../app-frontend --as frontend
 `,
 	messageGlobalHelp: `Cerne manages workspaces with independent Git repositories for knowledge and source code.
 
@@ -279,6 +312,7 @@ Commands:
   doctor      Validates workspace structure and safety
   status      Shows the local repository state
   link        Links a local Git repository as source
+  unlink      Removes an additional repository from the workspace
   workflow    Initializes the workflow declared by the workspace
   context     Shows the workspace structural context
   skill       Installs Cerne skills in an agent profile
@@ -490,16 +524,21 @@ Effects:
 	"status.label.modified":                             "Modified",
 	"status.label.staged":                               "Staged",
 	"status.label.untracked":                            "Untracked",
+	"status.state.invalid":                              "invalid link",
 	"status.state.clean":                                "clean",
 	"status.state.pending":                              "pending changes",
 	"status.branch.detached-head":                       "detached HEAD",
 	"status.commit.no-commits":                          "no commits",
-	"link.usage":                                        "error: invalid argument\nusage: cerne link <path> [--replace]\n",
+	"unlink.usage":                                      "error: invalid argument\nusage: cerne unlink <name>\n",
+	"unlink.failure.default":                            "error: could not unlink the repository\ncorrection: check the workspace and try again\n",
+	"unlink.removed":                                    "Repository removed: %s (%s)\n",
+	"link.usage":                                        "error: invalid argument\nusage: cerne link <path> [--as <name>] [--replace]\n",
 	"completion.usage":                                  "error: invalid shell\nusage: cerne completion <bash|zsh>\n",
 	"completion.desc.init":                              "Creates a Cerne workspace",
 	"completion.desc.restore":                           "Restores an existing Cerne workspace",
 	"completion.desc.doctor":                            "Validates workspace structure and safety",
 	"completion.desc.status":                            "Shows the local repository state",
+	"completion.desc.unlink":                            "Removes an additional repository from the workspace",
 	"completion.desc.link":                              "Links a local Git repository as source",
 	"completion.desc.workflow":                          "Initializes the workflow declared by the workspace",
 	"completion.desc.context":                           "Shows the workspace structural context",
@@ -521,6 +560,9 @@ Effects:
 	"completion.desc.skillname.cerne-product-discovery": "Product and feature idea evaluation skill",
 	"completion.desc.skillname.cerne-git-workflow":      "Safe Git inspection skill",
 	"link.failure.default":                              "error: could not link source\ncorrection: inspect the workspace and try again\n",
+	"repository.current":                                "Repository %s: %s\n",
+	"repository.previous":                               "Previous path: %s\n",
+	"repository.new":                                    "Repository %s: %s\n",
 	"link.project":                                      "Project: %s\n",
 	"link.current":                                      "Current source: %s\n",
 	"link.unchanged":                                    "No changes required.\n",

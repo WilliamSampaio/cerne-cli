@@ -99,3 +99,57 @@ func TestLocalizerUsesSelectedCatalog(t *testing.T) {
 		t.Fatalf("pt-BR = %q", got)
 	}
 }
+
+// TestFailureCodesAreTranslatedInBothLanguages garante que todo código de falha emitido pelo
+// domínio tenha texto nos dois idiomas: sem isso, a falha cai no texto genérico e o usuário perde
+// a causa e a correção específicas (FR-036).
+func TestFailureCodesAreTranslatedInBothLanguages(t *testing.T) {
+	domainCodes := map[string][]string{
+		"link": {
+			"repository-name-invalid", "repository-name-reserved", "repository-name-duplicate",
+			"repository-already-registered", "repositories-not-independent", "repositories-overlap",
+			"manifest-invalid", "manifest-version-unsupported", "manifest-update-failed",
+			"manifest-update-unsafe", "workspace-not-found", "manifest-missing", "knowledge-missing",
+			"knowledge-invalid", "git-unavailable", "source-path-missing", "source-path-invalid",
+			"source-path-not-found", "source-path-inaccessible", "source-not-directory",
+			"source-not-git", "source-bare", "source-no-worktree", "source-not-git-root",
+			"source-already-configured",
+		},
+		"unlink": {
+			"repository-not-registered", "repository-not-removable", "manifest-invalid",
+			"manifest-version-unsupported", "manifest-update-failed", "manifest-update-unsafe",
+			"workspace-not-found", "manifest-missing",
+		},
+	}
+	for language, catalog := range failureCatalogs {
+		for domain, codes := range domainCodes {
+			for _, code := range codes {
+				entry, ok := catalog[domain+"."+code]
+				if !ok {
+					t.Errorf("%s: %s.%s sem tradução", language, domain, code)
+					continue
+				}
+				if entry.Cause == "" || entry.Correction == "" {
+					t.Errorf("%s: %s.%s incompleto: %#v", language, domain, code, entry)
+				}
+			}
+		}
+	}
+}
+
+func TestRepositoryMessageKeysExistInBothLanguages(t *testing.T) {
+	keys := []messageID{
+		"repository.current", "repository.previous", "repository.new",
+		"unlink.usage", "unlink.removed", "unlink.failure.default",
+		"status.state.invalid", "completion.desc.unlink",
+		messageUnlinkHelp,
+	}
+	for language := range messageCatalogs {
+		messages := localizer{language: language}
+		for _, key := range keys {
+			if value, ok := messages.find(key); !ok || value == "" {
+				t.Errorf("%s: mensagem %q ausente", language, key)
+			}
+		}
+	}
+}

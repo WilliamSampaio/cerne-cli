@@ -1,10 +1,12 @@
 package workspace
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -168,5 +170,84 @@ func fakeGitStatus(overrides map[string]GitRepositoryStatus, failures map[string
 			return status, nil
 		}
 		return GitRepositoryStatus{Path: path, Branch: "main", Commit: "sem commits"}, nil
+	}
+}
+
+func registerRepos(t *testing.T, root string, entries ...RepositoryEntry) {
+	t.Helper()
+	encoded, err := json.Marshal(entries)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeManifest(t, root, `{"name":"example","source":"../source","repositories":`+string(encoded)+`}`)
+}
+
+func TestCurrentStatusReportsRegisteredRepositories(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	parent := filepath.Dir(root)
+	for _, name := range []string{"frontend", "infra"} {
+		if err := os.Mkdir(filepath.Join(parent, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	registerRepos(t, root,
+		RepositoryEntry{Name: "frontend", Path: "../../frontend"},
+		RepositoryEntry{Name: "infra", Path: "../../infra"},
+	)
+
+	got, err := CurrentStatus(root, fakeGitStatus(nil, nil))
+	if err != nil {
+		t.Fatalf("status falhou: %v", err)
+	}
+	names := []string{}
+	for _, repository := range got.Repositories {
+		names = append(names, repository.Name)
+	}
+	want := []string{"knowledge", "source", "frontend", "infra"}
+	if !reflect.DeepEqual(names, want) {
+		t.Fatalf("repositórios = %v, quer %v", names, want)
+	}
+}
+
+// FR-028: uma entrada quebrada é reportada como invalid sem impedir o relato das demais.
+// FR-029: knowledge e source mantêm o erro duro atual.
+func TestCurrentStatusBrokenRegisteredRepositoryDoesNotAbort(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	parent := filepath.Dir(root)
+	if err := os.Mkdir(filepath.Join(parent, "frontend"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	registerRepos(t, root,
+		RepositoryEntry{Name: "frontend", Path: "../../frontend"},
+		RepositoryEntry{Name: "sumido", Path: "../../nao-existe"},
+	)
+
+	got, err := CurrentStatus(root, fakeGitStatus(nil, nil))
+	if err != nil {
+		t.Fatalf("entrada quebrada abortou o relato: %v", err)
+	}
+	if len(got.Repositories) != 4 {
+		t.Fatalf("repositórios = %#v", got.Repositories)
+	}
+	broken := got.Repositories[3]
+	if broken.Name != "sumido" || broken.State != RepositoryInvalid {
+		t.Fatalf("entrada quebrada = %#v", broken)
+	}
+	for _, repository := range got.Repositories[:3] {
+		if repository.State == RepositoryInvalid {
+			t.Fatalf("entrada sã marcada inválida: %#v", repository)
+		}
+	}
+}
+
+// FR-029: um workspace sem repositories produz exatamente os dois participantes de hoje.
+func TestCurrentStatusWithoutRegisteredRepositoriesIsUnchanged(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	got, err := CurrentStatus(root, fakeGitStatus(nil, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Repositories) != 2 || got.Repositories[0].Name != "knowledge" || got.Repositories[1].Name != "source" {
+		t.Fatalf("relatório = %#v", got.Repositories)
 	}
 }

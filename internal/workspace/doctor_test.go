@@ -330,3 +330,106 @@ func hasSeverity(diagnosis Diagnosis, severity Severity) bool {
 	}
 	return false
 }
+
+func TestReadManifestRepositoriesField(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		want    []RepositoryEntry
+		invalid bool
+	}{
+		{name: "ausente", content: `{"name":"example","source":"../source"}`},
+		{name: "vazio", content: `{"name":"example","source":"../source","repositories":[]}`, want: []RepositoryEntry{}},
+		{
+			name:    "ordem preservada",
+			content: `{"name":"example","source":"../source","repositories":[{"name":"zeta","path":"../z"},{"name":"alfa","path":"../a"}]}`,
+			want:    []RepositoryEntry{{Name: "zeta", Path: "../z"}, {Name: "alfa", Path: "../a"}},
+		},
+		{
+			name:    "caminho inexistente continua valido",
+			content: `{"name":"example","source":"../source","repositories":[{"name":"sumido","path":"../nao-existe"}]}`,
+			want:    []RepositoryEntry{{Name: "sumido", Path: "../nao-existe"}},
+		},
+		{name: "nao array", content: `{"name":"example","source":"../source","repositories":{"a":"../a"}}`, invalid: true},
+		{name: "entrada nao objeto", content: `{"name":"example","source":"../source","repositories":["../a"]}`, invalid: true},
+		{name: "name ausente", content: `{"name":"example","source":"../source","repositories":[{"path":"../a"}]}`, invalid: true},
+		{name: "name vazio", content: `{"name":"example","source":"../source","repositories":[{"name":"","path":"../a"}]}`, invalid: true},
+		{name: "name invalido", content: `{"name":"example","source":"../source","repositories":[{"name":"com espaco","path":"../a"}]}`, invalid: true},
+		{name: "name duplicado", content: `{"name":"example","source":"../source","repositories":[{"name":"a","path":"../a"},{"name":"a","path":"../b"}]}`, invalid: true},
+		{name: "name reservado source", content: `{"name":"example","source":"../source","repositories":[{"name":"source","path":"../a"}]}`, invalid: true},
+		{name: "name reservado knowledge", content: `{"name":"example","source":"../source","repositories":[{"name":"knowledge","path":"../a"}]}`, invalid: true},
+		{name: "path ausente", content: `{"name":"example","source":"../source","repositories":[{"name":"a"}]}`, invalid: true},
+		{name: "path vazio", content: `{"name":"example","source":"../source","repositories":[{"name":"a","path":""}]}`, invalid: true},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			root := newDoctorWorkspace(t, "example")
+			writeManifest(t, root, testCase.content)
+			data, err := readManifest(filepath.Join(root, "knowledge", "cerne.json"))
+			if testCase.invalid {
+				if err == nil {
+					t.Fatalf("manifesto inválido aceito: %#v", data.Repositories)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("manifesto válido recusado: %v", err)
+			}
+			if len(data.Repositories) != len(testCase.want) {
+				t.Fatalf("repositories = %#v, quer %#v", data.Repositories, testCase.want)
+			}
+			for i, entry := range testCase.want {
+				if data.Repositories[i] != entry {
+					t.Fatalf("repositories[%d] = %#v, quer %#v", i, data.Repositories[i], entry)
+				}
+			}
+		})
+	}
+}
+
+func TestDoctorReportsRegisteredRepositories(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	parent := filepath.Dir(root)
+	if err := os.Mkdir(filepath.Join(parent, "frontend"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	registerRepos(t, root,
+		RepositoryEntry{Name: "frontend", Path: "../../frontend"},
+		RepositoryEntry{Name: "sumido", Path: "../../nao-existe"},
+	)
+
+	got := Doctor(root, fakeInspect(nil), allowAccess)
+
+	var checks []CheckResult
+	for _, check := range got.Checks {
+		if check.ID == "repository" {
+			checks = append(checks, check)
+		}
+	}
+	if len(checks) != 2 {
+		t.Fatalf("checks de repositório = %#v", checks)
+	}
+	if checks[0].Target != "frontend" || checks[0].Code != "found" || checks[0].Severity != Pass {
+		t.Fatalf("entrada sã = %#v", checks[0])
+	}
+	// FR-028: o laço continua após a entrada inválida, e FR-027 exige nome e caminho afetados.
+	if checks[1].Target != "sumido" || checks[1].Code != "missing" || checks[1].Severity != Error {
+		t.Fatalf("entrada quebrada = %#v", checks[1])
+	}
+	if got.Status != Invalid {
+		t.Fatalf("status = %s, quer invalid", got.Status)
+	}
+}
+
+func TestDoctorWithoutRegisteredRepositoriesKeepsCheckCount(t *testing.T) {
+	root := newDoctorWorkspace(t, "example")
+	got := Doctor(root, fakeInspect(nil), allowAccess)
+	for _, check := range got.Checks {
+		if check.ID == "repository" {
+			t.Fatalf("check de repositório em workspace sem registros: %#v", check)
+		}
+	}
+	if len(got.Checks) != 10 {
+		t.Fatalf("contagem de checks alterada: %d", len(got.Checks))
+	}
+}

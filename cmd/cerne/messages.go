@@ -19,6 +19,7 @@ const (
 	messageDoctorHelp          messageID = "help.doctor"
 	messageStatusHelp          messageID = "help.status"
 	messageLinkHelp            messageID = "help.link"
+	messageUnlinkHelp          messageID = "help.unlink"
 	messageGitHelp             messageID = "help.git"
 	messageCompletionHelp      messageID = "help.completion"
 	messageInvalidLanguage     messageID = "error.invalid-language"

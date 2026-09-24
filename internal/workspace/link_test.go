@@ -266,3 +266,97 @@ func mustRel(t *testing.T, base, target string) string {
 	}
 	return rel
 }
+
+// TestValidateRepositorySeparationOverSet cobre o invariante generalizado: o candidato é comparado
+// contra knowledge, source e cada repositório já registrado, incluindo histórico compartilhado.
+func TestValidateRepositorySeparationOverSet(t *testing.T) {
+	parent := t.TempDir()
+	mk := func(name string) string {
+		path := filepath.Join(parent, name)
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return canonical(path)
+	}
+	plain := func(path string) namedFacts {
+		return namedFacts{Name: filepath.Base(path), Path: path, Facts: LinkRepositoryFacts{
+			RequestedPath: path, WorktreeRoot: path, CommonDir: filepath.Join(path, ".git"), HasWorktree: true,
+		}}
+	}
+	knowledge := mk("demo/knowledge")
+	source := mk("app")
+	frontend := mk("frontend")
+	registered := []namedFacts{plain(knowledge), plain(source), plain(frontend)}
+
+	outside := mk("infra")
+	nestedInside := mk("frontend/packages/ui")
+	sharedWorktree := mk("frontend-wt")
+
+	cases := []struct {
+		name      string
+		candidate string
+		facts     LinkRepositoryFacts
+		wantCode  string
+	}{
+		{name: "independente", candidate: outside, facts: plain(outside).Facts},
+		{
+			name: "mesmo repositorio que um registrado", candidate: frontend, facts: plain(frontend).Facts,
+			wantCode: "repositories-not-independent",
+		},
+		{
+			name: "mesmo repositorio que knowledge", candidate: knowledge, facts: plain(knowledge).Facts,
+			wantCode: "repositories-not-independent",
+		},
+		{
+			name: "worktree de repositorio ja registrado", candidate: sharedWorktree,
+			facts: LinkRepositoryFacts{
+				RequestedPath: sharedWorktree, WorktreeRoot: sharedWorktree, HasWorktree: true,
+				CommonDir: filepath.Join(frontend, ".git"), // histórico compartilhado
+			},
+			wantCode: "repositories-not-independent",
+		},
+		{
+			name: "candidato contido por um registrado", candidate: nestedInside, facts: plain(nestedInside).Facts,
+			wantCode: "repositories-overlap",
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := validateRepositorySeparation(testCase.candidate, testCase.facts, registered)
+			if testCase.wantCode == "" {
+				if err != nil {
+					t.Fatalf("candidato independente recusado: %v", err)
+				}
+				return
+			}
+			var failure LinkFailure
+			if !errors.As(err, &failure) || failure.Code != testCase.wantCode {
+				t.Fatalf("erro = %#v, quer código %s", err, testCase.wantCode)
+			}
+		})
+	}
+
+	t.Run("candidato contendo um registrado", func(t *testing.T) {
+		container := canonical(parent)
+		err := validateRepositorySeparation(container, plain(container).Facts, registered)
+		var failure LinkFailure
+		if !errors.As(err, &failure) || failure.Code != "repositories-overlap" {
+			t.Fatalf("erro = %#v, quer repositories-overlap", err)
+		}
+	})
+
+	// Regressão: dois repositórios aninhados entre si, cada um válido isoladamente contra knowledge.
+	t.Run("aninhados registrados em sequencia", func(t *testing.T) {
+		onlyKnowledge := []namedFacts{plain(knowledge)}
+		outer := mk("mono")
+		inner := mk("mono/api")
+		if err := validateRepositorySeparation(outer, plain(outer).Facts, onlyKnowledge); err != nil {
+			t.Fatalf("primeiro registro recusado: %v", err)
+		}
+		err := validateRepositorySeparation(inner, plain(inner).Facts, append(onlyKnowledge, plain(outer)))
+		var failure LinkFailure
+		if !errors.As(err, &failure) || failure.Code != "repositories-overlap" {
+			t.Fatalf("segundo registro aceito ou código errado: %#v", err)
+		}
+	})
+}

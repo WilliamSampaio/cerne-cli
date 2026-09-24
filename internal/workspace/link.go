@@ -85,7 +85,8 @@ func Link(start string, request LinkRequest, inspect LinkGitInspect) (LinkResult
 	if err != nil {
 		return LinkResult{}, linkFailure("knowledge-invalid", "repositório knowledge inválido", knowledge, "inicialize ou restaure knowledge como repositório Git local")
 	}
-	if err := validateLinkSeparation(knowledge, candidate, knowledgeFacts, sourceFacts); err != nil {
+	existing := workspaceNamedFacts(inspect, knowledge, knowledgeFacts, data, "")
+	if err := validateRepositorySeparation(candidate, sourceFacts, filterOutSource(existing)); err != nil {
 		return LinkResult{}, err
 	}
 
@@ -198,16 +199,61 @@ func validLinkRepository(inspect LinkGitInspect, path string) (LinkRepositoryFac
 	return facts, nil
 }
 
-func validateLinkSeparation(knowledge, source string, knowledgeFacts, sourceFacts LinkRepositoryFacts) error {
-	if samePath(knowledgeFacts.WorktreeRoot, sourceFacts.WorktreeRoot) || samePath(knowledgeFacts.CommonDir, sourceFacts.CommonDir) {
-		return linkFailure("repositories-not-independent", "source e knowledge são o mesmo repositório", source, "informe um repositório source independente")
-	}
-	if containsPath(knowledge, source) || containsPath(source, knowledge) ||
-		containsPath(knowledgeFacts.WorktreeRoot, sourceFacts.WorktreeRoot) ||
-		containsPath(sourceFacts.WorktreeRoot, knowledgeFacts.WorktreeRoot) {
-		return linkFailure("repositories-overlap", "sobreposição perigosa entre knowledge e source", source, "mantenha os repositórios em diretórios separados")
+// namedFacts é um repositório já associado ao workspace, com os fatos Git necessários para
+// comparar identidade e sobreposição contra um candidato.
+type namedFacts struct {
+	Name  string
+	Path  string
+	Facts LinkRepositoryFacts
+}
+
+// validateRepositorySeparation verifica o candidato contra todos os repositórios já associados ao
+// workspace — knowledge, source e cada adicional registrado. Como o conjunto é válido antes de
+// cada operação, comparar apenas o candidato contra cada membro preserva o invariante.
+//
+// Dois repositórios que compartilham CommonDir compartilham histórico e NÃO são independentes,
+// ainda que suas árvores de trabalho sejam distintas: é o caso de um Git worktree de um
+// repositório já registrado, recusado por decisão registrada na especificação (FR-013, FR-014).
+func validateRepositorySeparation(candidate string, candidateFacts LinkRepositoryFacts, existing []namedFacts) error {
+	for _, other := range existing {
+		if samePath(other.Facts.WorktreeRoot, candidateFacts.WorktreeRoot) ||
+			samePath(other.Facts.CommonDir, candidateFacts.CommonDir) {
+			return linkFailure("repositories-not-independent", "é o mesmo repositório que "+other.Name, candidate, "informe um repositório com histórico Git próprio")
+		}
+		if containsPath(other.Path, candidate) || containsPath(candidate, other.Path) ||
+			containsPath(other.Facts.WorktreeRoot, candidateFacts.WorktreeRoot) ||
+			containsPath(candidateFacts.WorktreeRoot, other.Facts.WorktreeRoot) {
+			return linkFailure("repositories-overlap", "sobreposição perigosa com "+other.Name, candidate, "mantenha os repositórios em diretórios separados")
+		}
 	}
 	return nil
+}
+
+// workspaceNamedFacts coleta os fatos Git de knowledge, source e dos repositórios adicionais já
+// registrados, pulando entradas cujo caminho não pode mais ser inspecionado — uma entrada quebrada
+// não impede validar o candidato contra as demais.
+func workspaceNamedFacts(inspect LinkGitInspect, knowledge string, knowledgeFacts LinkRepositoryFacts, data linkManifest, skipName string) []namedFacts {
+	existing := []namedFacts{{Name: "knowledge", Path: knowledge, Facts: knowledgeFacts}}
+	if source, err := validateSourcePath(knowledge, data.Source); err == nil {
+		if facts, err := inspect(source); err == nil && facts.HasWorktree && !facts.IsBare {
+			existing = append(existing, namedFacts{Name: "source", Path: canonical(source), Facts: facts})
+		}
+	}
+	for _, entry := range data.Repositories {
+		if entry.Name == skipName {
+			continue
+		}
+		path, err := validateSourcePath(knowledge, entry.Path)
+		if err != nil {
+			continue
+		}
+		facts, err := inspect(path)
+		if err != nil || !facts.HasWorktree || facts.IsBare {
+			continue
+		}
+		existing = append(existing, namedFacts{Name: entry.Name, Path: canonical(path), Facts: facts})
+	}
+	return existing
 }
 
 func linkSameSource(inspect LinkGitInspect, previous, candidate string) bool {
@@ -268,4 +314,26 @@ func linkFailure(code, cause, path, correction string) LinkFailure {
 		path = filepath.Clean(path)
 	}
 	return LinkFailure{Code: code, Cause: cause, Path: path, Correction: correction}
+}
+
+// filterOutSource remove o source atual do conjunto de comparação: em `cerne link` ele está sendo
+// substituído, então comparar o candidato contra ele recusaria uma troca legítima. O caso do
+// candidato ser o próprio source já configurado é tratado antes, por linkSameSource.
+func filterOutSource(existing []namedFacts) []namedFacts {
+	filtered := make([]namedFacts, 0, len(existing))
+	for _, entry := range existing {
+		if entry.Name == "source" {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
+}
+
+// validateLinkSeparation é o caso de dois repositórios do invariante generalizado, usado por init e
+// restore, onde o workspace ainda não tem repositórios adicionais registrados.
+func validateLinkSeparation(knowledge, source string, knowledgeFacts, sourceFacts LinkRepositoryFacts) error {
+	return validateRepositorySeparation(source, sourceFacts, []namedFacts{
+		{Name: "knowledge", Path: knowledge, Facts: knowledgeFacts},
+	})
 }
