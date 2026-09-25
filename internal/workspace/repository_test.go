@@ -101,8 +101,8 @@ func TestAddRepositoryReplaceSemantics(t *testing.T) {
 	frontend := mkRepo(t, parent, "frontend")
 	infra := mkRepo(t, parent, "infra")
 	outro := mkRepo(t, parent, "outro")
-	for name, path := range map[string]string{"frontend": frontend, "infra": infra} {
-		if _, err := AddRepository(root, AddRepositoryRequest{Name: name, PathInput: path}, fakeLinkInspect(nil, nil)); err != nil {
+	for _, repository := range []RepositoryEntry{{Name: "frontend", Path: frontend}, {Name: "infra", Path: infra}} {
+		if _, err := AddRepository(root, AddRepositoryRequest{Name: repository.Name, PathInput: repository.Path}, fakeLinkInspect(nil, nil)); err != nil {
 			t.Fatal(err)
 		}
 	}
