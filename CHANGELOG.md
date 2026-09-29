@@ -5,6 +5,8 @@ All notable changes to Cerne are documented in this file. This project follows
 
 ## Unreleased
 
+## 0.13.0 - 2026-09-28
+
 ### Added
 
 - **Multi-repository workspaces.** A workspace can now register additional local Git repositories
